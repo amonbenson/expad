@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Pico 2 (probe-rs)",
+      "type": "probe-rs-debug",
+      "request": "launch",
+      "preLaunchTask": "${defaultBuildTask}",
+      "cwd": "${workspaceFolder}",
+      "chip": "RP2350",
+      "flashingConfig": {
+        "flashingEnabled": true,
+        "haltAfterReset": false
+      },
+      "coreConfigs": [
+        {
+          "coreIndex": 0,
+          "programBinary": "${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/pico2-quick",
+          "rttEnabled": true,
+          "rttChannelFormats": [
+            {
+              "channelNumber": 0,
+              "dataFormat": "Defmt",
+              "showLocation": true
+            }
+          ]
+        }
+      ],
+      "consoleLogLevel": "Info"
+    }
+  ]
+}
