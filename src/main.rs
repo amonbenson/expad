@@ -1,12 +1,19 @@
 #![no_std]
 #![no_main]
 
+
 use defmt::info;
 use embassy_executor::Spawner;
-use embassy_rp::gpio;
 use embassy_time::Timer;
-use gpio::{Level, Output};
+use crate::sr::ShiftRegisterChain;
+use crate::tristate::{QuadBufferChain, TriState};
+
 use {defmt_rtt as _, panic_probe as _};
+
+mod sr;
+mod tristate;
+
+const CHANNELS: usize = 1;
 
 #[unsafe(link_section = ".bi_entries")]
 #[used]
@@ -22,14 +29,28 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
-    let mut led = Output::new(p.PIN_25, Level::Low);
 
-    info!("Hello, World!");
+    let mut sr = ShiftRegisterChain::<CHANNELS>::new(
+        p.SPI1,
+        p.PIN_14,
+        p.PIN_15,
+        p.PIN_11,
+        p.PIN_13,
+    );
+    let mut buffers = QuadBufferChain::new(sr);
+    buffers.clear().unwrap();
+
     loop {
-        led.set_high();
-        Timer::after_millis(250).await;
+        buffers.set_output(0, 0, TriState::Low);
+        buffers.set_output(0, 1, TriState::High);
+        buffers.set_output(0, 2, TriState::HiZ);
+        buffers.update().unwrap();
+        Timer::after_millis(10).await;
 
-        led.set_low();
-        Timer::after_millis(250).await;
+        buffers.set_output(0, 0, TriState::HiZ);
+        buffers.set_output(0, 1, TriState::High);
+        buffers.set_output(0, 2, TriState::Low);
+        buffers.update().unwrap();
+        Timer::after_millis(10).await;
     }
 }
