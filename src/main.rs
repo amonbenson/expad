@@ -7,11 +7,13 @@ use embassy_executor::Spawner;
 use embassy_time::Timer;
 use crate::sr::ShiftRegisterChain;
 use crate::quadbuf::{QuadBufferChain, TriState};
+use crate::adc::AdcChain;
 
 use {defmt_rtt as _, panic_probe as _};
 
 mod sr;
 mod quadbuf;
+mod adc;
 
 const CHANNELS: usize = 1;
 
@@ -39,6 +41,19 @@ async fn main(_spawner: Spawner) {
     );
     let mut buffers = QuadBufferChain::new(sr);
     buffers.clear().unwrap();
+
+    let mut adcs = AdcChain::<CHANNELS>::new(
+        p.SPI0,
+        p.PIN_18,
+        p.PIN_19,
+        p.PIN_16,
+        [p.PIN_17],
+        [p.PIN_21],
+    );
+
+    if !adcs.connected() {
+        panic!("ADC not connected");
+    }
 
     info!("Starting loop");
     loop {

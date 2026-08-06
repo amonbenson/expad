@@ -20,9 +20,6 @@ impl<'d, const N: usize> ShiftRegisterChain<'d, N> {
         let mut oe = Output::new(oe, Level::High);
         let mut lat = Output::new(lat, Level::Low);
 
-        oe.set_high();
-        lat.set_low();
-
         Self { spi, oe, lat }
     }
 

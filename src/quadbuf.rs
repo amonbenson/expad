@@ -1,22 +1,13 @@
 use crate::sr::ShiftRegisterChain;
 use embassy_rp::spi::Error;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum TriState {
-    Low,
-    High,
+    Low = 0b10,
+    High = 0b11,
     #[default]
-    HiZ,
-}
-
-impl TriState {
-    pub fn to_bits(&self) -> u8 {
-        match self {
-            TriState::Low => 0b10,
-            TriState::High => 0b11,
-            TriState::HiZ => 0b00,
-        }
-    }
+    HiZ = 0b00,
 }
 
 pub type QuadBufferOutputState = [TriState; 4];
@@ -52,7 +43,7 @@ impl<'d, const N: usize> QuadBufferChain<'d, N> {
         for chip in 0..N {
             for channel in 0..4 {
                 let state = self.outputs[chip][channel];
-                data[chip] |= state.to_bits() << (channel * 2);
+                data[chip] |= (state as u8) << (channel * 2);
             }
         }
 
