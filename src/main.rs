@@ -6,12 +6,12 @@ use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::Timer;
 use crate::sr::ShiftRegisterChain;
-use crate::tristate::{QuadBufferChain, TriState};
+use crate::quadbuf::{QuadBufferChain, TriState};
 
 use {defmt_rtt as _, panic_probe as _};
 
 mod sr;
-mod tristate;
+mod quadbuf;
 
 const CHANNELS: usize = 1;
 
@@ -30,7 +30,7 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
-    let mut sr = ShiftRegisterChain::<CHANNELS>::new(
+    let sr = ShiftRegisterChain::<CHANNELS>::new(
         p.SPI1,
         p.PIN_14,
         p.PIN_15,
@@ -40,6 +40,7 @@ async fn main(_spawner: Spawner) {
     let mut buffers = QuadBufferChain::new(sr);
     buffers.clear().unwrap();
 
+    info!("Starting loop");
     loop {
         buffers.set_output(0, 0, TriState::Low);
         buffers.set_output(0, 1, TriState::High);
