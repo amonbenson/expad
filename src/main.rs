@@ -54,7 +54,7 @@ async fn main(_spawner: Spawner) {
     adcs.init(AdcChainConfig::default()).unwrap();
 
     info!("Taking individual measurements");
-    for channel in 1..=3u8 {
+    for channel in 0..3u8 {
         let value = adcs.measure_channel(0, channel).await.unwrap();
         info!("chip 0 channel {}: {}", channel, value);
     }

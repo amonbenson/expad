@@ -38,27 +38,27 @@ pub enum Input {
 impl ChannelConfiguration {
     pub const fn single(input: u8, channel_count: ChannelCount) -> Option<Self> {
         match (input, channel_count) {
-            (1, _) => Some(Self::Single1),
-            (2, _) => Some(Self::Single2),
-            (3, _) => Some(Self::Single3),
-            (4, _) => Some(Self::Single4),
-            (5, _) => Some(Self::Single5),
-            (6, _) => Some(Self::Single6),
-            (7, _) => Some(Self::Single7),
-            (8, _) => Some(Self::Single8),
-            (9, ChannelCount::Ten) => Some(Self::RefIn_Single9),
-            (10, ChannelCount::Ten) => Some(Self::Open_Single10),
+            (0, _) => Some(Self::Single1),
+            (1, _) => Some(Self::Single2),
+            (2, _) => Some(Self::Single3),
+            (3, _) => Some(Self::Single4),
+            (4, _) => Some(Self::Single5),
+            (5, _) => Some(Self::Single6),
+            (6, _) => Some(Self::Single7),
+            (7, _) => Some(Self::Single8),
+            (8, ChannelCount::Ten) => Some(Self::RefIn_Single9),
+            (9, ChannelCount::Ten) => Some(Self::Open_Single10),
             _ => None,
         }
     }
 
     pub const fn differential(positive_input: u8, negative_input: u8, channel_count: ChannelCount) -> Option<Self> {
         match (positive_input, negative_input, channel_count) {
-            (1, 2, _) => Some(Self::Diff1_2),
-            (3, 4, _) => Some(Self::Diff3_4),
-            (5, 6, _) => Some(Self::Diff5_6),
-            (7, 8, _) => Some(Self::Diff7_8),
-            (9, 10, ChannelCount::Ten) => Some(Self::Diff9_10),
+            (0, 1, _) => Some(Self::Diff1_2),
+            (2, 3, _) => Some(Self::Diff3_4),
+            (4, 5, _) => Some(Self::Diff5_6),
+            (6, 7, _) => Some(Self::Diff7_8),
+            (8, 9, ChannelCount::Ten) => Some(Self::Diff9_10),
             _ => None,
         }
     }
@@ -68,25 +68,25 @@ impl ChannelConfiguration {
         use Input::{AIn, AInCom, Open, RefInPositive, RefInNegative};
 
         match (self, channel_count) {
-            (Self::Single1, _) => (AIn(1), AInCom),
-            (Self::Single2, _) => (AIn(2), AInCom),
-            (Self::Single3, _) => (AIn(3), AInCom),
-            (Self::Single4, _) => (AIn(4), AInCom),
-            (Self::Single5, _) => (AIn(5), AInCom),
-            (Self::Single6, _) => (AIn(6), AInCom),
-            (Self::Single7, _) => (AIn(7), AInCom),
-            (Self::Single8, _) => (AIn(8), AInCom),
-            (Self::Diff1_2, _) => (AIn(1), AIn(2)),
-            (Self::Diff3_4, _) => (AIn(3), AIn(4)),
-            (Self::Diff5_6, _) => (AIn(5), AIn(6)),
-            (Self::Diff7_8, _) => (AIn(7), AIn(8)),
-            (Self::Diff9_10, Eight) => (AIn(2), AIn(2)),
-            (Self::Diff9_10, Ten) => (AIn(9), AIn(10)),
+            (Self::Single1, _) => (AIn(0), AInCom),
+            (Self::Single2, _) => (AIn(1), AInCom),
+            (Self::Single3, _) => (AIn(2), AInCom),
+            (Self::Single4, _) => (AIn(3), AInCom),
+            (Self::Single5, _) => (AIn(4), AInCom),
+            (Self::Single6, _) => (AIn(5), AInCom),
+            (Self::Single7, _) => (AIn(6), AInCom),
+            (Self::Single8, _) => (AIn(7), AInCom),
+            (Self::Diff1_2, _) => (AIn(0), AIn(1)),
+            (Self::Diff3_4, _) => (AIn(2), AIn(3)),
+            (Self::Diff5_6, _) => (AIn(4), AIn(5)),
+            (Self::Diff7_8, _) => (AIn(6), AIn(7)),
+            (Self::Diff9_10, Eight) => (AIn(1), AIn(1)),
+            (Self::Diff9_10, Ten) => (AIn(8), AIn(9)),
             (Self::AInCom, _) => (AInCom, AInCom),
             (Self::RefIn_Single9, Eight) => (RefInPositive, RefInNegative),
-            (Self::RefIn_Single9, Ten) => (AIn(9), AInCom),
+            (Self::RefIn_Single9, Ten) => (AIn(8), AInCom),
             (Self::Open_Single10, Eight) => (Open, Open),
-            (Self::Open_Single10, Ten) => (AIn(10), AInCom),
+            (Self::Open_Single10, Ten) => (AIn(9), AInCom),
         }
     }
 

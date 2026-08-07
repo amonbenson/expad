@@ -208,7 +208,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         let filter = self.config.filter_register();
         self.write_all_registers(filter)?;
 
-        let control = self.config.control_register(1)?;
+        let control = self.config.control_register(0)?;
         self.write_all_registers(control)?;
 
         let mode = self.config.mode_register(AdcMode::Idle);
@@ -231,10 +231,10 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     fn next_channel(&self, channel: u8) -> u8 {
-        if channel < self.config.channel_count.count() {
+        if channel + 1 < self.config.channel_count.count() {
             channel + 1
         } else {
-            1
+            0
         }
     }
 
@@ -248,9 +248,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
 
     pub fn start_continuous_capture(&mut self) -> Result<(), AdcChainError> {
         for chip in 0..N {
-            self.start_single_conversion(chip, 1)?;
+            self.start_single_conversion(chip, 0)?;
         }
-        self.continuous_capture = Some([1; N]);
+        self.continuous_capture = Some([0; N]);
 
         Ok(())
     }
