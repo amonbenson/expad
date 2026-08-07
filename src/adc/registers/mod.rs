@@ -1,10 +1,11 @@
 use core::fmt;
 
-pub mod id;
 pub mod status;
 pub mod mode;
 pub mod control;
+pub mod filter;
 pub mod data;
+pub mod id;
 
 /// An ADC register, `WIDTH` bytes wide on the wire (MSB first).
 pub trait Register: Sized {
