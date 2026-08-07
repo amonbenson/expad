@@ -32,6 +32,7 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
+    info!("Initializing tristate buffers");
     let sr = ShiftRegisterChain::<CHANNELS>::new(
         p.SPI1,
         p.PIN_14,
@@ -42,6 +43,7 @@ async fn main(_spawner: Spawner) {
     let mut buffers = QuadBufferChain::new(sr);
     buffers.clear().unwrap();
 
+    info!("Initializing ADCs");
     let mut adcs = AdcChain::<CHANNELS>::new(
         p.SPI0,
         p.PIN_18,
@@ -50,10 +52,7 @@ async fn main(_spawner: Spawner) {
         [p.PIN_17],
         [p.PIN_21],
     );
-
-    if !adcs.connected() {
-        panic!("ADC not connected");
-    }
+    adcs.init().unwrap();
 
     info!("Starting loop");
     loop {

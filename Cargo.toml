@@ -19,8 +19,9 @@ embassy-rp = { version = "0.9.0", features = [
   "binary-info",
 ] }
 
-cortex-m = { version = "0.7.8" }
+cortex-m = "0.7.8"
 cortex-m-rt = "0.7.6"
 
 defmt = "1.1.1"
 defmt-rtt = "1.3.0"
+num_enum = { version = "0.7.6", default-features = false }

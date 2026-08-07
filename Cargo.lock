@@ -583,6 +583,7 @@ dependencies = [
  "embassy-executor",
  "embassy-rp",
  "embassy-time",
+ "num_enum",
  "panic-probe",
 ]
 
