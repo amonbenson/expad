@@ -1,21 +1,8 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use super::{Address, Field, Register, RegisterSpec};
+use super::RegisterValue;
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Mode(Register);
-
-impl RegisterSpec for Mode {
-    const ADDRESS: Address = Address::Mode;
-
-    fn bits(&self) -> u8 {
-        self.0.bits()
-    }
-
-    fn from_bits(bits: u8) -> Self {
-        Self(Register::new(bits))
-    }
-}
+pub type Mode = RegisterValue<0x01, 1>;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, IntoPrimitive, TryFromPrimitive)]
@@ -29,6 +16,23 @@ pub enum Reference {
 pub enum ChannelCount {
     Eight = 0b0,
     Ten = 0b1,
+}
+
+impl ChannelCount {
+    pub const fn new(count: u8) -> Option<Self> {
+        match count {
+            8 => Some(Self::Eight),
+            10 => Some(Self::Ten),
+            _ => None,
+        }
+    }
+
+    pub const fn count(self) -> u8 {
+        match self {
+            Self::Eight => 8,
+            Self::Ten => 10,
+        }
+    }
 }
 
 #[repr(u8)]
@@ -45,58 +49,51 @@ pub enum AdcMode {
 }
 
 impl Mode {
-    const NCHOP: Field = Field::new(7, 0b1);
-    const NEGBUF: Field = Field::new(6, 0b1);
-    const REFSEL: Field = Field::new(5, 0b1);
-    const CHCON: Field = Field::new(4, 0b1);
-    const OSCPD: Field = Field::new(3, 0b1);
-    const ADC_MODE: Field = Field::new(0, 0b111);
-
     pub fn chopping(&self) -> bool {
-        !self.0.bit(Self::NCHOP)
+        self.bit_active_low(7)
     }
 
-    pub fn set_chopping(&mut self, enabled: bool) {
-        self.0.set_bit(Self::NCHOP, !enabled);
+    pub fn set_chopping(&mut self, value: bool) {
+        self.set_bit_active_low(7, value);
     }
 
     pub fn negative_buffer(&self) -> bool {
-        self.0.bit(Self::NEGBUF)
+        self.bit(6)
     }
 
-    pub fn set_negative_buffer(&mut self, enabled: bool) {
-        self.0.set_bit(Self::NEGBUF, enabled);
+    pub fn set_negative_buffer(&mut self, value: bool) {
+        self.set_bit(6, value);
     }
 
     pub fn reference(&self) -> Reference {
-        Reference::try_from(self.0.field(Self::REFSEL)).unwrap()
+        self.field(5, 1)
     }
 
-    pub fn set_reference(&mut self, reference: Reference) {
-        self.0.set_field(Self::REFSEL, reference.into());
+    pub fn set_reference(&mut self, value: Reference) {
+        self.set_field(5, 1, value);
     }
 
     pub fn channel_count(&self) -> ChannelCount {
-        ChannelCount::try_from(self.0.field(Self::CHCON)).unwrap()
+        self.field(4, 1)
     }
 
-    pub fn set_channel_count(&mut self, count: ChannelCount) {
-        self.0.set_field(Self::CHCON, count.into());
+    pub fn set_channel_count(&mut self, value: ChannelCount) {
+        self.set_field(4, 1, value);
     }
 
     pub fn oscillator_power_down(&self) -> bool {
-        self.0.bit(Self::OSCPD)
+        self.bit(3)
     }
 
-    pub fn set_oscillator_power_down(&mut self, enabled: bool) {
-        self.0.set_bit(Self::OSCPD, enabled);
+    pub fn set_oscillator_power_down(&mut self, value: bool) {
+        self.set_bit(3, value);
     }
 
     pub fn adc_mode(&self) -> AdcMode {
-        AdcMode::try_from(self.0.field(Self::ADC_MODE)).unwrap()
+        self.field(0, 3)
     }
 
-    pub fn set_adc_mode(&mut self, mode: AdcMode) {
-        self.0.set_field(Self::ADC_MODE, mode.into());
+    pub fn set_adc_mode(&mut self, value: AdcMode) {
+        self.set_field(0, 3, value);
     }
 }

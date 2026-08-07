@@ -7,7 +7,7 @@ use embassy_executor::Spawner;
 use embassy_time::Timer;
 use crate::sr::ShiftRegisterChain;
 use crate::quadbuf::{QuadBufferChain, TriState};
-use crate::adc::AdcChain;
+use crate::adc::{AdcChain, AdcChainConfig};
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -52,7 +52,7 @@ async fn main(_spawner: Spawner) {
         [p.PIN_17],
         [p.PIN_21],
     );
-    adcs.init().unwrap();
+    adcs.init(AdcChainConfig::default()).unwrap();
 
     info!("Starting loop");
     loop {
