@@ -60,9 +60,12 @@ async fn main(_spawner: Spawner) {
     }
 
     info!("Starting continuous capture");
+    let mut measurements = [0.0; 8];
+
     adcs.start_continuous_capture().unwrap();
     loop {
         let measurement = adcs.wait_for_next_result().await.unwrap();
-        info!("chip {} channel {}: {}", measurement.chip, measurement.channel, measurement.value);
+        measurements[measurement.channel as usize] = measurement.value as f32 / 0xFFFFFF as f32;
+        info!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", measurements[0], measurements[1], measurements[2], measurements[3], measurements[4], measurements[5], measurements[6], measurements[7]);
     }
 }
