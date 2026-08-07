@@ -1,3 +1,4 @@
+use embassy_futures::select::select_array;
 use embassy_rp::gpio::{Input, Level, Output, Pin, Pull};
 use embassy_rp::peripherals::SPI0;
 use embassy_rp::spi::{Blocking, ClkPin, Config, Error, MosiPin, MisoPin, Spi};
@@ -69,18 +70,12 @@ pub struct Measurement {
     pub value: u32,
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ContinuousCaptureCursor {
-    chip: usize,
-    channel: u8,
-}
-
 pub struct AdcChain<'d, const N: usize> {
     spi: Spi<'d, SPI0, Blocking>,
     cs: [Output<'d>; N],
     rdy: [Input<'d>; N],
     channel_count: ChannelCount,
-    continuous_capture: Option<ContinuousCaptureCursor>,
+    continuous_capture: Option<[u8; N]>,
 }
 
 impl<'d, const N: usize> AdcChain<'d, N> {
@@ -210,11 +205,11 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         Ok(())
     }
 
-    fn next_chip_and_channel(&self, chip: usize, channel: u8) -> (usize, u8) {
+    fn next_channel(&self, channel: u8) -> u8 {
         if channel < self.channel_count.count() {
-            (chip, channel + 1)
+            channel + 1
         } else {
-            ((chip + 1) % N, 1)
+            1
         }
     }
 
@@ -227,8 +222,10 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     pub fn start_continuous_capture(&mut self) -> Result<(), AdcError> {
-        self.start_single_conversion(0, 1)?;
-        self.continuous_capture = Some(ContinuousCaptureCursor { chip: 0, channel: 1 });
+        for chip in 0..N {
+            self.start_single_conversion(chip, 1)?;
+        }
+        self.continuous_capture = Some([1; N]);
 
         Ok(())
     }
@@ -242,29 +239,29 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     pub async fn wait_for_next_result(&mut self) -> Result<Measurement, AdcError> {
-        let cursor = self
-            .continuous_capture
-            .ok_or(AdcError::ContinuousMeasurementNotRunning)?;
-
-        self.rdy[cursor.chip].wait_for_low().await;
-
         if !self.continuous_capture_active() {
             return Err(AdcError::ContinuousMeasurementNotRunning);
         }
 
-        let data: Data = self.read_register(cursor.chip)?;
+        let (_, chip) = select_array(self.rdy.each_mut().map(Input::wait_for_low)).await;
+
+        let Some(channels) = &mut self.continuous_capture else {
+            return Err(AdcError::ContinuousMeasurementNotRunning);
+        };
+        let channel = channels[chip];
+        let next_channel = self.next_channel(channel);
+
+        let data: Data = self.read_register(chip)?;
         let value = data.bits();
 
-        let (next_chip, next_channel) = self.next_chip_and_channel(cursor.chip, cursor.channel);
-        self.start_single_conversion(next_chip, next_channel)?;
-        self.continuous_capture = Some(ContinuousCaptureCursor {
-            chip: next_chip,
-            channel: next_channel,
-        });
+        self.start_single_conversion(chip, next_channel)?;
+        if let Some(channels) = &mut self.continuous_capture {
+            channels[chip] = next_channel;
+        }
 
         Ok(Measurement {
-            chip: cursor.chip as u8,
-            channel: cursor.channel,
+            chip: chip as u8,
+            channel,
             value,
         })
     }
