@@ -4,9 +4,8 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
-use embassy_time::Timer;
 use crate::sr::ShiftRegisterChain;
-use crate::quadbuf::{QuadBufferChain, TriState};
+use crate::quadbuf::QuadBufferChain;
 use crate::adc::{AdcChain, AdcChainConfig};
 
 use {defmt_rtt as _, panic_probe as _};
@@ -54,18 +53,16 @@ async fn main(_spawner: Spawner) {
     );
     adcs.init(AdcChainConfig::default()).unwrap();
 
-    info!("Starting loop");
-    loop {
-        buffers.set_output(0, 0, TriState::Low);
-        buffers.set_output(0, 1, TriState::High);
-        buffers.set_output(0, 2, TriState::HiZ);
-        buffers.update().unwrap();
-        Timer::after_millis(10).await;
+    info!("Taking individual measurements");
+    for channel in 1..=3u8 {
+        let value = adcs.measure_channel(0, channel).await.unwrap();
+        info!("chip 0 channel {}: {}", channel, value);
+    }
 
-        buffers.set_output(0, 0, TriState::HiZ);
-        buffers.set_output(0, 1, TriState::High);
-        buffers.set_output(0, 2, TriState::Low);
-        buffers.update().unwrap();
-        Timer::after_millis(10).await;
+    info!("Starting continuous capture");
+    adcs.start_continuous_capture().unwrap();
+    loop {
+        let measurement = adcs.wait_for_next_result().await.unwrap();
+        info!("chip {} channel {}: {}", measurement.chip, measurement.channel, measurement.value);
     }
 }

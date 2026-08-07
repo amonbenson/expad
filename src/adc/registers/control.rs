@@ -36,27 +36,29 @@ pub enum Input {
 }
 
 impl ChannelConfiguration {
-    pub const fn single(input: u8) -> Option<Self> {
-        match input {
-            1 => Some(Self::Single1),
-            2 => Some(Self::Single2),
-            3 => Some(Self::Single3),
-            4 => Some(Self::Single4),
-            5 => Some(Self::Single5),
-            6 => Some(Self::Single6),
-            7 => Some(Self::Single7),
-            8 => Some(Self::Single8),
+    pub const fn single(input: u8, channel_count: ChannelCount) -> Option<Self> {
+        match (input, channel_count) {
+            (1, _) => Some(Self::Single1),
+            (2, _) => Some(Self::Single2),
+            (3, _) => Some(Self::Single3),
+            (4, _) => Some(Self::Single4),
+            (5, _) => Some(Self::Single5),
+            (6, _) => Some(Self::Single6),
+            (7, _) => Some(Self::Single7),
+            (8, _) => Some(Self::Single8),
+            (9, ChannelCount::Ten) => Some(Self::RefIn_Single9),
+            (10, ChannelCount::Ten) => Some(Self::Open_Single10),
             _ => None,
         }
     }
 
-    pub const fn differential(positive_input: u8, negative_input: u8) -> Option<Self> {
-        match (positive_input, negative_input) {
-            (1, 2) => Some(Self::Diff1_2),
-            (3, 4) => Some(Self::Diff3_4),
-            (5, 6) => Some(Self::Diff5_6),
-            (7, 8) => Some(Self::Diff7_8),
-            (9, 10) => Some(Self::Diff9_10),
+    pub const fn differential(positive_input: u8, negative_input: u8, channel_count: ChannelCount) -> Option<Self> {
+        match (positive_input, negative_input, channel_count) {
+            (1, 2, _) => Some(Self::Diff1_2),
+            (3, 4, _) => Some(Self::Diff3_4),
+            (5, 6, _) => Some(Self::Diff5_6),
+            (7, 8, _) => Some(Self::Diff7_8),
+            (9, 10, ChannelCount::Ten) => Some(Self::Diff9_10),
             _ => None,
         }
     }

@@ -6,6 +6,7 @@ mod registers;
 
 use registers::Register;
 use registers::id::Id;
+use registers::data::Data;
 use registers::mode::{AdcMode, ChannelCount, Mode, Reference};
 use registers::control::{ChannelConfiguration, Coding, Control, Range};
 
@@ -60,10 +61,26 @@ enum Operation {
     Read = 0b1,
 }
 
+/// A single-ended reading taken from one channel of one chip in the chain.
+#[derive(Clone, Copy, Debug)]
+pub struct Measurement {
+    pub chip: u8,
+    pub channel: u8,
+    pub value: u32,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ContinuousCaptureCursor {
+    chip: usize,
+    channel: u8,
+}
+
 pub struct AdcChain<'d, const N: usize> {
     spi: Spi<'d, SPI0, Blocking>,
     cs: [Output<'d>; N],
     rdy: [Input<'d>; N],
+    channel_count: ChannelCount,
+    continuous_capture: Option<ContinuousCaptureCursor>,
 }
 
 impl<'d, const N: usize> AdcChain<'d, N> {
@@ -79,7 +96,13 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         let cs = cs.map(|c| Output::new(c, Level::High));
         let rdy = rdy.map(|r| Input::new(r, Pull::Up));
 
-        Self { spi, cs, rdy }
+        Self {
+            spi,
+            cs,
+            rdy,
+            channel_count: ChannelCount::Eight,
+            continuous_capture: None,
+        }
     }
 
     fn control_byte(operation: Operation, address: u8) -> u8 {
@@ -149,7 +172,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         self.ensure_connected()?;
 
         let mut control = Control::default();
-        control.set_channel_configuration(ChannelConfiguration::single(1).unwrap());
+        control.set_channel_configuration(ChannelConfiguration::single(1, config.channel_count).unwrap());
         control.set_coding(config.coding);
         control.set_range(config.range);
         self.write_all_registers(control)?;
@@ -163,6 +186,86 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         mode.set_adc_mode(AdcMode::Idle);
         self.write_all_registers(mode)?;
 
+        self.channel_count = config.channel_count;
+
         Ok(())
+    }
+
+    fn start_single_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcError> {
+        let channel_configuration =
+            ChannelConfiguration::single(channel, self.channel_count)
+                .ok_or(AdcError::InvalidChannel {
+                    chip: chip as u8,
+                    channel,
+                })?;
+
+        let mut control = self.read_register::<Control>(chip)?;
+        control.set_channel_configuration(channel_configuration);
+        self.write_register(chip, control)?;
+
+        let mut mode = self.read_register::<Mode>(chip)?;
+        mode.set_adc_mode(AdcMode::SingleConversion);
+        self.write_register(chip, mode)?;
+
+        Ok(())
+    }
+
+    fn next_chip_and_channel(&self, chip: usize, channel: u8) -> (usize, u8) {
+        if channel < self.channel_count.count() {
+            (chip, channel + 1)
+        } else {
+            ((chip + 1) % N, 1)
+        }
+    }
+
+    pub async fn measure_channel(&mut self, chip: usize, channel: u8) -> Result<u32, AdcError> {
+        self.start_single_conversion(chip, channel)?;
+        self.rdy[chip].wait_for_low().await;
+
+        let data: Data = self.read_register(chip)?;
+        Ok(data.bits())
+    }
+
+    pub fn start_continuous_capture(&mut self) -> Result<(), AdcError> {
+        self.start_single_conversion(0, 1)?;
+        self.continuous_capture = Some(ContinuousCaptureCursor { chip: 0, channel: 1 });
+
+        Ok(())
+    }
+
+    pub fn stop_continuous_capture(&mut self) {
+        self.continuous_capture = None;
+    }
+
+    pub fn continuous_capture_active(&self) -> bool {
+        self.continuous_capture.is_some()
+    }
+
+    pub async fn wait_for_next_result(&mut self) -> Result<Measurement, AdcError> {
+        let cursor = self
+            .continuous_capture
+            .ok_or(AdcError::ContinuousMeasurementNotRunning)?;
+
+        self.rdy[cursor.chip].wait_for_low().await;
+
+        if !self.continuous_capture_active() {
+            return Err(AdcError::ContinuousMeasurementNotRunning);
+        }
+
+        let data: Data = self.read_register(cursor.chip)?;
+        let value = data.bits();
+
+        let (next_chip, next_channel) = self.next_chip_and_channel(cursor.chip, cursor.channel);
+        self.start_single_conversion(next_chip, next_channel)?;
+        self.continuous_capture = Some(ContinuousCaptureCursor {
+            chip: next_chip,
+            channel: next_channel,
+        });
+
+        Ok(Measurement {
+            chip: cursor.chip as u8,
+            channel: cursor.channel,
+            value,
+        })
     }
 }
