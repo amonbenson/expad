@@ -13,6 +13,7 @@ use {defmt_rtt as _, panic_probe as _};
 mod sr;
 mod quadbuf;
 mod adc;
+mod topology;
 
 const CHANNELS: usize = 1;
 

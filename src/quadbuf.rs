@@ -1,5 +1,20 @@
 use crate::sr::ShiftRegisterChain;
-use embassy_rp::spi::Error;
+use embassy_rp::spi;
+
+#[derive(Debug, Clone, Copy)]
+pub enum QuadBufferChainError {
+    Spi(spi::Error),
+    IdMismatch {
+        chip: u8,
+        expected_id: u8,
+        actual_id: u8,
+    },
+    InvalidChannel {
+        chip: u8,
+        channel: u8,
+    },
+    ContinuousMeasurementNotRunning,
+}
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -28,15 +43,15 @@ impl<'d, const N: usize> QuadBufferChain<'d, N> {
         }
     }
 
-    pub fn set_output(&mut self, chip: usize, channel: usize, state: TriState) {
-        self.outputs[chip][channel] = state;
+    pub fn set_output(&mut self, chip: usize, channel: u8, state: TriState) {
+        self.outputs[chip][channel as usize] = state;
     }
 
-    pub fn get_output(&self, chip: usize, channel: usize) -> TriState {
-        self.outputs[chip][channel]
+    pub fn get_output(&self, chip: usize, channel: u8) -> TriState {
+        self.outputs[chip][channel as usize]
     }
 
-    pub fn update(&mut self) -> Result<(), Error> {
+    pub fn update(&mut self) -> Result<(), QuadBufferChainError> {
         let mut data = [0u8; N];
 
         // Generate shift register data from the output states.
@@ -47,10 +62,10 @@ impl<'d, const N: usize> QuadBufferChain<'d, N> {
             }
         }
 
-        self.sr_chain.write(data)
+        self.sr_chain.write(data).map_err(|e| QuadBufferChainError::Spi(e))
     }
 
-    pub fn clear(&mut self) -> Result<(), Error> {
-        self.sr_chain.clear()
+    pub fn clear(&mut self) -> Result<(), QuadBufferChainError> {
+        self.sr_chain.clear().map_err(|e| QuadBufferChainError::Spi(e))
     }
 }

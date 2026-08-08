@@ -1,7 +1,7 @@
 use embassy_futures::select::select_array;
 use embassy_rp::gpio::{Input, Level, Output, Pin, Pull};
 use embassy_rp::peripherals::SPI0;
-use embassy_rp::spi::{Blocking, ClkPin, Config, Error, MosiPin, MisoPin, Spi};
+use embassy_rp::spi::{self, Blocking, ClkPin, Config, MosiPin, MisoPin, Spi};
 
 mod registers;
 
@@ -17,9 +17,9 @@ const AD7718_ID: u8 = 0x40;
 /// Widest register on the wire (the 24-bit Data register), in bytes.
 const MAX_REGISTER_WIDTH: usize = 3;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AdcChainError {
-    Spi(Error),
+    Spi(spi::Error),
     IdMismatch {
         chip: u8,
         expected_id: u8,
@@ -106,6 +106,7 @@ pub struct Measurement {
     pub chip: u8,
     pub channel: u8,
     pub value: u32,
+    pub voltage: f32,
 }
 
 pub struct AdcChain<'d, const N: usize> {
@@ -217,6 +218,17 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         Ok(())
     }
 
+    fn code_to_voltage(&self, value: u32) -> f32 {
+        let range = self.config.range.voltage();
+        let coding = self.config.coding;
+
+        // TODO: verify this
+        match coding {
+            Coding::Unipolar => (value as f32 / 0xFFFFFF as f32) * range,
+            Coding::Bipolar => ((value as i32 - 0x800000) as f32 / 0x7FFFFF as f32) * range,
+        }
+    }
+
     fn start_single_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
         let filter = self.config.filter_register();
         self.write_register(chip, filter)?;
@@ -238,12 +250,12 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         }
     }
 
-    pub async fn measure_channel(&mut self, chip: usize, channel: u8) -> Result<u32, AdcChainError> {
+    pub async fn measure_channel(&mut self, chip: usize, channel: u8) -> Result<f32, AdcChainError> {
         self.start_single_conversion(chip, channel)?;
         self.rdy[chip].wait_for_low().await;
 
         let data: Data = self.read_register(chip)?;
-        Ok(data.bits())
+        Ok(self.code_to_voltage(data.bits()))
     }
 
     pub fn start_continuous_capture(&mut self) -> Result<(), AdcChainError> {
@@ -285,6 +297,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             chip: chip as u8,
             channel,
             value,
+            voltage: self.code_to_voltage(value),
         })
     }
 }

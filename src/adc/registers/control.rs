@@ -141,6 +141,35 @@ pub enum Range {
     Range2_56V = 0b111,
 }
 
+impl Range {
+    pub const fn from_max_voltage(max_voltage: f32) -> Option<Self> {
+        match max_voltage {
+            v if v <= 0.020 => Some(Self::Range20mV),
+            v if v <= 0.040 => Some(Self::Range40mV),
+            v if v <= 0.080 => Some(Self::Range80mV),
+            v if v <= 0.160 => Some(Self::Range160mV),
+            v if v <= 0.320 => Some(Self::Range320mV),
+            v if v <= 0.640 => Some(Self::Range640mV),
+            v if v <= 1.28 => Some(Self::Range1_28V),
+            v if v <= 2.56 => Some(Self::Range2_56V),
+            _ => None,
+        }
+    }
+
+    pub const fn voltage(self) -> f32 {
+        match self {
+            Self::Range20mV => 0.020,
+            Self::Range40mV => 0.040,
+            Self::Range80mV => 0.080,
+            Self::Range160mV => 0.160,
+            Self::Range320mV => 0.320,
+            Self::Range640mV => 0.640,
+            Self::Range1_28V => 1.28,
+            Self::Range2_56V => 2.56,
+        }
+    }
+}
+
 impl Control {
     pub fn channel_configuration(&self) -> ChannelConfiguration {
         self.field(4, 4)
