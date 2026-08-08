@@ -7,12 +7,13 @@ use embassy_rp::spi::{self, Blocking, ClkPin, Config, MisoPin, MosiPin, Spi};
 mod registers;
 
 use registers::Register;
-use registers::control::{ChannelConfiguration, Coding, Control, Range};
+use registers::control::{ChannelConfiguration, Control};
 use registers::data::Data;
 use registers::filter::Filter;
 use registers::id::Id;
 use registers::mode::{AdcMode, Mode, Reference};
 
+pub use registers::control::{Coding, Range};
 pub use registers::mode::ChannelCount;
 
 const AD7718_ID: u8 = 0x40;
@@ -68,6 +69,18 @@ impl Default for AdcChainConfig {
 impl AdcChainConfig {
     pub fn with_channel_count(mut self, channel_count: ChannelCount) -> Self {
         self.channel_count = channel_count;
+        self
+    }
+
+    /// Largest full-scale range the AD7718 supports is `Range::V2_56V`; inputs above
+    /// that (relative to VREF) will saturate no matter which range is selected here.
+    pub fn with_range(mut self, range: Range) -> Self {
+        self.range = range;
+        self
+    }
+
+    pub fn with_coding(mut self, coding: Coding) -> Self {
+        self.coding = coding;
         self
     }
 

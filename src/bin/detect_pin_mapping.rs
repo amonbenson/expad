@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::info;
+use defmt::{info, warn};
 use embassy_executor::Spawner;
 use expad::hal::adc::{AdcChain, AdcChainConfig, ChannelCount};
 use expad::hal::buf::{QuadBufferChain, ShiftRegisterChain, TriState};
@@ -11,6 +11,10 @@ use {defmt_rtt as _, panic_probe as _};
 const CHANNELS: usize = 1;
 const BUF_CHANNELS: u8 = 4;
 const ADC_CHANNELS: u8 = 10;
+
+/// A match's delta below this fraction of the best delta seen across all buffer
+/// outputs is flagged as low-confidence rather than reported as a solid match.
+const CONFIDENCE_THRESHOLD: f32 = 0.5;
 
 #[unsafe(link_section = ".bi_entries")]
 #[used]
@@ -85,12 +89,24 @@ async fn main(_spawner: Spawner) {
         });
     }
 
+    let max_delta = mappings
+        .iter()
+        .map(|mapping| mapping.unwrap().delta)
+        .fold(0.0f32, f32::max);
+
     info!("Buffer output -> ADC channel mapping:");
     for (buf_channel, mapping) in mappings.iter().enumerate() {
         let mapping = mapping.unwrap();
-        info!(
-            "buffer channel {} -> adc channel {} (changed by {}V, {}V -> {}V)",
-            buf_channel, mapping.adc_channel, mapping.delta, mapping.low, mapping.high
-        );
+        if mapping.delta < max_delta * CONFIDENCE_THRESHOLD {
+            warn!(
+                "buffer channel {} -> adc channel {} is a WEAK match (changed by only {}V, {}V -> {}V) - check the hardware connection",
+                buf_channel, mapping.adc_channel, mapping.delta, mapping.low, mapping.high
+            );
+        } else {
+            info!(
+                "buffer channel {} -> adc channel {} (changed by {}V, {}V -> {}V)",
+                buf_channel, mapping.adc_channel, mapping.delta, mapping.low, mapping.high
+            );
+        }
     }
 }
