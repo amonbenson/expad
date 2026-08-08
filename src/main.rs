@@ -8,7 +8,11 @@ use hal::buf::{QuadBufferChain, ShiftRegisterChain};
 
 use {defmt_rtt as _, panic_probe as _};
 
+// `hal` and `topology` expose a broader register/API surface than `main` currently
+// drives; see AGENTS.md's Extensibility Hooks for the parts still awaiting callers.
+#[allow(dead_code)]
 mod hal;
+#[allow(dead_code)]
 mod topology;
 
 const CHANNELS: usize = 1;

@@ -52,21 +52,16 @@ impl<'d, const N: usize> QuadBufferChain<'d, N> {
         let mut data = [0u8; N];
 
         // Generate shift register data from the output states.
-        for chip in 0..N {
-            for channel in 0..4 {
-                let state = self.outputs[chip][channel];
-                data[chip] |= (state as u8) << (channel * 2);
+        for (chip_data, outputs) in data.iter_mut().zip(self.outputs.iter()) {
+            for (channel, state) in outputs.iter().enumerate() {
+                *chip_data |= (*state as u8) << (channel * 2);
             }
         }
 
-        self.sr_chain
-            .write(data)
-            .map_err(|e| QuadBufferChainError::Spi(e))
+        self.sr_chain.write(data).map_err(QuadBufferChainError::Spi)
     }
 
     pub fn clear(&mut self) -> Result<(), QuadBufferChainError> {
-        self.sr_chain
-            .clear()
-            .map_err(|e| QuadBufferChainError::Spi(e))
+        self.sr_chain.clear().map_err(QuadBufferChainError::Spi)
     }
 }

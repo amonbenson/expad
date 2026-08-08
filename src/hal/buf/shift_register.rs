@@ -17,8 +17,8 @@ impl<'d, const N: usize> ShiftRegisterChain<'d, N> {
         lat: embassy_rp::Peri<'d, impl Pin>,
     ) -> Self {
         let spi = Spi::new_blocking_txonly(spi, clk, data, Config::default());
-        let mut oe = Output::new(oe, Level::High);
-        let mut lat = Output::new(lat, Level::Low);
+        let oe = Output::new(oe, Level::High);
+        let lat = Output::new(lat, Level::Low);
 
         Self { spi, oe, lat }
     }

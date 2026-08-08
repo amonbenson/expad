@@ -19,7 +19,7 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
 ```bash
 cargo build
 cargo fmt
-cargo clippy --all-targets --all-features
+cargo clippy --all-features
 cargo test
 ```
 

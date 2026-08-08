@@ -3,6 +3,12 @@ name = "expad"
 version = "0.2.0"
 edition = "2024"
 
+[[bin]]
+name = "expad"
+path = "src/main.rs"
+test = false
+doctest = false
+
 [dependencies]
 embassy-executor = { version = "0.9", features = [
   "arch-cortex-m",

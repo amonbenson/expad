@@ -56,7 +56,7 @@ impl Default for AdcChainConfig {
             channel_count: ChannelCount::Eight,
             oscillator_power_down: false,
             coding: Coding::Unipolar,
-            range: Range::Range2_56V,
+            range: Range::V2_56V,
             update_rate,
         }
     }

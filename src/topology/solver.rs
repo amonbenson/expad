@@ -3,13 +3,13 @@ use crate::hal::buf::{QuadBufferChain, QuadBufferChainError, TriState};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ResistanceSolverError {
-    QuadBufferChainError(QuadBufferChainError),
-    AdcChainError(AdcChainError),
-    CurrentConsistencyError {
+    QuadBufferChain(QuadBufferChainError),
+    AdcChain(AdcChainError),
+    CurrentConsistency {
         high_current: f32,
         low_current: f32,
     },
-    ResistanceConsistencyError {
+    ResistanceConsistency {
         shared_arm_disagreement: f32,
         share_arm_resistance_sum: f32,
     },
@@ -199,7 +199,7 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
             / (shared_arm_resistance_sum + self.config.resistance_sum_epsilon)
             > self.config.resistance_consistency_threshold
         {
-            return Err(ResistanceSolverError::ResistanceConsistencyError {
+            return Err(ResistanceSolverError::ResistanceConsistency {
                 shared_arm_disagreement,
                 share_arm_resistance_sum: shared_arm_resistance_sum,
             });
@@ -264,24 +264,24 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
         );
         self.quadbufs
             .update()
-            .map_err(ResistanceSolverError::QuadBufferChainError)?;
+            .map_err(ResistanceSolverError::QuadBufferChain)?;
 
         // Measure the voltage on the floating arm
         let high_voltage = self
             .adcs
             .measure_channel(high_arm.adc_chip, high_arm.adc_channel)
             .await
-            .map_err(ResistanceSolverError::AdcChainError)?;
+            .map_err(ResistanceSolverError::AdcChain)?;
         let low_voltage = self
             .adcs
             .measure_channel(low_arm.adc_chip, low_arm.adc_channel)
             .await
-            .map_err(ResistanceSolverError::AdcChainError)?;
+            .map_err(ResistanceSolverError::AdcChain)?;
         let floating_voltage = self
             .adcs
             .measure_channel(floating_arm.adc_chip, floating_arm.adc_channel)
             .await
-            .map_err(ResistanceSolverError::AdcChainError)?;
+            .map_err(ResistanceSolverError::AdcChain)?;
 
         // Assuming no current flows into the ADC inputs, the current through the high arm pull up resistor must equal the current through the low arm pull down resistor.
         // We can use this as a self-consistency check to determine if the measurement is valid.
@@ -289,7 +289,7 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
         let low_current = (low_voltage - self.low_rail_voltage) / low_arm.pull_down_resistance;
 
         if (high_current - low_current).abs() > self.config.current_consistency_threshold {
-            return Err(ResistanceSolverError::CurrentConsistencyError {
+            return Err(ResistanceSolverError::CurrentConsistency {
                 high_current,
                 low_current,
             });
@@ -297,7 +297,7 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
 
         // Detect open circuit on either arm
         let current = (high_current + low_current) / 2.0;
-        if (current <= self.config.open_current_threshold) {
+        if current <= self.config.open_current_threshold {
             return Ok(PairMeasurement {
                 conducts: false,
                 pair_resistance: f32::INFINITY,
@@ -316,8 +316,8 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
 
         Ok(PairMeasurement {
             conducts: true,
-            pair_resistance: pair_resistance,
-            low_resistance_fraction: low_resistance_fraction,
+            pair_resistance,
+            low_resistance_fraction,
         })
     }
 }

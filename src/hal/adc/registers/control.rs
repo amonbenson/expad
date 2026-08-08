@@ -22,8 +22,8 @@ pub enum ChannelConfiguration {
     Diff7_8 = 0b1011,
     Diff9_10 = 0b1100,
     AInCom = 0b1101,
-    RefIn_Single9 = 0b1110,
-    Open_Single10 = 0b1111,
+    RefInSingle9 = 0b1110,
+    OpenSingle10 = 0b1111,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,8 +46,8 @@ impl ChannelConfiguration {
             (5, _) => Some(Self::Single6),
             (6, _) => Some(Self::Single7),
             (7, _) => Some(Self::Single8),
-            (8, ChannelCount::Ten) => Some(Self::RefIn_Single9),
-            (9, ChannelCount::Ten) => Some(Self::Open_Single10),
+            (8, ChannelCount::Ten) => Some(Self::RefInSingle9),
+            (9, ChannelCount::Ten) => Some(Self::OpenSingle10),
             _ => None,
         }
     }
@@ -87,10 +87,10 @@ impl ChannelConfiguration {
             (Self::Diff9_10, Eight) => (AIn(1), AIn(1)),
             (Self::Diff9_10, Ten) => (AIn(8), AIn(9)),
             (Self::AInCom, _) => (AInCom, AInCom),
-            (Self::RefIn_Single9, Eight) => (RefInPositive, RefInNegative),
-            (Self::RefIn_Single9, Ten) => (AIn(8), AInCom),
-            (Self::Open_Single10, Eight) => (Open, Open),
-            (Self::Open_Single10, Ten) => (AIn(9), AInCom),
+            (Self::RefInSingle9, Eight) => (RefInPositive, RefInNegative),
+            (Self::RefInSingle9, Ten) => (AIn(8), AInCom),
+            (Self::OpenSingle10, Eight) => (Open, Open),
+            (Self::OpenSingle10, Ten) => (AIn(9), AInCom),
         }
     }
 
@@ -117,10 +117,10 @@ impl ChannelConfiguration {
             (Self::Diff9_10, Eight) => 1,
             (Self::Diff9_10, Ten) => 5,
             (Self::AInCom, _) => 1,
-            (Self::RefIn_Single9, Eight) => 1,
-            (Self::RefIn_Single9, Ten) => 4,
-            (Self::Open_Single10, Eight) => 1,
-            (Self::Open_Single10, Ten) => 5,
+            (Self::RefInSingle9, Eight) => 1,
+            (Self::RefInSingle9, Ten) => 4,
+            (Self::OpenSingle10, Eight) => 1,
+            (Self::OpenSingle10, Ten) => 5,
         }
     }
 }
@@ -135,41 +135,41 @@ pub enum Coding {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, IntoPrimitive, TryFromPrimitive)]
 pub enum Range {
-    Range20mV = 0b000,
-    Range40mV = 0b001,
-    Range80mV = 0b010,
-    Range160mV = 0b011,
-    Range320mV = 0b100,
-    Range640mV = 0b101,
-    Range1_28V = 0b110,
-    Range2_56V = 0b111,
+    V20mV = 0b000,
+    V40mV = 0b001,
+    V80mV = 0b010,
+    V160mV = 0b011,
+    V320mV = 0b100,
+    V640mV = 0b101,
+    V1_28V = 0b110,
+    V2_56V = 0b111,
 }
 
 impl Range {
     pub const fn from_max_voltage(max_voltage: f32) -> Option<Self> {
         match max_voltage {
-            v if v <= 0.020 => Some(Self::Range20mV),
-            v if v <= 0.040 => Some(Self::Range40mV),
-            v if v <= 0.080 => Some(Self::Range80mV),
-            v if v <= 0.160 => Some(Self::Range160mV),
-            v if v <= 0.320 => Some(Self::Range320mV),
-            v if v <= 0.640 => Some(Self::Range640mV),
-            v if v <= 1.28 => Some(Self::Range1_28V),
-            v if v <= 2.56 => Some(Self::Range2_56V),
+            v if v <= 0.020 => Some(Self::V20mV),
+            v if v <= 0.040 => Some(Self::V40mV),
+            v if v <= 0.080 => Some(Self::V80mV),
+            v if v <= 0.160 => Some(Self::V160mV),
+            v if v <= 0.320 => Some(Self::V320mV),
+            v if v <= 0.640 => Some(Self::V640mV),
+            v if v <= 1.28 => Some(Self::V1_28V),
+            v if v <= 2.56 => Some(Self::V2_56V),
             _ => None,
         }
     }
 
     pub const fn voltage(self) -> f32 {
         match self {
-            Self::Range20mV => 0.020,
-            Self::Range40mV => 0.040,
-            Self::Range80mV => 0.080,
-            Self::Range160mV => 0.160,
-            Self::Range320mV => 0.320,
-            Self::Range640mV => 0.640,
-            Self::Range1_28V => 1.28,
-            Self::Range2_56V => 2.56,
+            Self::V20mV => 0.020,
+            Self::V40mV => 0.040,
+            Self::V80mV => 0.080,
+            Self::V160mV => 0.160,
+            Self::V320mV => 0.320,
+            Self::V640mV => 0.640,
+            Self::V1_28V => 1.28,
+            Self::V2_56V => 2.56,
         }
     }
 }
