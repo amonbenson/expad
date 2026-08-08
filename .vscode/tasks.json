@@ -5,7 +5,7 @@
       "id": "binName",
       "type": "pickString",
       "description": "Program to build/run (src/bin/*.rs)",
-      "options": ["capture"],
+      "options": ["capture", "detect_pin_mapping"],
       "default": "capture"
     }
   ],

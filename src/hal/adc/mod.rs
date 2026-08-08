@@ -11,7 +11,9 @@ use registers::control::{ChannelConfiguration, Coding, Control, Range};
 use registers::data::Data;
 use registers::filter::Filter;
 use registers::id::Id;
-use registers::mode::{AdcMode, ChannelCount, Mode, Reference};
+use registers::mode::{AdcMode, Mode, Reference};
+
+pub use registers::mode::ChannelCount;
 
 const AD7718_ID: u8 = 0x40;
 
@@ -64,6 +66,11 @@ impl Default for AdcChainConfig {
 }
 
 impl AdcChainConfig {
+    pub fn with_channel_count(mut self, channel_count: ChannelCount) -> Self {
+        self.channel_count = channel_count;
+        self
+    }
+
     fn filter_register(&self) -> Filter {
         Filter::from_update_rate(self.update_rate, self.chopping)
     }

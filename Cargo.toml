@@ -13,6 +13,12 @@ path = "src/bin/capture.rs"
 test = false
 doctest = false
 
+[[bin]]
+name = "detect_pin_mapping"
+path = "src/bin/detect_pin_mapping.rs"
+test = false
+doctest = false
+
 [dependencies]
 embassy-executor = { version = "0.9", features = [
   "arch-cortex-m",
