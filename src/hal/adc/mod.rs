@@ -1,3 +1,4 @@
+use embassy_futures::join::join_array;
 use embassy_futures::select::select_array;
 use embassy_rp::gpio::{Input, Level, Output, Pin, Pull};
 use embassy_rp::peripherals::SPI0;
@@ -223,7 +224,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         self.ensure_connected().is_ok()
     }
 
-    pub fn init(&mut self, config: AdcChainConfig) -> Result<(), AdcChainError> {
+    pub async fn init(&mut self, config: AdcChainConfig) -> Result<(), AdcChainError> {
         self.ensure_connected()?;
         self.config = config;
 
@@ -235,6 +236,38 @@ impl<'d, const N: usize> AdcChain<'d, N> {
 
         let mode = self.config.mode_register(AdcMode::Idle);
         self.write_all_registers(mode)?;
+
+        self.calibrate().await?;
+
+        Ok(())
+    }
+
+    pub async fn calibrate(&mut self) -> Result<(), AdcChainError> {
+        // Cal registers are shared in pairs across single-ended channels, so
+        // calibrating the first half of channels covers every group.
+        let calibration_groups = self.config.channel_count.count() / 2;
+
+        // Calibrate each channel group sequentially
+        for channel in 0..calibration_groups {
+            let control = self.config.control_register(channel)?;
+            for chip in 0..N {
+                self.write_register(chip, control)?;
+            }
+
+            // Calibrate zero-scale (offset) first, then full-scale (gain)
+            for calibration_mode in [
+                AdcMode::InternalZeroScaleCalibration,
+                AdcMode::InternalFullScaleCalibration,
+            ] {
+                let mode = self.config.mode_register(calibration_mode);
+                for chip in 0..N {
+                    self.write_register(chip, mode)?;
+                }
+
+                // Wait for all chips to finish calibration in parallel
+                join_array(self.rdy.each_mut().map(Input::wait_for_low)).await;
+            }
+        }
 
         Ok(())
     }

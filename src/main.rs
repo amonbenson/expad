@@ -40,7 +40,7 @@ async fn main(_spawner: Spawner) {
     info!("Initializing ADCs");
     let mut adcs =
         AdcChain::<CHANNELS>::new(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, [p.PIN_17], [p.PIN_21]);
-    adcs.init(AdcChainConfig::default()).unwrap();
+    adcs.init(AdcChainConfig::default()).await.unwrap();
 
     info!("Taking individual measurements");
     for channel in 0..3u8 {
