@@ -3,9 +3,13 @@ name = "expad"
 version = "0.2.0"
 edition = "2024"
 
-[[bin]]
+[lib]
 name = "expad"
-path = "src/main.rs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "capture"
+path = "src/bin/capture.rs"
 test = false
 doctest = false
 

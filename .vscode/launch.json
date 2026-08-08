@@ -1,5 +1,14 @@
 {
   "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "binName",
+      "type": "pickString",
+      "description": "Program to build/run (src/bin/*.rs)",
+      "options": ["capture"],
+      "default": "capture"
+    }
+  ],
   "configurations": [
     {
       "name": "Debug Pico 2 (probe-rs)",
@@ -15,7 +24,7 @@
       "coreConfigs": [
         {
           "coreIndex": 0,
-          "programBinary": "${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/expad",
+          "programBinary": "${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/${input:binName}",
           "rttEnabled": true,
           "rttChannelFormats": [
             {

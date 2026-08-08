@@ -4,27 +4,35 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
 
 ## Repository Structure
 
-- .vscode/: VS Code tasks and launch configuration for building and debugging the firmware.
-- src/: application code for the embedded firmware.
+- .vscode/: VS Code tasks and launch configuration for building, running, and debugging the firmware, with a picker for which `src/bin/*.rs` program to target.
+- src/: firmware code, split into a shared library and one binary per application.
+  - src/lib.rs: `#![no_std]` library crate (`expad`) that re-exports `hal` and `topology` for every binary to share.
+  - src/bin/: one file per flashable application, each with its own `#[embassy_executor::main]`. Currently just `capture.rs`, which holds the original main-loop firmware (shift-register/buffer init, ADC init, direct measurements, continuous capture).
   - src/hal/adc/: ADC chain driver, register abstractions, and measurement flow for the AD7718 devices.
   - src/hal/buf/: tri-state buffer control (quad_buffer.rs) and the SPI shift-register wrapper (shift_register.rs) for output channels.
   - src/hal/mod.rs: hardware abstraction layer module that re-exports the adc and buf submodules.
   - src/topology/: resistance-solving logic that interprets ADC measurements.
 - build.rs: copies linker settings into the build output so the firmware links correctly.
-- Cargo.toml: crate manifest and embedded dependencies.
+- Cargo.toml: crate manifest and embedded dependencies. Declares the `expad` lib target plus one `[[bin]]` entry per file in src/bin/.
 - Embed.toml, memory.x, rp235x_riscv.x: board and linker configuration for the RP2350 target.
 
 ## Build & Development Commands
 
 ```bash
-cargo build
+cargo build --bin capture   # or: cargo build (builds the lib + every bin)
 cargo fmt
 cargo clippy --all-features
 cargo test
 ```
 
-Debug and flash from VS Code using the existing configuration in [.vscode/launch.json](.vscode/launch.json).
-Use `cargo run` to upload the firmware to the RP2350 target and capture serial output. Needs to be canceled with Ctrl-C to stop the capture.
+Debug and flash from VS Code using the existing configuration in [.vscode/launch.json](.vscode/launch.json) and [.vscode/tasks.json](.vscode/tasks.json) — both prompt with a dropdown of the available `src/bin/*.rs` programs (currently just `capture`) via a shared `binName` input, so building, running, and debugging all target the same chosen binary.
+Use `cargo run --bin <name>` to upload the chosen firmware to the RP2350 target and capture serial output. Needs to be canceled with Ctrl-C to stop the capture.
+
+### Adding a new application
+
+1. Add `src/bin/<name>.rs` with `#![no_std]`, `#![no_main]`, and its own `#[embassy_executor::main]`, importing shared code via `expad::hal::...` / `expad::topology::...`.
+2. Add a matching `[[bin]]` entry to [Cargo.toml](Cargo.toml) (`name = "<name>"`, `path = "src/bin/<name>.rs"`, `test = false`, `doctest = false`).
+3. Append `"<name>"` to the `binName` input's `options` in both [.vscode/tasks.json](.vscode/tasks.json) and [.vscode/launch.json](.vscode/launch.json) so it shows up in the picker.
 
 ## Code Style & Conventions
 
@@ -37,15 +45,18 @@ Use `cargo run` to upload the firmware to the RP2350 target and capture serial o
 ## Architecture Notes
 
 ```text
-main
+expad (lib)
+  hal::{adc, buf}
+  topology::solver
+bin/capture
   -> ShiftRegisterChain
   -> QuadBufferChain
   -> AdcChain
-topology::ResistanceSolver (not yet invoked from main)
+topology::ResistanceSolver (not yet invoked from any binary)
   -> AdcChain, QuadBufferChain
 ```
 
-The firmware starts in [src/main.rs](src/main.rs), where it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from main.
+Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib.rs)), which every file under [src/bin/](src/bin/) depends on. The `capture` binary ([src/bin/capture.rs](src/bin/capture.rs)) is the firmware entry point today: it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from any binary.
 
 ## Testing Strategy
 
@@ -73,13 +84,15 @@ The firmware starts in [src/main.rs](src/main.rs), where it configures the SPI-b
 - [src/hal/adc/mod.rs](src/hal/adc/mod.rs) exposes `AdcChainConfig` and the ADC measurement flow for new channels or modes.
 - [src/hal/buf/quad_buffer.rs](src/hal/buf/quad_buffer.rs) defines the `TriState` model and output-state encoding for new buffer behavior.
 - [src/topology/solver.rs](src/topology/solver.rs) is the main place to extend resistance-solving logic.
+- [src/bin/](src/bin/) is where new applications go — see "Adding a new application" above.
 - [Embed.toml](Embed.toml) and [.vscode/launch.json](.vscode/launch.json) are the main extension points for flashing and debugging.
 
 ## Further Reading
 
 - [Cargo.toml](Cargo.toml)
 - [Embed.toml](Embed.toml)
-- [src/main.rs](src/main.rs)
+- [src/lib.rs](src/lib.rs)
+- [src/bin/capture.rs](src/bin/capture.rs)
 - [src/hal/adc/mod.rs](src/hal/adc/mod.rs)
 - [src/hal/buf/mod.rs](src/hal/buf/mod.rs)
 - [src/topology/solver.rs](src/topology/solver.rs)

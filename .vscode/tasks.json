@@ -1,15 +1,32 @@
 {
   "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "binName",
+      "type": "pickString",
+      "description": "Program to build/run (src/bin/*.rs)",
+      "options": ["capture"],
+      "default": "capture"
+    }
+  ],
   "tasks": [
     {
       "label": "cargo build",
       "type": "shell",
       "command": "cargo",
-      "args": ["build"],
+      "args": ["build", "--bin", "${input:binName}"],
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "cargo run",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--bin", "${input:binName}"],
+      "group": "none",
       "problemMatcher": ["$rustc"]
     }
   ]
