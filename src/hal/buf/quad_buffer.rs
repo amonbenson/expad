@@ -1,4 +1,4 @@
-use crate::sr::ShiftRegisterChain;
+use super::shift_register::ShiftRegisterChain;
 use embassy_rp::spi;
 
 #[derive(Debug, Clone, Copy)]
@@ -27,16 +27,13 @@ pub enum TriState {
 
 pub type QuadBufferOutputState = [TriState; 4];
 
-pub struct QuadBufferChain<'d, const N: usize>
-{
+pub struct QuadBufferChain<'d, const N: usize> {
     sr_chain: ShiftRegisterChain<'d, N>,
     outputs: [QuadBufferOutputState; N],
 }
 
 impl<'d, const N: usize> QuadBufferChain<'d, N> {
-    pub fn new(
-        sr_chain: ShiftRegisterChain<'d, N>,
-    ) -> Self {
+    pub fn new(sr_chain: ShiftRegisterChain<'d, N>) -> Self {
         Self {
             sr_chain,
             outputs: [QuadBufferOutputState::default(); N],
@@ -62,10 +59,14 @@ impl<'d, const N: usize> QuadBufferChain<'d, N> {
             }
         }
 
-        self.sr_chain.write(data).map_err(|e| QuadBufferChainError::Spi(e))
+        self.sr_chain
+            .write(data)
+            .map_err(|e| QuadBufferChainError::Spi(e))
     }
 
     pub fn clear(&mut self) -> Result<(), QuadBufferChainError> {
-        self.sr_chain.clear().map_err(|e| QuadBufferChainError::Spi(e))
+        self.sr_chain
+            .clear()
+            .map_err(|e| QuadBufferChainError::Spi(e))
     }
 }

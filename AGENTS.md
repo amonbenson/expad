@@ -6,9 +6,9 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
 
 - .vscode/: VS Code tasks and launch configuration for building and debugging the firmware.
 - src/: application code for the embedded firmware.
-  - src/adc/: ADC chain driver, register abstractions, and measurement flow for the AD7718 devices.
-  - src/quadbuf/: tri-state buffer control and shift-register encoding for output channels.
-  - src/sr.rs: thin wrapper around the SPI shift-register interface.
+  - src/hal/adc/: ADC chain driver, register abstractions, and measurement flow for the AD7718 devices.
+  - src/hal/buf/: tri-state buffer control (quad_buffer.rs) and the SPI shift-register wrapper (shift_register.rs) for output channels.
+  - src/hal/mod.rs: hardware abstraction layer module that re-exports the adc and buf submodules.
   - src/topology/: resistance-solving logic that interprets ADC measurements.
 - build.rs: copies linker settings into the build output so the firmware links correctly.
 - Cargo.toml: crate manifest and embedded dependencies.
@@ -24,6 +24,7 @@ cargo test
 ```
 
 Debug and flash from VS Code using the existing configuration in [.vscode/launch.json](.vscode/launch.json).
+Use `cargo run` to upload the firmware to the RP2350 target and capture serial output. Needs to be canceled with Ctrl-C to stop the capture.
 
 ## Code Style & Conventions
 
@@ -39,12 +40,12 @@ Debug and flash from VS Code using the existing configuration in [.vscode/launch
 main
   -> ShiftRegisterChain
   -> QuadBufferChain
-  -> ResistanceSolver
-       -> AdcChain
-       -> QuadBufferChain
+  -> AdcChain
+topology::ResistanceSolver (not yet invoked from main)
+  -> AdcChain, QuadBufferChain
 ```
 
-The firmware starts in [src/main.rs](src/main.rs), where it configures the SPI-based shift-register chain and ADC chain. The quad-buffer layer drives tri-state output pins, and the topology solver in [src/topology/solver.rs](src/topology/solver.rs) toggles those pins while reading ADC voltages to infer resistor behavior.
+The firmware starts in [src/main.rs](src/main.rs), where it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from main.
 
 ## Testing Strategy
 
@@ -69,8 +70,8 @@ The firmware starts in [src/main.rs](src/main.rs), where it configures the SPI-b
 
 ## Extensibility Hooks
 
-- [src/adc/mod.rs](src/adc/mod.rs) exposes `AdcChainConfig` and the ADC measurement flow for new channels or modes.
-- [src/quadbuf.rs](src/quadbuf.rs) defines the `TriState` model and output-state encoding for new buffer behavior.
+- [src/hal/adc/mod.rs](src/hal/adc/mod.rs) exposes `AdcChainConfig` and the ADC measurement flow for new channels or modes.
+- [src/hal/buf/quad_buffer.rs](src/hal/buf/quad_buffer.rs) defines the `TriState` model and output-state encoding for new buffer behavior.
 - [src/topology/solver.rs](src/topology/solver.rs) is the main place to extend resistance-solving logic.
 - [Embed.toml](Embed.toml) and [.vscode/launch.json](.vscode/launch.json) are the main extension points for flashing and debugging.
 
@@ -79,6 +80,6 @@ The firmware starts in [src/main.rs](src/main.rs), where it configures the SPI-b
 - [Cargo.toml](Cargo.toml)
 - [Embed.toml](Embed.toml)
 - [src/main.rs](src/main.rs)
-- [src/adc/mod.rs](src/adc/mod.rs)
-- [src/quadbuf.rs](src/quadbuf.rs)
+- [src/hal/adc/mod.rs](src/hal/adc/mod.rs)
+- [src/hal/buf/mod.rs](src/hal/buf/mod.rs)
 - [src/topology/solver.rs](src/topology/solver.rs)

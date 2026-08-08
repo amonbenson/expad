@@ -1,7 +1,7 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use super::mode::ChannelCount;
 use super::RegisterValue;
+use super::mode::ChannelCount;
 
 pub type Control = RegisterValue<0x02, 1>;
 
@@ -52,7 +52,11 @@ impl ChannelConfiguration {
         }
     }
 
-    pub const fn differential(positive_input: u8, negative_input: u8, channel_count: ChannelCount) -> Option<Self> {
+    pub const fn differential(
+        positive_input: u8,
+        negative_input: u8,
+        channel_count: ChannelCount,
+    ) -> Option<Self> {
         match (positive_input, negative_input, channel_count) {
             (0, 1, _) => Some(Self::Diff1_2),
             (2, 3, _) => Some(Self::Diff3_4),
@@ -65,7 +69,7 @@ impl ChannelConfiguration {
 
     pub fn inputs(self, channel_count: ChannelCount) -> (Input, Input) {
         use ChannelCount::{Eight, Ten};
-        use Input::{AIn, AInCom, Open, RefInPositive, RefInNegative};
+        use Input::{AIn, AInCom, Open, RefInNegative, RefInPositive};
 
         match (self, channel_count) {
             (Self::Single1, _) => (AIn(0), AInCom),

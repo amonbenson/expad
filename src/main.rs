@@ -1,18 +1,14 @@
 #![no_std]
 #![no_main]
 
-
 use defmt::info;
 use embassy_executor::Spawner;
-use crate::sr::ShiftRegisterChain;
-use crate::quadbuf::QuadBufferChain;
-use crate::adc::{AdcChain, AdcChainConfig};
+use hal::adc::{AdcChain, AdcChainConfig};
+use hal::buf::{QuadBufferChain, ShiftRegisterChain};
 
 use {defmt_rtt as _, panic_probe as _};
 
-mod sr;
-mod quadbuf;
-mod adc;
+mod hal;
 mod topology;
 
 const CHANNELS: usize = 1;
@@ -33,25 +29,13 @@ async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     info!("Initializing tristate buffers");
-    let sr = ShiftRegisterChain::<CHANNELS>::new(
-        p.SPI1,
-        p.PIN_14,
-        p.PIN_15,
-        p.PIN_11,
-        p.PIN_13,
-    );
+    let sr = ShiftRegisterChain::<CHANNELS>::new(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
     let mut buffers = QuadBufferChain::new(sr);
     buffers.clear().unwrap();
 
     info!("Initializing ADCs");
-    let mut adcs = AdcChain::<CHANNELS>::new(
-        p.SPI0,
-        p.PIN_18,
-        p.PIN_19,
-        p.PIN_16,
-        [p.PIN_17],
-        [p.PIN_21],
-    );
+    let mut adcs =
+        AdcChain::<CHANNELS>::new(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, [p.PIN_17], [p.PIN_21]);
     adcs.init(AdcChainConfig::default()).unwrap();
 
     info!("Taking individual measurements");
@@ -67,6 +51,16 @@ async fn main(_spawner: Spawner) {
     loop {
         let measurement = adcs.wait_for_next_result().await.unwrap();
         measurements[measurement.channel as usize] = measurement.value as f32 / 0xFFFFFF as f32;
-        info!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", measurements[0], measurements[1], measurements[2], measurements[3], measurements[4], measurements[5], measurements[6], measurements[7]);
+        info!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            measurements[0],
+            measurements[1],
+            measurements[2],
+            measurements[3],
+            measurements[4],
+            measurements[5],
+            measurements[6],
+            measurements[7]
+        );
     }
 }

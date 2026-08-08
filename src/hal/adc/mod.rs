@@ -1,16 +1,16 @@
 use embassy_futures::select::select_array;
 use embassy_rp::gpio::{Input, Level, Output, Pin, Pull};
 use embassy_rp::peripherals::SPI0;
-use embassy_rp::spi::{self, Blocking, ClkPin, Config, MosiPin, MisoPin, Spi};
+use embassy_rp::spi::{self, Blocking, ClkPin, Config, MisoPin, MosiPin, Spi};
 
 mod registers;
 
 use registers::Register;
-use registers::mode::{AdcMode, ChannelCount, Mode, Reference};
 use registers::control::{ChannelConfiguration, Coding, Control, Range};
-use registers::filter::Filter;
 use registers::data::Data;
+use registers::filter::Filter;
 use registers::id::Id;
+use registers::mode::{AdcMode, ChannelCount, Mode, Reference};
 
 const AD7718_ID: u8 = 0x40;
 
@@ -68,10 +68,8 @@ impl AdcChainConfig {
     }
 
     fn control_register(&self, channel: u8) -> Result<Control, AdcChainError> {
-        let channel_configuration = ChannelConfiguration::single(channel, self.channel_count).ok_or(AdcChainError::InvalidChannel {
-            chip: 0,
-            channel,
-        })?;
+        let channel_configuration = ChannelConfiguration::single(channel, self.channel_count)
+            .ok_or(AdcChainError::InvalidChannel { chip: 0, channel })?;
 
         let mut control = Control::default();
         control.set_channel_configuration(channel_configuration);
@@ -143,7 +141,11 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         (operation as u8) << 6 | address & 0x0f
     }
 
-    pub fn write_register<R: Register>(&mut self, chip: usize, register: R) -> Result<(), AdcChainError> {
+    pub fn write_register<R: Register>(
+        &mut self,
+        chip: usize,
+        register: R,
+    ) -> Result<(), AdcChainError> {
         let mut buf = [0u8; 1 + MAX_REGISTER_WIDTH];
         buf[0] = Self::control_byte(Operation::Write, R::ADDRESS);
 
@@ -170,7 +172,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         self.cs[chip].set_high();
         result.map_err(AdcChainError::Spi)?;
 
-        let bits = data[1..].iter().fold(0u32, |bits, &byte| (bits << 8) | byte as u32);
+        let bits = data[1..]
+            .iter()
+            .fold(0u32, |bits, &byte| (bits << 8) | byte as u32);
 
         Ok(R::from_bits(bits))
     }
@@ -186,7 +190,10 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         result.map_err(AdcChainError::Spi)
     }
 
-    pub fn write_all_registers<R: Register + Copy>(&mut self, register: R) -> Result<(), AdcChainError> {
+    pub fn write_all_registers<R: Register + Copy>(
+        &mut self,
+        register: R,
+    ) -> Result<(), AdcChainError> {
         for chip in 0..N {
             self.write_register(chip, register)?;
         }
@@ -264,7 +271,11 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         }
     }
 
-    pub async fn measure_channel(&mut self, chip: usize, channel: u8) -> Result<f32, AdcChainError> {
+    pub async fn measure_channel(
+        &mut self,
+        chip: usize,
+        channel: u8,
+    ) -> Result<f32, AdcChainError> {
         self.start_single_conversion(chip, channel)?;
         self.rdy[chip].wait_for_low().await;
 
@@ -296,7 +307,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
 
         let (_, chip) = select_array(self.rdy.each_mut().map(Input::wait_for_low)).await;
 
-        let channel = self.continuous_capture.ok_or(AdcChainError::ContinuousMeasurementNotRunning)?[chip];
+        let channel = self
+            .continuous_capture
+            .ok_or(AdcChainError::ContinuousMeasurementNotRunning)?[chip];
         let next_channel = self.next_channel(channel);
 
         let data: Data = self.read_register(chip)?;
