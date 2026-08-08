@@ -154,10 +154,10 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         let data = &buf[..1 + R::WIDTH];
 
         self.cs[chip].set_low();
-        self.spi.blocking_write(data).map_err(AdcChainError::Spi)?;
+        let result = self.spi.blocking_write(data);
         self.cs[chip].set_high();
 
-        Ok(())
+        result.map_err(AdcChainError::Spi)
     }
 
     pub fn read_register<R: Register>(&mut self, chip: usize) -> Result<R, AdcChainError> {
@@ -166,12 +166,24 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         let data = &mut buf[..1 + R::WIDTH];
 
         self.cs[chip].set_low();
-        self.spi.blocking_transfer_in_place(data).map_err(AdcChainError::Spi)?;
+        let result = self.spi.blocking_transfer_in_place(data);
         self.cs[chip].set_high();
+        result.map_err(AdcChainError::Spi)?;
 
         let bits = data[1..].iter().fold(0u32, |bits, &byte| (bits << 8) | byte as u32);
 
         Ok(R::from_bits(bits))
+    }
+
+    fn soft_reset(&mut self, chip: usize) -> Result<(), AdcChainError> {
+        let reset = [0xFFu8; 4];
+
+        // Clock out 32 ones to reset the ADC (as described in the datasheet)
+        self.cs[chip].set_low();
+        let result = self.spi.blocking_write(&reset);
+        self.cs[chip].set_high();
+
+        result.map_err(AdcChainError::Spi)
     }
 
     pub fn write_all_registers<R: Register + Copy>(&mut self, register: R) -> Result<(), AdcChainError> {
@@ -184,6 +196,8 @@ impl<'d, const N: usize> AdcChain<'d, N> {
 
     pub fn ensure_connected(&mut self) -> Result<(), AdcChainError> {
         for chip in 0..N {
+            self.soft_reset(chip)?;
+
             let id: Id = self.read_register(chip)?;
 
             if id.chip_id() != AD7718_ID {
