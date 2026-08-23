@@ -2344,7 +2344,7 @@
 		)
 		(uuid "0ef4156a-82b1-42c2-a1b9-02e6bdb5254f")
 	)
-	(hierarchical_label "DRIVE_LAT"
+	(hierarchical_label "SR_LAT"
 		(shape input)
 		(at 53.34 130.81 180)
 		(effects
@@ -2432,7 +2432,7 @@
 		)
 		(uuid "aedbb7a9-16bd-4429-9b74-7ed80dabae9d")
 	)
-	(hierarchical_label "DRIVE_OE"
+	(hierarchical_label "SR_OE"
 		(shape input)
 		(at 53.34 133.35 180)
 		(effects
@@ -2454,7 +2454,7 @@
 		)
 		(uuid "bc50674a-731b-4046-83d8-83afaaa023c5")
 	)
-	(hierarchical_label "DRIVE_CLK"
+	(hierarchical_label "SR_CLK"
 		(shape input)
 		(at 53.34 123.19 180)
 		(effects
