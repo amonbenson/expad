@@ -10,7 +10,7 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
   - src/bin/: one file per flashable application, each with its own `#[embassy_executor::main]`. `capture.rs` holds the original main-loop firmware (shift-register/buffer init, ADC init, direct measurements, continuous capture); `detect_pin_mapping.rs` maps buffer outputs to ADC channels; `rainbow.rs` drives a WS2812B strip through a rainbow pattern.
   - src/hal/adc/: ADC chain driver, register abstractions, and measurement flow for the AD7718 devices.
   - src/hal/buf/: tri-state buffer control (quad_buffer.rs) and the SPI shift-register wrapper (shift_register.rs) for output channels.
-  - src/hal/led/: PIO-backed WS2812B ("NeoPixel") LED strip driver (ws2812.rs), configurable by LED count.
+  - src/hal/led/: PIO-backed WS2812B ("NeoPixel") LED strip driver (ws2812.rs), configurable by LED count, plus a stateful per-LED color and brightness driver on top of it (strip.rs).
   - src/hal/mod.rs: hardware abstraction layer module that re-exports the adc, buf, and led submodules.
   - src/topology/: resistance-solving logic that interprets ADC measurements.
 - build.rs: copies linker settings into the build output so the firmware links correctly.
@@ -58,12 +58,13 @@ bin/detect_pin_mapping
   -> ShiftRegisterChain, QuadBufferChain
   -> AdcChain
 bin/rainbow
-  -> Ws2812Chain
+  -> LedStrip
+    -> Ws2812Chain
 topology::ResistanceSolver (not yet invoked from any binary)
   -> AdcChain, QuadBufferChain
 ```
 
-Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib.rs)), which every file under [src/bin/](src/bin/) depends on. The `capture` binary ([src/bin/capture.rs](src/bin/capture.rs)) is the firmware entry point today: it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The `rainbow` binary ([src/bin/rainbow.rs](src/bin/rainbow.rs)) drives a WS2812B strip via `Ws2812Chain` and cycles a rainbow pattern across it. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from any binary.
+Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib.rs)), which every file under [src/bin/](src/bin/) depends on. The `capture` binary ([src/bin/capture.rs](src/bin/capture.rs)) is the firmware entry point today: it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The `rainbow` binary ([src/bin/rainbow.rs](src/bin/rainbow.rs)) drives a WS2812B strip via `LedStrip` (which tracks per-LED color state and a global brightness on top of the low-level `Ws2812Chain` PIO driver) and cycles a rainbow pattern across it. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from any binary.
 
 ## Testing Strategy
 
@@ -91,6 +92,7 @@ Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib
 - [src/hal/adc/mod.rs](src/hal/adc/mod.rs) exposes `AdcChainConfig` and the ADC measurement flow for new channels or modes.
 - [src/hal/buf/quad_buffer.rs](src/hal/buf/quad_buffer.rs) defines the `TriState` model and output-state encoding for new buffer behavior.
 - [src/hal/led/ws2812.rs](src/hal/led/ws2812.rs) defines `Ws2812Chain`, generic over the LED count, for driving WS2812B strips from a PIO block.
+- [src/hal/led/strip.rs](src/hal/led/strip.rs) defines `LedStrip`, the stateful per-LED color and global-brightness driver built on top of `Ws2812Chain`.
 - [src/topology/solver.rs](src/topology/solver.rs) is the main place to extend resistance-solving logic.
 - [src/bin/](src/bin/) is where new applications go — see "Adding a new application" above.
 - [Embed.toml](Embed.toml) and [.vscode/launch.json](.vscode/launch.json) are the main extension points for flashing and debugging.

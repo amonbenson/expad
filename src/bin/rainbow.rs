@@ -7,7 +7,7 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::peripherals::PIO0;
 use embassy_rp::pio::InterruptHandler;
 use embassy_time::{Duration, Ticker};
-use expad::hal::led::{RGB8, Ws2812Chain};
+use expad::hal::led::{LedStrip, RGB8, Ws2812Chain};
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -47,19 +47,19 @@ async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     info!("Initializing WS2812B strip");
-    let mut leds = Ws2812Chain::<_, LED_COUNT>::new(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
+    let chain = Ws2812Chain::<_, LED_COUNT>::new(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
+    let mut leds = LedStrip::new(chain);
 
     info!("Cycling rainbow pattern");
     let mut ticker = Ticker::every(Duration::from_millis(20));
     let mut offset: u8 = 0;
     loop {
-        let mut colors = [RGB8::default(); LED_COUNT];
-        for (index, color) in colors.iter_mut().enumerate() {
+        for index in 0..LED_COUNT {
             let hue = ((index * 256 / LED_COUNT) as u8).wrapping_add(offset);
-            *color = wheel(hue);
+            leds.set_color(index, wheel(hue));
         }
 
-        leds.write(&colors).await;
+        leds.update().await;
         offset = offset.wrapping_add(1);
         ticker.next().await;
     }
