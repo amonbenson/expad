@@ -515,7 +515,14 @@
     "meta": {
       "version": 5
     },
-    "net_colors": null,
+    "net_colors": {
+      "+3.3V": "rgb(255, 0, 0)",
+      "+5V": "rgb(255, 0, 255)",
+      "GND": "rgb(0, 0, 255)",
+      "GNDA": "rgb(0, 255, 255)",
+      "VDDA": "rgb(255, 153, 0)",
+      "VEXT": "rgb(255, 255, 0)"
+    },
     "netclass_assignments": null,
     "netclass_patterns": []
   },
