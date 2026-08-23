@@ -37,10 +37,11 @@ Use `cargo run --bin <name>` to upload the chosen firmware to the RP2350 target 
 ## Code Style & Conventions
 
 - Use Rust 2024 edition conventions and keep modules small and explicit.
+- Use non-abbreviated, self-descriptive names for functions, types, and variables. Avoid single-letter names except in very local contexts (e.g., loop indices).
+- Use self-documenting code over comments whereever possible. Separate larger expressions into named variables to clarify intent.
 - Prefer `Result`-based error handling and typed config structs over ad-hoc values.
 - Keep hardware-facing logic close to the relevant module, such as ADC or buffer handling.
 - Use `cargo fmt` for formatting and keep code readable for embedded development.
-- Follow a simple commit style such as `type(scope): summary` unless a stricter template is added later.
 
 ## Architecture Notes
 
