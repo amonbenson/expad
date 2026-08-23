@@ -2,8 +2,8 @@ use embassy_rp::pio::Instance;
 
 use super::ws2812::{RGB8, Ws2812Chain};
 
-/// Global brightness defaults to 50% of the maximum scale (`u8::MAX`).
-const DEFAULT_BRIGHTNESS: u8 = u8::MAX / 2;
+/// Global brightness defaults to 10% of the maximum scale (`u8::MAX`).
+const DEFAULT_BRIGHTNESS: u8 = u8::MAX / 10;
 
 /// Tracks the desired color of every LED on a WS2812B strip plus a global
 /// brightness scale, and pushes that state out to the hardware on `update`.
