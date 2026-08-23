@@ -586,6 +586,7 @@ dependencies = [
  "embassy-time",
  "num_enum",
  "panic-probe",
+ "smart-leds",
 ]
 
 [[package]]

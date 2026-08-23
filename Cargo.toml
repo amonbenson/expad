@@ -19,6 +19,12 @@ path = "src/bin/detect_pin_mapping.rs"
 test = false
 doctest = false
 
+[[bin]]
+name = "rainbow"
+path = "src/bin/rainbow.rs"
+test = false
+doctest = false
+
 [dependencies]
 embassy-executor = { version = "0.9", features = [
   "arch-cortex-m",
@@ -42,3 +48,4 @@ cortex-m-rt = "0.7.6"
 defmt = "1.1.1"
 defmt-rtt = "1.3.0"
 num_enum = { version = "0.7.6", default-features = false }
+smart-leds = "0.4"
