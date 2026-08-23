@@ -1297,7 +1297,7 @@
 	)
 	(text "use SPI1_CS as Latch"
 		(exclude_from_sim no)
-		(at 110.49 124.46 0)
+		(at 93.98 124.46 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1405,6 +1405,16 @@
 	)
 	(wire
 		(pts
+			(xy 119.38 127) (xy 124.46 127)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "00a47e07-a935-4321-b318-afe2b3020e67")
+	)
+	(wire
+		(pts
 			(xy 170.18 99.06) (xy 175.26 99.06)
 		)
 		(stroke
@@ -1422,6 +1432,16 @@
 			(type default)
 		)
 		(uuid "05f7f6a7-f65c-46f9-a976-a69f4f0530c1")
+	)
+	(wire
+		(pts
+			(xy 119.38 124.46) (xy 124.46 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "238aeb48-7b09-4392-a705-c2d4df6ef75b")
 	)
 	(wire
 		(pts
@@ -1445,7 +1465,7 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 124.46) (xy 124.46 124.46)
+			(xy 105.41 124.46) (xy 111.76 124.46)
 		)
 		(stroke
 			(width 0)
@@ -1455,7 +1475,7 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 129.54) (xy 124.46 129.54)
+			(xy 105.41 129.54) (xy 111.76 129.54)
 		)
 		(stroke
 			(width 0)
@@ -1475,13 +1495,23 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 127) (xy 124.46 127)
+			(xy 105.41 127) (xy 111.76 127)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "78fd3db6-fb9a-42fa-a38b-88ca0e5e4578")
+	)
+	(wire
+		(pts
+			(xy 119.38 119.38) (xy 124.46 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "85aa430c-4675-41cc-8e83-763f817d2a51")
 	)
 	(wire
 		(pts
@@ -1535,7 +1565,7 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 119.38) (xy 124.46 119.38)
+			(xy 105.41 119.38) (xy 111.76 119.38)
 		)
 		(stroke
 			(width 0)
@@ -1583,6 +1613,16 @@
 		)
 		(uuid "fa09b678-91f4-44ea-ad35-7390180ee16d")
 	)
+	(wire
+		(pts
+			(xy 119.38 129.54) (xy 124.46 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fa6a9ecd-78a3-404e-98a8-26a6477d630c")
+	)
 	(global_label "SPI0_NCS2"
 		(shape input)
 		(at 187.96 104.14 0)
@@ -1609,7 +1649,7 @@
 	)
 	(global_label "SR_CLK"
 		(shape input)
-		(at 121.92 127 180)
+		(at 105.41 127 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1619,7 +1659,7 @@
 		)
 		(uuid "2e1403b3-ae35-4354-b0ee-ef3e74fe1b85")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 109.0167 127 0)
+			(at 92.5067 127 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1729,7 +1769,7 @@
 	)
 	(global_label "SR_DATA"
 		(shape input)
-		(at 121.92 129.54 180)
+		(at 105.41 129.54 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1739,7 +1779,7 @@
 		)
 		(uuid "70f20418-3913-4f5d-ab85-8c0487d8e98c")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 108.17 129.54 0)
+			(at 91.66 129.54 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1777,7 +1817,7 @@
 	)
 	(global_label "SR_LAT"
 		(shape input)
-		(at 121.92 124.46 180)
+		(at 105.41 124.46 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1787,7 +1827,7 @@
 		)
 		(uuid "ca6208aa-497e-4b10-82d2-a7e3a3771d1d")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 109.5005 124.46 0)
+			(at 92.9905 124.46 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1801,7 +1841,7 @@
 	)
 	(global_label "SR_OE"
 		(shape input)
-		(at 121.92 119.38 180)
+		(at 105.41 119.38 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1811,7 +1851,7 @@
 		)
 		(uuid "d7bf0fdb-a7e3-4d7b-a1d1-e4dbce6249ad")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 110.1053 119.38 0)
+			(at 93.5953 119.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1993,6 +2033,85 @@
 			(project "ExpressionController"
 				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/6aaa6853-9d8e-4732-9d59-0d7219d4a5ec"
 					(reference "R5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 115.57 119.38 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "28f3d978-b841-4d01-afd2-00219c453c5b")
+		(property "Reference" "R46"
+			(at 110.49 118.11 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "22"
+			(at 120.65 118.11 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 115.57 121.158 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 115.57 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 115.57 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a5129fc5-5665-4a22-96d6-6cb6f8b786e6")
+		)
+		(pin "2"
+			(uuid "edc20ffa-7bc0-4795-a88c-233537b2aaa4")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/6aaa6853-9d8e-4732-9d59-0d7219d4a5ec"
+					(reference "R46")
 					(unit 1)
 				)
 			)
@@ -2504,6 +2623,243 @@
 			(project "ExpressionController"
 				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/6aaa6853-9d8e-4732-9d59-0d7219d4a5ec"
 					(reference "R3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 115.57 124.46 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "b522d4dc-8b14-4c91-8f97-0a4bf562222b")
+		(property "Reference" "R47"
+			(at 110.49 123.19 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "22"
+			(at 120.65 123.19 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 115.57 126.238 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 115.57 124.46 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 115.57 124.46 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4611e0c6-e6f3-4ae4-a941-98b842aa766b")
+		)
+		(pin "2"
+			(uuid "33a704b4-d653-4e81-8f13-7357b35d7db7")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/6aaa6853-9d8e-4732-9d59-0d7219d4a5ec"
+					(reference "R47")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 115.57 129.54 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "c067707c-ea61-4e60-821d-cd0d100cd3a2")
+		(property "Reference" "R49"
+			(at 110.49 128.27 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "22"
+			(at 120.65 128.27 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 115.57 131.318 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 115.57 129.54 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 115.57 129.54 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "da4aa7a2-7554-47f8-8c6a-d5c4407688dc")
+		)
+		(pin "2"
+			(uuid "4f7c2443-84d8-442b-9c19-f2f2b8dbc607")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/6aaa6853-9d8e-4732-9d59-0d7219d4a5ec"
+					(reference "R49")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 115.57 127 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "ec54ef8f-f2d5-4105-ad6a-23d700ff17a4")
+		(property "Reference" "R48"
+			(at 110.49 125.73 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "22"
+			(at 120.65 125.73 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 115.57 128.778 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 115.57 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 115.57 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "395d7e99-94b3-409b-8438-d3c6546580e5")
+		)
+		(pin "2"
+			(uuid "1faf9ca3-0f4c-4c4f-9b31-2068bb872583")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/6aaa6853-9d8e-4732-9d59-0d7219d4a5ec"
+					(reference "R48")
 					(unit 1)
 				)
 			)

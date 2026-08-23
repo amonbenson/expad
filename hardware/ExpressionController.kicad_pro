@@ -497,9 +497,7 @@
       {
         "bus_width": 12,
         "clearance": 0.2,
-        "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.2,
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
@@ -507,10 +505,10 @@
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 2147483647,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.2,
+        "track_width": 0.3,
         "tuning_profile": "",
-        "via_diameter": 0.6,
-        "via_drill": 0.3,
+        "via_diameter": 1.0,
+        "via_drill": 0.5,
         "wire_width": 6
       }
     ],
@@ -727,7 +725,7 @@
         "uuid": "acb9d00b-1122-4203-9813-1d558ab77d86"
       }
     ],
-    "used_designators": "D1-15,#PWR1-86,J1-9,#FLG1-13,R1-45,Q1-2,F1,C1-47,U1-13,JP1,NT1,A1,Y1-2",
+    "used_designators": "D1-15,#PWR1-87,J1-9,#FLG1-13,R1-49,Q1-2,F1,C1-48,U1-14,JP1,NT1,A1,Y1-2",
     "variants": []
   },
   "sheets": [

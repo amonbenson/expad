@@ -3497,6 +3497,17 @@
 		)
 		(uuid "6407bbf6-8da5-49cf-9185-a1283d06b01f")
 	)
+	(text "Negative center\n(common for pedals)"
+		(exclude_from_sim no)
+		(at 29.21 71.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "897d3185-6002-4040-9a20-61b866729138")
+	)
 	(text "47u: EEH-ZC1E470P\n10u: C1210C106K5RACTU"
 		(exclude_from_sim no)
 		(at 101.6 106.68 0)
@@ -4874,7 +4885,7 @@
 	)
 	(symbol
 		(lib_id "Device:D_TVS")
-		(at 72.39 88.9 90)
+		(at 72.39 88.9 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4892,7 +4903,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(property "Value" "SMBJ15CA"
@@ -4903,7 +4914,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(property "Footprint" "Diode_SMD:D_SMB"
@@ -8022,6 +8033,7 @@
 	(symbol
 		(lib_id "Connector:Barrel_Jack")
 		(at 34.29 78.74 0)
+		(mirror x)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8029,10 +8041,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "fcebd01d-5ac8-4fa4-841b-2e3b656c7583")
 		(property "Reference" "J1"
-			(at 34.29 69.85 0)
+			(at 34.29 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8042,7 +8053,7 @@
 			)
 		)
 		(property "Value" "DC"
-			(at 34.29 72.39 0)
+			(at 34.29 85.09 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8052,7 +8063,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 35.56 79.756 0)
+			(at 35.56 77.724 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8063,7 +8074,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 35.56 79.756 0)
+			(at 35.56 77.724 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
