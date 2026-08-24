@@ -686,7 +686,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "SN74LVC126APWR:SN74LVC126APWR"
+		(symbol "SN74LVC126A:SN74LVC126A"
 			(pin_names
 				(offset 1.016)
 			)
@@ -695,26 +695,24 @@
 			(on_board yes)
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "U"
-				(at -12.7 18.78 0)
+			(property "Reference" "U7"
+				(at 0 22.86 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
-					(justify left bottom)
 				)
 			)
-			(property "Value" "SN74LVC126APWR"
-				(at -12.7 -21.78 0)
+			(property "Value" "SN74LVC126A"
+				(at 0 20.32 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
-					(justify left bottom)
 				)
 			)
 			(property "Footprint" "SN74LVC126APWR:SOP65P640X120-14N"
@@ -749,10 +747,21 @@
 					(font
 						(size 1.27 1.27)
 					)
-					(justify bottom)
 				)
 			)
 			(property "MF" "Texas Instruments"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+				)
+			)
+			(property "Description_1" "4-ch, 1.65-V to 3.6-V buffers with 3-state outputs"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -848,7 +857,7 @@
 					(justify bottom)
 				)
 			)
-			(symbol "SN74LVC126APWR_0_0"
+			(symbol "SN74LVC126A_0_0"
 				(rectangle
 					(start -12.7 -17.78)
 					(end 12.7 17.78)
@@ -2399,7 +2408,7 @@
 		)
 		(uuid "8cb3788c-c932-4cc9-82bc-9a1d006757c9")
 	)
-	(hierarchical_label "DRIVE_DI"
+	(hierarchical_label "SR_DATA"
 		(shape input)
 		(at 53.34 118.11 180)
 		(effects
@@ -2624,7 +2633,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 160.782 105.41 90)
 			(hide yes)
 			(show_name no)
@@ -2716,7 +2725,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 199.39 70.612 90)
 			(hide yes)
 			(show_name no)
@@ -2867,7 +2876,7 @@
 		)
 	)
 	(symbol
-		(lib_id "SN74LVC126APWR:SN74LVC126APWR")
+		(lib_id "SN74LVC126A:SN74LVC126A")
 		(at 116.84 128.27 0)
 		(unit 1)
 		(body_style 1)
@@ -2888,7 +2897,7 @@
 				)
 			)
 		)
-		(property "Value" "SN74LVC126APWR"
+		(property "Value" "SN74LVC126A"
 			(at 116.84 107.95 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2898,7 +2907,7 @@
 				)
 			)
 		)
-		(property "Footprint" "SN74LVC126APWR:SOP65P640X120-14N"
+		(property "Footprint" "SN74LVC126A:SN74LVC126AD"
 			(at 116.84 128.27 0)
 			(hide yes)
 			(show_name no)
@@ -3137,7 +3146,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 173.482 105.41 90)
 			(hide yes)
 			(show_name no)
@@ -3199,6 +3208,100 @@
 	)
 	(symbol
 		(lib_id "Device:C")
+		(at 78.74 156.21 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "58edfea9-42c8-4f36-a6c1-4ce87b4382c0")
+		(property "Reference" "C49"
+			(at 82.55 154.9399 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 82.55 157.4799 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+			(at 79.7052 160.02 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 78.74 156.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 78.74 156.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "3352d634-aa79-4a55-b0f7-9549f539bddf")
+		)
+		(pin "2"
+			(uuid "fe17ec13-f643-438b-8c14-f68f62d94d59")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "C49")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "C50")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "C52")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "C51")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
 		(at 223.52 105.41 0)
 		(unit 1)
 		(body_style 1)
@@ -3231,7 +3334,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 224.4852 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -3292,6 +3395,96 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+3.3V")
+		(at 78.74 152.4 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "715ace3d-919a-4f8e-bca4-bfd7ee459cf2")
+		(property "Reference" "#PWR088"
+			(at 78.74 156.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 78.74 147.32 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 78.74 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 78.74 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+			(at 78.74 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "18fa375d-cc80-43a2-9001-e81ef6efa277")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "#PWR088")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "#PWR089")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "#PWR091")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "#PWR090")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 199.39 82.55 270)
 		(unit 1)
@@ -3323,7 +3516,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 199.39 80.772 90)
 			(hide yes)
 			(show_name no)
@@ -3417,7 +3610,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 249.8852 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -3478,6 +3671,96 @@
 		)
 	)
 	(symbol
+		(lib_id "power:VDDA")
+		(at 152.4 147.32 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8d320985-96eb-45e0-9a72-8ed20bf574d2")
+		(property "Reference" "#PWR096"
+			(at 152.4 151.13 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "VDDA"
+			(at 152.4 142.24 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 152.4 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 152.4 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VDDA\""
+			(at 152.4 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "bc07119d-da56-4d32-bcc4-df3bb22b7424")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "#PWR096")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "#PWR097")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "#PWR099")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "#PWR098")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 149.86 105.41 0)
 		(unit 1)
@@ -3511,7 +3794,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 148.082 105.41 90)
 			(hide yes)
 			(show_name no)
@@ -3874,7 +4157,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 199.39 90.932 90)
 			(hide yes)
 			(show_name no)
@@ -3935,6 +4218,96 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 78.74 160.02 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "ddb9dcfe-1e99-40c9-97dd-a592025938e9")
+		(property "Reference" "#PWR092"
+			(at 78.74 166.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 78.74 165.1 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 78.74 160.02 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 78.74 160.02 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 78.74 160.02 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "88933d44-50d1-49e4-9b99-712ac6891e7e")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "#PWR092")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "#PWR093")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "#PWR095")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "#PWR094")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 236.22 105.41 0)
 		(unit 1)
@@ -3968,7 +4341,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 237.1852 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -4060,7 +4433,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 199.39 60.452 90)
 			(hide yes)
 			(show_name no)
@@ -4121,6 +4494,96 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GNDA")
+		(at 152.4 154.94 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e80a9c0a-94d9-4454-a636-057d346e3a18")
+		(property "Reference" "#PWR0100"
+			(at 152.4 161.29 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GNDA"
+			(at 152.4 160.02 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 152.4 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 152.4 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GNDA\" , analog ground"
+			(at 152.4 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "570eb289-2e43-4092-832c-caf1b6b25a15")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "#PWR0100")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "#PWR0101")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "#PWR0103")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "#PWR0102")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 210.82 105.41 0)
 		(unit 1)
@@ -4154,7 +4617,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 211.7852 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -4338,7 +4801,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 186.182 105.41 90)
 			(hide yes)
 			(show_name no)
@@ -4483,6 +4946,100 @@
 				)
 				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
 					(reference "#PWR044")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
+		(at 152.4 151.13 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "fbff389d-bdc6-45be-8a26-d8f67ac4efe5")
+		(property "Reference" "C53"
+			(at 156.21 149.8599 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 156.21 152.3999 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+			(at 153.3652 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 152.4 151.13 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 152.4 151.13 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "ec1c3e25-9647-4089-9c8f-a36ebe65701c")
+		)
+		(pin "2"
+			(uuid "9c1ca2ed-0fc6-4ca7-a5c4-df73e3c7f00b")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "C53")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "C54")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "C56")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "C55")
 					(unit 1)
 				)
 			)

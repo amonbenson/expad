@@ -1,7 +1,7 @@
 (sym_lib_table
-  (version 7)
-  (lib (name "2026-05-30_15-57-17")(type "KiCad")(uri "${KIPRJMOD}/Library/ul_AD7124-8BCPZ/KiCADv6/2026-05-30_15-57-17.kicad_sym")(options "")(descr ""))
-  (lib (name "SN74LVC126APWR")(type "KiCad")(uri "${KIPRJMOD}/Library/SN74LVC126APWR/SN74LVC126APWR.kicad_sym")(options "")(descr ""))
-  (lib (name "PowerSymbols")(type "KiCad")(uri "${KIPRJMOD}/Library/PowerSymbols.kicad_sym")(options "")(descr ""))
-  (lib (name "AD7718")(type "KiCad")(uri "${KIPRJMOD}/Library/AD7718.kicad_sym")(options "")(descr ""))
+	(version 7)
+	(lib (name "2026-05-30_15-57-17") (type "KiCad") (uri "${KIPRJMOD}/Library/ul_AD7124-8BCPZ/KiCADv6/2026-05-30_15-57-17.kicad_sym") (options "") (descr ""))
+	(lib (name "PowerSymbols") (type "KiCad") (uri "${KIPRJMOD}/Library/PowerSymbols.kicad_sym") (options "") (descr ""))
+	(lib (name "AD7718") (type "KiCad") (uri "${KIPRJMOD}/Library/AD7718.kicad_sym") (options "") (descr ""))
+	(lib (name "SN74LVC126A") (type "KiCad") (uri "${KIPRJMOD}/Library/SN74LVC126A/SN74LVC126A.kicad_sym") (options "") (descr ""))
 )

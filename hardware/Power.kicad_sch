@@ -5,9 +5,9 @@
 	(uuid "815061c1-3fd5-4052-b66f-6b3be7b42904")
 	(paper "A4")
 	(lib_symbols
-		(symbol "Connector:Barrel_Jack"
+		(symbol "Connector:Barrel_Jack_Switch"
 			(pin_names
-				(offset 1.016)
+				(hide yes)
 			)
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -24,7 +24,7 @@
 					)
 				)
 			)
-			(property "Value" "Barrel_Jack"
+			(property "Value" "Barrel_Jack_Switch"
 				(at 0 -5.08 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -56,7 +56,7 @@
 					)
 				)
 			)
-			(property "Description" "DC Barrel Jack"
+			(property "Description" "DC Barrel Jack with an internal switch"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -89,7 +89,7 @@
 					)
 				)
 			)
-			(symbol "Barrel_Jack_0_1"
+			(symbol "Barrel_Jack_Switch_0_1"
 				(rectangle
 					(start -5.08 3.81)
 					(end 5.08 -3.81)
@@ -137,6 +137,18 @@
 						(type outline)
 					)
 				)
+				(polyline
+					(pts
+						(xy 1.27 -2.286) (xy 1.905 -1.651)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
 				(rectangle
 					(start 3.683 3.175)
 					(end -3.302 1.905)
@@ -160,8 +172,20 @@
 						(type none)
 					)
 				)
+				(polyline
+					(pts
+						(xy 5.08 0) (xy 1.27 0) (xy 1.27 -2.286) (xy 0.635 -1.651)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
 			)
-			(symbol "Barrel_Jack_1_1"
+			(symbol "Barrel_Jack_Switch_1_1"
 				(pin passive line
 					(at 7.62 2.54 180)
 					(length 2.54)
@@ -191,6 +215,24 @@
 						)
 					)
 					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 7.62 0 180)
+					(length 2.54)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -3497,7 +3539,7 @@
 		)
 		(uuid "6407bbf6-8da5-49cf-9185-a1283d06b01f")
 	)
-	(text "Negative center\n(common for pedals)"
+	(text "center negative\n(common for pedals)"
 		(exclude_from_sim no)
 		(at 29.21 71.12 0)
 		(effects
@@ -3680,6 +3722,10 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f48afc61-a3d8-48be-bbbc-cb1c9e883a0c")
+	)
+	(no_connect
+		(at 41.91 78.74)
+		(uuid "ed5d96cb-e85c-40c2-805b-2d3c49ec77a6")
 	)
 	(wire
 		(pts
@@ -5155,7 +5201,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 85.852 95.25 90)
 			(hide yes)
 			(show_name no)
@@ -5391,7 +5437,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
 			(at 171.45 81.788 90)
 			(hide yes)
 			(show_name no)
@@ -6539,7 +6585,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 55.5752 92.71 0)
 			(hide yes)
 			(show_name no)
@@ -8031,7 +8077,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector:Barrel_Jack")
+		(lib_id "Connector:Barrel_Jack_Switch")
 		(at 34.29 78.74 0)
 		(mirror x)
 		(unit 1)
@@ -8062,7 +8108,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_BarrelJack:BarrelJack_CUI_PJ-102AH_Horizontal"
 			(at 35.56 77.724 0)
 			(hide yes)
 			(show_name no)
@@ -8084,7 +8130,7 @@
 				)
 			)
 		)
-		(property "Description" "DC Barrel Jack"
+		(property "Description" "DC Barrel Jack with an internal switch"
 			(at 34.29 78.74 0)
 			(hide yes)
 			(show_name no)
@@ -8100,6 +8146,9 @@
 		)
 		(pin "2"
 			(uuid "39483077-e4b4-41ca-b81c-97a4081060fe")
+		)
+		(pin "3"
+			(uuid "9e8d2c22-818c-4c45-bf29-61f8e2bce216")
 		)
 		(instances
 			(project "ExpressionController"
