@@ -7,7 +7,7 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
 - .vscode/: VS Code tasks and launch configuration for building, running, and debugging the firmware, with a picker for which `src/bin/*.rs` program to target.
 - src/: firmware code, split into a shared library and one binary per application.
   - src/lib.rs: `#![no_std]` library crate (`expad`) that re-exports `hal` and `topology` for every binary to share.
-  - src/bin/: one file per flashable application, each with its own `#[embassy_executor::main]`. `capture.rs` holds the original main-loop firmware (shift-register/buffer init, ADC init, direct measurements, continuous capture); `detect_pin_mapping.rs` maps buffer outputs to ADC channels; `rainbow.rs` drives a WS2812B strip through a rainbow pattern.
+  - src/bin/: one file per flashable application, each with its own `#[embassy_executor::main]`. `capture.rs` holds the original main-loop firmware (shift-register/buffer init, ADC init, direct measurements, continuous capture); `detect_pin_mapping.rs` maps buffer outputs to ADC channels; `rainbow.rs` drives a WS2812B strip through a rainbow pattern; `potentiometer.rs` buffers ADC channels 0 and 2 to the low/high rails, reads a potentiometer wiper on channel 1, and shows its position on the LED strip.
   - src/hal/adc/: ADC chain driver, register abstractions, and measurement flow for the AD7718 devices.
   - src/hal/buf/: tri-state buffer control (quad_buffer.rs) and the SPI shift-register wrapper (shift_register.rs) for output channels.
   - src/hal/led/: PIO-backed WS2812B ("NeoPixel") LED strip driver (ws2812.rs), configurable by LED count, plus a stateful per-LED color and brightness driver on top of it (strip.rs).
@@ -26,7 +26,7 @@ cargo clippy --all-features
 cargo test
 ```
 
-Debug and flash from VS Code using the existing configuration in [.vscode/launch.json](.vscode/launch.json) and [.vscode/tasks.json](.vscode/tasks.json) — both prompt with a dropdown of the available `src/bin/*.rs` programs (currently just `capture`) via a shared `binName` input, so building, running, and debugging all target the same chosen binary.
+Debug and flash from VS Code using the existing configuration in [.vscode/launch.json](.vscode/launch.json) and [.vscode/tasks.json](.vscode/tasks.json) — both prompt with a dropdown of the available `src/bin/*.rs` programs via a shared `binName` input, so building, running, and debugging all target the same chosen binary.
 Use `cargo run --bin <name>` to upload the chosen firmware to the RP2350 target and capture serial output. Needs to be canceled with Ctrl-C to stop the capture.
 
 ### Adding a new application
@@ -60,11 +60,16 @@ bin/detect_pin_mapping
 bin/rainbow
   -> LedStrip
     -> Ws2812Chain
+bin/potentiometer
+  -> ShiftRegisterChain, QuadBufferChain
+  -> AdcChain
+  -> LedStrip
+    -> Ws2812Chain
 topology::ResistanceSolver (not yet invoked from any binary)
   -> AdcChain, QuadBufferChain
 ```
 
-Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib.rs)), which every file under [src/bin/](src/bin/) depends on. The `capture` binary ([src/bin/capture.rs](src/bin/capture.rs)) is the firmware entry point today: it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The `rainbow` binary ([src/bin/rainbow.rs](src/bin/rainbow.rs)) drives a WS2812B strip via `LedStrip` (which tracks per-LED color state and a global brightness on top of the low-level `Ws2812Chain` PIO driver) and cycles a rainbow pattern across it. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from any binary.
+Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib.rs)), which every file under [src/bin/](src/bin/) depends on. The `capture` binary ([src/bin/capture.rs](src/bin/capture.rs)) is the firmware entry point today: it configures the SPI-based shift-register chain, clears the quad-buffer outputs, and initializes the ADC chain to take direct channel measurements and then loop over continuous capture. The `rainbow` binary ([src/bin/rainbow.rs](src/bin/rainbow.rs)) drives a WS2812B strip via `LedStrip` (which tracks per-LED color state and a global brightness on top of the low-level `Ws2812Chain` PIO driver) and cycles a rainbow pattern across it. The `potentiometer` binary ([src/bin/potentiometer.rs](src/bin/potentiometer.rs)) drives buffer outputs 0 and 2 to the low/high rails, continuously measures the floating wiper on channel 1 relative to those rails, prints the resulting voltage and position, and mirrors the position on the LED strip by splitting brightness between the two nearest LEDs. The topology solver in [src/topology/solver.rs](src/topology/solver.rs) implements the tri-state toggling and resistance-inference logic but is not yet called from any binary.
 
 ## Testing Strategy
 
