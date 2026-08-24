@@ -55,7 +55,7 @@ fn scale_color(color: RGB8, factor: f32) -> RGB8 {
 /// splitting brightness between them in proportion to how close `position` is
 /// to each, so the indicator interpolates smoothly as the wiper turns.
 fn show_position(leds: &mut LedStrip<'_, PIO0, LED_COUNT>, position: f32) {
-    let scaled_position = position.clamp(0.0, 1.0) * (LED_COUNT - 1) as f32;
+    let scaled_position = position.clamp(0.0001, 0.9999) * (LED_COUNT - 1) as f32;
     let low_index = scaled_position as usize;
     let high_index = (low_index + 1).min(LED_COUNT - 1);
     let high_weight = scaled_position - low_index as f32;
@@ -103,7 +103,9 @@ async fn main(_spawner: Spawner) {
             position * 100.0
         );
 
-        show_position(&mut leds, position);
+        // The LED strip is wired in the opposite direction to the wiper, so invert
+        // the position before mapping it onto LED indices.
+        show_position(&mut leds, 1.0 - position);
         leds.update().await;
     }
 }
