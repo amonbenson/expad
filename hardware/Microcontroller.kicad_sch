@@ -2309,7 +2309,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Module:RaspberryPi_Pico_Common_Unspecified"
+		(property "Footprint" "Pico_2W_with_Header:Pico_2W_with_Header"
 			(at 147.32 153.67 0)
 			(hide yes)
 			(show_name no)

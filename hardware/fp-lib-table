@@ -3,4 +3,5 @@
 	(lib (name "footprints") (type "KiCad") (uri "${KIPRJMOD}/Library/ul_AD7124-8BCPZ/KiCADv6/footprints.pretty") (options "") (descr ""))
 	(lib (name "Jack_6.35mm_Neutrik_NMJ6HFD4_Horizontal") (type "KiCad") (uri "${KIPRJMOD}/Library/Jack_6.35mm_Neutrik_NMJ6HFD4_Horizontal.pretty") (options "") (descr ""))
 	(lib (name "SN74LVC126A") (type "KiCad") (uri "${KIPRJMOD}/Library/SN74LVC126A") (options "") (descr ""))
+	(lib (name "Pico_2W_with_Header") (type "KiCad") (uri "${KIPRJMOD}/Library/Pico_2W_with_Header.pretty") (options "") (descr ""))
 )
