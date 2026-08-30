@@ -59,7 +59,7 @@
 				)
 			)
 		)
-		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+		(property "Description" "Power symbol creates a global label with name \"+2.5V\""
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
