@@ -686,6 +686,145 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "PowerSymbols:+2.5V"
+			(power global)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#PWR068"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "+2.5V"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "global power"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "+2.5V_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "+2.5V_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "SN74LVC126A:SN74LVC126A"
 			(pin_names
 				(offset 1.016)
@@ -1474,145 +1613,6 @@
 			(symbol "GNDA_1_1"
 				(pin power_in line
 					(at 0 0 270)
-					(length 0)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
-		(symbol "power:VDDA"
-			(power global)
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 0)
-				(hide yes)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "#PWR"
-				(at 0 -3.81 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "VDDA"
-				(at 0 3.556 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "Power symbol creates a global label with name \"VDDA\""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "global power"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "VDDA_0_1"
-				(polyline
-					(pts
-						(xy -0.762 1.27) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 2.54) (xy 0.762 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 0) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "VDDA_1_1"
-				(pin power_in line
-					(at 0 0 90)
 					(length 0)
 					(name ""
 						(effects
@@ -2826,96 +2826,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:VDDA")
-		(at 137.16 110.49 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "290c3c91-3d32-4fea-95a5-d6bcd6d96404")
-		(property "Reference" "#PWR033"
-			(at 137.16 114.3 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "VDDA"
-			(at 137.16 105.41 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 137.16 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 137.16 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"VDDA\""
-			(at 137.16 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "49c93fb1-016d-4854-9311-010733d4dd87")
-		)
-		(instances
-			(project "ExpressionController"
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
-					(reference "#PWR033")
-					(unit 1)
-				)
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
-					(reference "#PWR039")
-					(unit 1)
-				)
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
-					(reference "#PWR051")
-					(unit 1)
-				)
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
-					(reference "#PWR045")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "SN74LVC126A:SN74LVC126A")
 		(at 116.84 128.27 0)
 		(unit 1)
@@ -3153,6 +3063,96 @@
 		)
 	)
 	(symbol
+		(lib_id "PowerSymbols:+2.5V")
+		(at 152.4 147.32 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3d635d94-ffb2-4370-9213-fabbdc727151")
+		(property "Reference" "#PWR080"
+			(at 152.4 151.13 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+2.5V"
+			(at 152.4 142.24 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 152.4 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 152.4 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+			(at 152.4 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4f818a1e-d533-4687-a3d2-58a445117121")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "#PWR080")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "#PWR081")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "#PWR097")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "#PWR096")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 175.26 105.41 0)
 		(unit 1)
@@ -3335,6 +3335,96 @@
 				)
 				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
 					(reference "C51")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "PowerSymbols:+2.5V")
+		(at 137.16 110.49 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5f995dc9-24ca-4370-892b-8269ce23dcb5")
+		(property "Reference" "#PWR072"
+			(at 137.16 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+2.5V"
+			(at 137.16 105.41 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 137.16 110.49 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 137.16 110.49 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+			(at 137.16 110.49 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a73cb51d-9f30-4be4-8fc1-f9ab9e48dde3")
+		)
+		(instances
+			(project "ExpressionController"
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
+					(reference "#PWR072")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
+					(reference "#PWR073")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
+					(reference "#PWR077")
+					(unit 1)
+				)
+				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
+					(reference "#PWR076")
 					(unit 1)
 				)
 			)
@@ -3705,96 +3795,6 @@
 				)
 				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
 					(reference "C34")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:VDDA")
-		(at 152.4 147.32 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "8d320985-96eb-45e0-9a72-8ed20bf574d2")
-		(property "Reference" "#PWR096"
-			(at 152.4 151.13 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "VDDA"
-			(at 152.4 142.24 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 152.4 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 152.4 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"VDDA\""
-			(at 152.4 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "bc07119d-da56-4d32-bcc4-df3bb22b7424")
-		)
-		(instances
-			(project "ExpressionController"
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/00b45eb6-b415-4c04-81c6-325c10c9f99f"
-					(reference "#PWR096")
-					(unit 1)
-				)
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/335d189b-4e14-4ef9-8d01-ca46b95cd195"
-					(reference "#PWR097")
-					(unit 1)
-				)
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/e0c025cf-3c12-4b13-8e3c-a9f6b0d8fb23"
-					(reference "#PWR099")
-					(unit 1)
-				)
-				(path "/acb9d00b-1122-4203-9813-1d558ab77d86/7443422d-b3ef-49a1-9866-4315ff070eb8/f05a0872-06f2-4039-9bb0-436624050a93"
-					(reference "#PWR098")
 					(unit 1)
 				)
 			)
