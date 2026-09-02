@@ -510,18 +510,38 @@
         "via_diameter": 1.0,
         "via_drill": 0.5,
         "wire_width": 6
+      },
+      {
+        "clearance": 0.2,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "Power",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 0,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.4,
+        "tuning_profile": "",
+        "via_diameter": 1.0,
+        "via_drill": 0.5
       }
     ],
     "meta": {
       "version": 5
     },
     "net_colors": {
+      "+2.5V": "rgb(255, 153, 0)",
+      "+3.3VA": "rgb(255, 0, 0)",
       "+5V": "rgb(255, 0, 255)",
       "GND": "rgb(0, 0, 255)",
       "VEXT": "rgb(255, 255, 0)"
     },
     "netclass_assignments": null,
-    "netclass_patterns": []
+    "netclass_patterns": [
+      {
+        "netclass": "Power",
+        "pattern": "+*V*"
+      }
+    ]
   },
   "pcbnew": {
     "last_paths": {
