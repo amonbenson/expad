@@ -2978,7 +2978,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-16W_7.5x10.3mm_P1.27mm"
+		(property "Footprint" "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm"
 			(at 59.69 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -3121,7 +3121,7 @@
 				)
 			)
 		)
-		(property "Notes" "TODO: swap footprint"
+		(property "Notes" ""
 			(at 59.69 101.6 0)
 			(hide yes)
 			(show_name no)

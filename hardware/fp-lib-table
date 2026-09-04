@@ -4,4 +4,5 @@
 	(lib (name "Jack_6.35mm_Neutrik_NMJ6HFD4_Horizontal") (type "KiCad") (uri "${KIPRJMOD}/Library/Jack_6.35mm_Neutrik_NMJ6HFD4_Horizontal.pretty") (options "") (descr ""))
 	(lib (name "SN74LVC126A") (type "KiCad") (uri "${KIPRJMOD}/Library/SN74LVC126A") (options "") (descr ""))
 	(lib (name "Pico_2W_with_Header") (type "KiCad") (uri "${KIPRJMOD}/Library/Pico_2W_with_Header.pretty") (options "") (descr ""))
+	(lib (name "MS1V-T1K") (type "KiCad") (uri "${KIPRJMOD}/Library/MS1V-T1K/MS1V-T1K.pretty") (options "") (descr ""))
 )

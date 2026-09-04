@@ -1,0 +1,339 @@
+(footprint "MS1V-T1K"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "SMD Crystal FC-135 https://support.epson.biz/td/api/doc_check.php?dl=brief_FC-135R_en.pdf")
+	(tags "SMD SMT Crystal")
+	(property "Reference" "Y1"
+		(at 0 -2 0)
+		(layer "F.SilkS")
+		(uuid "f23e1c45-32ff-4f80-a113-7fb9113c283c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" "https://cdn-reichelt.de/documents/datenblatt/B400/MS1V-7.pdf"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d6fb8716-44d1-4d5c-aafd-66039631045b")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" "Two pin crystal"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c39ec770-b3d9-4bf3-b98b-4c26029124d2")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Availability" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "e60aba64-5103-48e5-8dbd-d8cfcfb5f6dc")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Check_prices" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2ba5e142-9ff7-4353-9cda-2ea831139788")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description_1" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d11c0c5d-5a0e-4aee-801d-135e660f0a67")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "MF" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "77c313e8-91b1-43df-aba2-c89d2b5bf7b6")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "MP" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "ca7233ba-987b-407c-a850-e2e219650983")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Package" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "05b5dadd-eaee-48e1-a099-e5393e2800f7")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Price" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7edc5782-aa5b-47dc-820a-e771800767f7")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Purchase-URL" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7c0fa232-f29a-4b1c-a963-5483a22f3c81")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "SnapEDA_Link" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "aa7a4dc3-95b4-41bc-9bce-0b202433b13a")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "MS1V-T1K-32.768kHz-12.5pF-20PPM-TA-QC-Au"
+		(at 0 9.271 0)
+		(layer "F.Fab")
+		(uuid "65c5dc4a-765d-42be-a7a1-161019c9290d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property ki_fp_filters "Crystal*")
+	(sheetname "/AnalogFrontend/")
+	(sheetfile "AnalogFrontend.kicad_sch")
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.27 1.397)
+		(end 1.27 1.397)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "4c1cebfc-8301-4b58-8f1e-e945389f7255")
+	)
+	(fp_line
+		(start -1.27 4.826)
+		(end -1.27 1.397)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "f7b4ec78-abce-4df2-9846-65435e6cfd85")
+	)
+	(fp_line
+		(start -1.27 8.001)
+		(end 1.27 8.001)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "57309756-34d7-4f4d-bfea-61abcd646a87")
+	)
+	(fp_line
+		(start 1.27 4.826)
+		(end 1.27 1.397)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "b5cb79a5-915f-47bf-9b45-10bf2842553e")
+	)
+	(fp_line
+		(start -2 -1.15)
+		(end -2 8.382)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "90d36b20-e3ca-414d-9002-7c8c7d1c3b56")
+	)
+	(fp_line
+		(start -2 -1.15)
+		(end 2 -1.15)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "8654bdf9-2ecc-4865-b026-606788990049")
+	)
+	(fp_line
+		(start -2 8.382)
+		(end 2 8.382)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "48156b21-b215-49ef-9ee3-81913e1757ce")
+	)
+	(fp_line
+		(start 2 -1.15)
+		(end 2 8.382)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "c1a5d0ca-e437-434e-ab97-1e10cdf76565")
+	)
+	(fp_line
+		(start -1.016 1.651)
+		(end -1.016 7.747)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "f9865f76-8700-4bed-9e29-8b6497ce85f1")
+	)
+	(fp_line
+		(start -1.016 1.651)
+		(end 1.016 1.651)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "29ab6ee3-f944-40b4-b070-dd55437fcdc3")
+	)
+	(fp_line
+		(start -1.016 7.747)
+		(end 1.016 7.747)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "692f9ace-aaed-49a6-81c8-2b640df3ee55")
+	)
+	(fp_line
+		(start 1.016 1.651)
+		(end 1.016 7.747)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "90edc3e7-b176-4e76-87bc-67bd4d9b8c9e")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 -2 0)
+		(layer "F.Fab")
+		(uuid "ea43c9f8-325d-4201-9507-a4ed37a92148")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at 1.2 0)
+		(size 1 1.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "1edb56e4-aaa2-4dc1-af8b-e12837b86468")
+	)
+	(pad "2" smd rect
+		(at -1.2 0)
+		(size 1 1.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "4bfe44e0-c732-48ae-b58e-7e55113c4512")
+	)
+	(pad "3" smd rect
+		(at 0 6.25)
+		(size 3 2.5)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "6c95d363-7d33-4d67-b914-83e76de92f8c")
+	)
+	(embedded_fonts no)
+	(model "${KICAD10_3DMODEL_DIR}/Crystal.3dshapes/Crystal_SMD_3215-2Pin_3.2x1.5mm.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)
