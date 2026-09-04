@@ -5838,7 +5838,7 @@
 				)
 			)
 		)
-		(property "Mouser No" ""
+		(property "Mouser No" "ERA-6AEB102V"
 			(at 109.22 163.83 0)
 			(hide yes)
 			(show_name no)
@@ -5860,7 +5860,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni/Mouser"
+		(property "Part Source" "Mouser"
 			(at 109.22 163.83 0)
 			(hide yes)
 			(show_name no)
@@ -6064,7 +6064,7 @@
 				)
 			)
 		)
-		(property "Mouser No" ""
+		(property "Mouser No" "ERA-6AEB102V"
 			(at 106.68 105.41 0)
 			(hide yes)
 			(show_name no)
@@ -6086,7 +6086,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni/Mouser"
+		(property "Part Source" "Mouser"
 			(at 106.68 105.41 0)
 			(hide yes)
 			(show_name no)

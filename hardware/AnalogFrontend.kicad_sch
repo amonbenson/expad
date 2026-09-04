@@ -7279,6 +7279,7 @@
 	(symbol
 		(lib_id "Device:Crystal_GND3")
 		(at 318.77 91.44 90)
+		(mirror x)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7286,10 +7287,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "45f6f058-76a8-41ff-8c91-f40053c87edd")
 		(property "Reference" "Y1"
-			(at 314.96 90.1699 90)
+			(at 314.96 92.7101 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7300,7 +7300,7 @@
 			)
 		)
 		(property "Value" "32.768kHz"
-			(at 314.96 92.7099 90)
+			(at 314.96 90.1701 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7453,7 +7453,7 @@
 				)
 			)
 		)
-		(property "Notes" "TODO: footprint"
+		(property "Notes" ""
 			(at 318.77 91.44 90)
 			(hide yes)
 			(show_name no)
@@ -12498,6 +12498,7 @@
 	(symbol
 		(lib_id "Device:Crystal_GND3")
 		(at 318.77 177.8 90)
+		(mirror x)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12505,10 +12506,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "db814dac-11e5-4b92-be81-b040bd721da4")
 		(property "Reference" "Y2"
-			(at 314.96 176.5299 90)
+			(at 314.96 179.0701 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12519,7 +12519,7 @@
 			)
 		)
 		(property "Value" "32.768kHz"
-			(at 314.96 179.0699 90)
+			(at 314.96 176.5301 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12672,7 +12672,7 @@
 				)
 			)
 		)
-		(property "Notes" "TODO: footprint"
+		(property "Notes" ""
 			(at 318.77 177.8 90)
 			(hide yes)
 			(show_name no)
