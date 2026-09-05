@@ -1,0 +1,15 @@
+(version 1)
+
+(rule "Enforce minimum constraints for through-hole pads"
+    (condition "A.Type == 'Pad' && A.Pad_Type == 'Through-hole'")
+	(constraint annular_width (min 0.3mm))
+    (constraint hole_size (min 0.5mm)))
+
+(rule "Enforce minimum constraints for vias"
+	(condition "A.Type == 'Via'")
+	(constraint annular_width (min 0.2mm))
+    (constraint hole_size (min 0.3mm)))
+
+(rule "Ignore minimum spoke count for 'Board Ground Pour'"
+    (condition "A.insideArea('Board Ground Pour')")
+    (constraint min_resolved_spokes 1))
