@@ -114,7 +114,7 @@
           ""
         ],
         [
-          "text_thickness|202438000|125984000|ff050aff-8b39-47ba-b5fb-8da7c6d810a7|00000000-0000-0000-0000-000000000000",
+          "text_thickness|201422000|126492000|ff050aff-8b39-47ba-b5fb-8da7c6d810a7|00000000-0000-0000-0000-000000000000",
           ""
         ]
       ],
@@ -174,7 +174,7 @@
         "too_many_vias": "error",
         "track_angle": "error",
         "track_dangling": "warning",
-        "track_not_centered_on_via": "ignore",
+        "track_not_centered_on_via": "warning",
         "track_on_post_machined_layer": "error",
         "track_segment_length": "error",
         "track_width": "error",
@@ -637,24 +637,27 @@
     },
     "net_colors": {
       "+2.5V": "rgb(255, 153, 0)",
+      "+2.5V_RAW": "rgb(128, 77, 0)",
       "+3.3VA": "rgb(255, 0, 0)",
+      "+3.3VA_RAW": "rgb(132, 0, 0)",
       "+5V": "rgb(255, 0, 255)",
-      "GND": "rgb(0, 0, 255)",
-      "VEXT": "rgb(255, 255, 0)"
+      "+5V_RAW": "rgb(132, 0, 132)",
+      "GND": "rgb(0, 0, 194)",
+      "VEXT": "rgb(194, 194, 0)"
     },
     "netclass_assignments": null,
     "netclass_patterns": [
       {
         "netclass": "Power",
-        "pattern": "+2.5V"
+        "pattern": "+2.5V*"
       },
       {
         "netclass": "Power",
-        "pattern": "+3.3VA"
+        "pattern": "+3.3VA*"
       },
       {
         "netclass": "5V Power",
-        "pattern": "+5V"
+        "pattern": "+5V*"
       }
     ]
   },
@@ -882,7 +885,7 @@
         "uuid": "acb9d00b-1122-4203-9813-1d558ab77d86"
       }
     ],
-    "used_designators": "D1-15,#PWR1-118,J1-9,#FLG1-13,R1-59,Q1-2,F1,C1-60,U1-22,JP1-2,NT1,A1,Y1-2,TP1-19",
+    "used_designators": "D1-15,#PWR1-118,J1-9,#FLG1-13,R1-59,Q1-2,F1,C1-60,U1-22,JP1-3,NT1,A1,Y1-2,TP1-19",
     "variants": []
   },
   "sheets": [

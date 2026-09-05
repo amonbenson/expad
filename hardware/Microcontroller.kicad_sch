@@ -2748,7 +2748,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 63.5 90)
 			(hide yes)
 			(show_name no)
@@ -3764,7 +3764,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 55.88 90)
 			(hide yes)
 			(show_name no)
@@ -3855,7 +3855,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 43.18 90)
 			(hide yes)
 			(show_name no)
@@ -4274,7 +4274,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 66.04 90)
 			(hide yes)
 			(show_name no)
@@ -4365,7 +4365,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 53.34 90)
 			(hide yes)
 			(show_name no)
@@ -4745,7 +4745,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 40.64 90)
 			(hide yes)
 			(show_name no)
@@ -5258,7 +5258,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 45.72 90)
 			(hide yes)
 			(show_name no)
@@ -5349,7 +5349,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 50.8 90)
 			(hide yes)
 			(show_name no)
@@ -5440,7 +5440,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 58.42 90)
 			(hide yes)
 			(show_name no)
@@ -5531,7 +5531,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 38.1 90)
 			(hide yes)
 			(show_name no)
@@ -5833,7 +5833,7 @@
 				)
 			)
 		)
-		(property "Part Source" "Uni"
+		(property "Part Source" "-"
 			(at 38.1 60.96 90)
 			(hide yes)
 			(show_name no)
