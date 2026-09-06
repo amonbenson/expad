@@ -3446,6 +3446,7 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
+		(fields_autoplaced yes)
 		(uuid "1b957167-e65e-4353-b56e-e4c6a79cf261")
 		(property "Reference" "#PWR036"
 			(at 50.8 99.06 0)
@@ -3466,7 +3467,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(property "Footprint" ""
