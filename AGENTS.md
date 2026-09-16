@@ -7,11 +7,12 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
 - .vscode/: VS Code tasks and launch configuration for building, running, and debugging the firmware, with a picker for which `src/bin/*.rs` program to target.
 - src/: firmware code, split into a shared library and one binary per application.
   - src/lib.rs: `#![no_std]` library crate (`expad`) that re-exports `hal` and `topology` for every binary to share.
-  - src/bin/: one file per flashable application, each with its own `#[embassy_executor::main]`. `capture.rs` holds the original main-loop firmware (shift-register/buffer init, ADC init, direct measurements, continuous capture); `detect_pin_mapping.rs` maps buffer outputs to ADC channels; `rainbow.rs` drives a WS2812B strip through a rainbow pattern; `potentiometer.rs` buffers ADC channels 0 and 2 to the low/high rails, reads a potentiometer wiper on channel 1, and shows its position on the LED strip.
+  - src/bin/: one file per flashable application, each with its own `#[embassy_executor::main]`. `capture.rs` holds the original main-loop firmware (shift-register/buffer init, ADC init, direct measurements, continuous capture); `detect_pin_mapping.rs` maps buffer outputs to ADC channels; `rainbow.rs` drives a WS2812B strip through a rainbow pattern; `potentiometer.rs` buffers ADC channels 0 and 2 to the low/high rails, reads a potentiometer wiper on channel 1, and shows its position on the LED strip; `midi_loopback.rs` echoes every USB MIDI packet it receives back to the host.
   - src/hal/adc/: ADC chain driver, register abstractions, and measurement flow for the AD7718 devices.
   - src/hal/buf/: tri-state buffer control (quad_buffer.rs) and the SPI shift-register wrapper (shift_register.rs) for output channels.
   - src/hal/led/: PIO-backed WS2812B ("NeoPixel") LED strip driver (ws2812.rs), configurable by LED count, plus a stateful per-LED color and brightness driver on top of it (strip.rs).
-  - src/hal/mod.rs: hardware abstraction layer module that re-exports the adc, buf, and led submodules.
+  - src/hal/usb/: USB MIDI device driver (midi.rs) built on `embassy-usb`'s MIDI class, using `usbd-midi` for packet and message types.
+  - src/hal/mod.rs: hardware abstraction layer module that re-exports the adc, buf, led, and usb submodules.
   - src/topology/: resistance-solving logic that interprets ADC measurements.
 - build.rs: copies linker settings into the build output so the firmware links correctly.
 - Cargo.toml: crate manifest and embedded dependencies. Declares the `expad` lib target plus one `[[bin]]` entry per file in src/bin/.
@@ -48,7 +49,7 @@ Use `cargo run --bin <name>` to upload the chosen firmware to the RP2350 target 
 
 ```text
 expad (lib)
-  hal::{adc, buf, led}
+  hal::{adc, buf, led, usb}
   topology::solver
 bin/capture
   -> ShiftRegisterChain
@@ -65,6 +66,8 @@ bin/potentiometer
   -> AdcChain
   -> LedStrip
     -> Ws2812Chain
+bin/midi_loopback
+  -> UsbMidi (+ UsbMidiDevice run future)
 topology::ResistanceSolver (not yet invoked from any binary)
   -> AdcChain, QuadBufferChain
 ```
@@ -98,6 +101,7 @@ Shared drivers and logic live in the `expad` library crate ([src/lib.rs](src/lib
 - [src/hal/buf/quad_buffer.rs](src/hal/buf/quad_buffer.rs) defines the `TriState` model and output-state encoding for new buffer behavior.
 - [src/hal/led/ws2812.rs](src/hal/led/ws2812.rs) defines `Ws2812Chain`, generic over the LED count, for driving WS2812B strips from a PIO block.
 - [src/hal/led/strip.rs](src/hal/led/strip.rs) defines `LedStrip`, the stateful per-LED color and global-brightness driver built on top of `Ws2812Chain`.
+- [src/hal/usb/midi.rs](src/hal/usb/midi.rs) defines `UsbMidi` (`receive`, `send_packet`, `send_message`) and `UsbMidiConfig`; `UsbMidi::new` also returns the `UsbMidiDevice`, whose `run()` future must be polled concurrently (e.g. with `join`).
 - [src/topology/solver.rs](src/topology/solver.rs) is the main place to extend resistance-solving logic.
 - [src/bin/](src/bin/) is where new applications go — see "Adding a new application" above.
 - [Embed.toml](Embed.toml) and [.vscode/launch.json](.vscode/launch.json) are the main extension points for flashing and debugging.
