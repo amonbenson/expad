@@ -799,6 +799,12 @@
           "label": "Notes",
           "name": "Notes",
           "show": true
+        },
+        {
+          "group_by": false,
+          "label": "Assembly Order",
+          "name": "Assembly Order",
+          "show": false
         }
       ],
       "filter_string": "",
