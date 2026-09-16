@@ -4,8 +4,8 @@
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
-use embassy_rp::peripherals::PIO0;
-use embassy_rp::pio::InterruptHandler;
+use embassy_rp::peripherals::{DMA_CH0, PIO0};
+use embassy_rp::{dma, pio};
 use expad::hal::adc::{AdcChain, AdcChainConfig};
 use expad::hal::buf::{QuadBufferChain, ShiftRegisterChain, TriState};
 use expad::hal::led::{LedStrip, RGB8, Ws2812Chain};
@@ -23,7 +23,8 @@ const WIPER_CHANNEL: u8 = 2;
 const HIGH_CHANNEL: u8 = 3;
 
 bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => InterruptHandler<PIO0>;
+    PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
+    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>;
 });
 
 #[unsafe(link_section = ".bi_entries")]

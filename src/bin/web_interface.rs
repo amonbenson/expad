@@ -1,0 +1,90 @@
+#![no_std]
+#![no_main]
+
+use defmt::{info, unwrap};
+use embassy_executor::Spawner;
+use embassy_futures::join::join;
+use embassy_rp::bind_interrupts;
+use embassy_rp::peripherals::{DMA_CH0, PIO1};
+use embassy_rp::{dma, pio};
+use embassy_time::{Duration, Instant, Ticker};
+use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
+use expad::topology::solver::ArmResistances;
+use expad::web::{INTERFACE, JACK_COUNT, JackStatus, Status, spawn_web_server};
+
+use {defmt_rtt as _, panic_probe as _};
+
+const STATUS_INTERVAL: Duration = Duration::from_millis(100);
+const SWEEP_PERIOD_MILLISECONDS: u64 = 4000;
+
+bind_interrupts!(struct Irqs {
+    PIO1_IRQ_0 => pio::InterruptHandler<PIO1>;
+    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>;
+});
+
+#[unsafe(link_section = ".bi_entries")]
+#[used]
+pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
+    embassy_rp::binary_info::rp_program_name!(c"Web Interface"),
+    embassy_rp::binary_info::rp_program_description!(
+        c"Serves the web interface over a WiFi access point with dummy status data and logs settings changes"
+    ),
+    embassy_rp::binary_info::rp_cargo_version!(),
+    embassy_rp::binary_info::rp_program_build_attribute!(),
+];
+
+/// Pretends a potentiometer is plugged into every jack but the last, sweeping each one
+/// back and forth with a phase offset per jack.
+fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
+    if jack == JACK_COUNT - 1 {
+        return JackStatus::DISCONNECTED;
+    }
+
+    let phase_offset = jack as u64 * SWEEP_PERIOD_MILLISECONDS / JACK_COUNT as u64;
+    let phase = (uptime_milliseconds + phase_offset) % SWEEP_PERIOD_MILLISECONDS;
+    let value = 1.0 - (2.0 * phase as f32 / SWEEP_PERIOD_MILLISECONDS as f32 - 1.0).abs();
+
+    JackStatus {
+        value,
+        resistances: ArmResistances {
+            relative: [0.0, value, 1.0 - value],
+            total: 10.0,
+        },
+    }
+}
+
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    let p = embassy_rp::init(Default::default());
+
+    info!("Starting WiFi access point");
+    let peripherals = AccessPointPeripherals {
+        pio: p.PIO1,
+        dma: p.DMA_CH0,
+        power: p.PIN_23,
+        data: p.PIN_24,
+        chip_select: p.PIN_25,
+        clock: p.PIN_29,
+    };
+    let stack = start_access_point(spawner, peripherals, Irqs, AccessPointConfig::default()).await;
+    spawn_web_server(spawner, stack);
+
+    let mut settings = unwrap!(INTERFACE.settings.receiver());
+    let publish_status = async {
+        let mut ticker = Ticker::every(STATUS_INTERVAL);
+        loop {
+            let uptime = Instant::now();
+            INTERFACE.status.sender().send(Status {
+                uptime_seconds: uptime.as_secs(),
+                jacks: core::array::from_fn(|jack| dummy_jack_status(uptime.as_millis(), jack)),
+            });
+            ticker.next().await;
+        }
+    };
+    let log_settings = async {
+        loop {
+            info!("Settings changed: {}", settings.changed().await);
+        }
+    };
+    join(publish_status, log_settings).await;
+}

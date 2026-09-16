@@ -16,12 +16,21 @@ pub enum ResistanceSolverError {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "web", derive(serde::Serialize))]
 pub struct ArmResistances {
     /// Relative resistances of each arm, normalized such that the sum of all three is 1.0.
     pub relative: [f32; 3],
 
     /// Total absolute resistance of all three arms in series (in kΩ).
     pub total: f32,
+}
+
+impl ArmResistances {
+    /// All three arms are isolated from each other ("nothing connected").
+    pub const DISCONNECTED: Self = Self {
+        relative: [f32::INFINITY; 3],
+        total: f32::NAN,
+    };
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -137,11 +146,7 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
                     [f32::INFINITY, f32::NAN, f32::NAN],
                 )
             } else {
-                // All three arms are isolated from each other ("nothing connected")
-                Ok(ArmResistances {
-                    relative: [f32::INFINITY, f32::INFINITY, f32::INFINITY],
-                    total: f32::NAN,
-                })
+                Ok(ArmResistances::DISCONNECTED)
             }
         }
     }

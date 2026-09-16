@@ -1,1 +1,6 @@
 /target
+
+# Local configuration and secrets, see .env.example
+.env
+.env.*
+!.env.example

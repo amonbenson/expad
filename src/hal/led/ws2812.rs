@@ -1,7 +1,7 @@
 use embassy_rp::Peri;
-use embassy_rp::dma::Channel;
+use embassy_rp::dma::{self, ChannelInstance};
 use embassy_rp::interrupt::typelevel::Binding;
-use embassy_rp::pio::{Common, Instance, InterruptHandler, Pio, PioPin};
+use embassy_rp::pio::{self, Common, Instance, Pio, PioPin};
 use embassy_rp::pio_programs::ws2812::{Grb, PioWs2812, PioWs2812Program};
 
 pub use smart_leds::RGB8;
@@ -18,17 +18,19 @@ pub struct Ws2812Chain<'d, P: Instance, const N: usize> {
 }
 
 impl<'d, P: Instance, const N: usize> Ws2812Chain<'d, P, N> {
-    pub fn new(
+    pub fn new<D: ChannelInstance>(
         pio: Peri<'d, P>,
-        irq: impl Binding<P::Interrupt, InterruptHandler<P>>,
-        dma: Peri<'d, impl Channel>,
+        irqs: impl Binding<P::Interrupt, pio::InterruptHandler<P>>
+        + Binding<D::Interrupt, dma::InterruptHandler<D>>
+        + 'd,
+        dma: Peri<'d, D>,
         data: Peri<'d, impl PioPin>,
     ) -> Self {
         let Pio {
             mut common, sm0, ..
-        } = Pio::new(pio, irq);
+        } = Pio::new(pio, irqs);
         let program = PioWs2812Program::new(&mut common);
-        let driver = PioWs2812::new(&mut common, sm0, dma, data, &program);
+        let driver = PioWs2812::new(&mut common, sm0, dma, irqs, data, &program);
 
         Self { common, driver }
     }
