@@ -26,20 +26,29 @@ const connectionTag = computed(
 
 <template>
   <div class="flex h-dvh flex-col">
-    <header class="border-surface-800 flex items-center justify-between gap-3 border-b px-4 py-3">
+    <header class="flex items-center justify-between gap-3 border-b border-surface-800 px-4 py-3">
       <h1 class="flex items-center gap-2 text-xl font-semibold">
-        <Wifi class="text-primary" :size="24" />
+        <Wifi
+          class="text-primary"
+          :size="24"
+        />
         Expression Adapter
       </h1>
       <div class="flex items-center gap-3">
-        <span v-if="status" class="text-muted-color text-sm">
+        <span
+          v-if="status"
+          class="text-sm text-muted-color"
+        >
           Uptime {{ status.uptimeSeconds }} s
         </span>
         <Tag v-bind="connectionTag" />
       </div>
     </header>
 
-    <div v-if="settings" class="flex min-h-0 flex-1">
+    <div
+      v-if="settings"
+      class="flex min-h-0 flex-1"
+    >
       <!-- Expression channel strips -->
       <div class="flex min-w-0 flex-1 gap-3 overflow-x-auto p-3">
         <JackStrip
@@ -53,10 +62,12 @@ const connectionTag = computed(
         />
 
         <!-- LED brightness strip -->
-        <section class="bg-surface-900 flex w-24 shrink-0 flex-col">
-          <div class="bg-surface-700 h-1.5 shrink-0"></div>
+        <section class="flex w-24 shrink-0 flex-col bg-surface-900">
+          <div class="h-1.5 shrink-0 bg-surface-700" />
           <div class="flex min-h-0 flex-1 flex-col items-center gap-4 p-3">
-            <h2 class="text-muted-color self-start text-sm font-semibold">LEDs</h2>
+            <h2 class="self-start text-sm font-semibold text-muted-color">
+              LEDs
+            </h2>
             <Slider
               v-model="settings.ledBrightness"
               aria-label="LED brightness"

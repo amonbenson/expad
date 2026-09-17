@@ -9,7 +9,7 @@ import { JACK_COLORS } from "@/theme";
 
 const ARM_COUNT = 3;
 
-const { jack, status } = defineProps<{ jack: number; status?: JackStatus }>();
+const { jack, status = undefined } = defineProps<{ jack: number; status?: JackStatus }>();
 const collapsed = defineModel<boolean>("collapsed", { required: true });
 
 const color = computed(() => JACK_COLORS[jack]);
@@ -23,31 +23,35 @@ const circuitArms = computed<CircuitArm[]>(() =>
 );
 
 /** Absolute resistance of `arm` in kΩ, `null` while it is isolated or the total is unresolved. */
-function armResistance(arm: number) {
+function armResistance(arm: number): number | null {
   const relative = status?.resistances.relative[arm];
   const total = status?.resistances.total;
 
   return relative == null || total == null ? null : relative * total;
 }
 
-function formatResistance(kiloOhms: number | null | undefined) {
+function formatResistance(kiloOhms: number | null | undefined): string {
   return kiloOhms == null ? "–" : `${kiloOhms.toFixed(1)} kΩ`;
 }
 </script>
 
 <template>
   <aside
-    class="jack-theme border-surface-800 bg-surface-900 flex shrink-0 border-l"
+    class="jack-theme flex shrink-0 border-l border-surface-800 bg-surface-900"
     :style="{ '--jack-color': color }"
   >
     <button
-      class="hover:bg-surface-800 border-surface-800 flex w-10 shrink-0 cursor-pointer flex-col items-center gap-3 border-r py-3"
+      class="flex w-10 shrink-0 cursor-pointer flex-col items-center gap-3 border-r border-surface-800 py-3 hover:bg-surface-800"
       :aria-expanded="!collapsed"
       :title="collapsed ? 'Show topology' : 'Hide topology'"
       @click="collapsed = !collapsed"
     >
-      <component :is="collapsed ? ChevronLeft : ChevronRight" :size="16" class="text-muted-color" />
-      <span class="text-muted-color text-sm [writing-mode:vertical-rl]">
+      <component
+        :is="collapsed ? ChevronLeft : ChevronRight"
+        :size="16"
+        class="text-muted-color"
+      />
+      <span class="text-sm text-muted-color [writing-mode:vertical-rl]">
         Topology
       </span>
     </button>
@@ -58,10 +62,13 @@ function formatResistance(kiloOhms: number | null | undefined) {
     >
       <div class="flex h-full w-180 flex-col gap-4 p-4">
         <header class="flex items-baseline justify-between">
-          <h2 class="text-xl font-semibold" :style="{ color }">
+          <h2
+            class="text-xl font-semibold"
+            :style="{ color }"
+          >
             Jack {{ jack + 1 }}
           </h2>
-          <span class="text-muted-color text-sm">
+          <span class="text-sm text-muted-color">
             Total {{ formatResistance(status?.resistances.total) }}
           </span>
         </header>

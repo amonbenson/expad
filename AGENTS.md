@@ -6,7 +6,7 @@ expad is a Rust firmware project for an RP2350 target. It initializes a shift-re
 
 These files are also the extensibility hooks: the types and functions named here are where new behavior goes.
 
-- .vscode/: build, run, and debug tasks plus launch configuration; with Embed.toml, the main extension point for flashing and debugging.
+- .vscode/: build, run, and debug tasks plus launch configuration; with Embed.toml, the main extension point for flashing and debugging. settings.json turns on format-on-save (rustfmt for Rust, the ESLint extension for web/) and extensions.json recommends the extensions that provide it.
 - src/lib.rs: `#![no_std]` library crate (`expad`), re-exporting `hal`, `topology`, and (with the `web` feature) `web` to every binary.
 - src/bin/: one flashable application per file, each with its own `#[embassy_executor::main]` — see "Adding a new application".
   - `capture.rs`: the entry point today — configures the SPI shift-register chain, clears the quad-buffer outputs, initializes the ADC chain for direct channel measurements, then loops over continuous capture.
@@ -23,7 +23,7 @@ These files are also the extensibility hooks: the types and functions named here
   - wifi/ (`web` only): access_point.rs drives the Pico 2 W CYW43439 on PIO1 plus the `embassy-net` stack — `start_access_point`, `AccessPointConfig` (SSID, password, channel, address), `AccessPointPeripherals`; dhcp.rs is its DHCP server.
 - src/topology/solver.rs: resistance-solving logic over ADC measurements, and the place to extend it. Implements tri-state toggling and resistance inference, but no binary calls it yet.
 - src/web/ (`web` feature): interface.rs defines the protocol types (`Status`, `JackStatus`, `ArmPull`, `Settings`, `JackSettings`) and the global `INTERFACE` state; server.rs defines `spawn_web_server` and the `picoserve` HTTP routes serving the embedded UI at `/` and a WebSocket at `/ws`.
-- web/: frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript) built into a single gzipped index.html. src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket, src/theme.ts defines the flat Nora-based preset, the warm surface ramp and `JACK_COLORS`, src/App.vue lays the jacks out as a mixing desk, and src/components/ renders it (JackStrip.vue per jack, TopologyPanel.vue with ResistorCircuit.vue drawing the selected jack's arm network). mock/device.ts is the firmware stand-in and vite.config.ts configures the gzip build and dev proxy.
+- web/: frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript; eslint.config.ts formats it through `@stylistic`, sorts imports and orders Tailwind classes) built into a single gzipped index.html. src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket, src/theme.ts defines the flat Nora-based preset, the blue-gray surface ramp and `JACK_COLORS`, src/App.vue lays the jacks out as a mixing desk, and src/components/ renders it (JackStrip.vue per jack, TopologyPanel.vue with ResistorCircuit.vue drawing the selected jack's arm network). mock/device.ts is the firmware stand-in and vite.config.ts configures the gzip build and dev proxy.
 - firmware/cyw43/: vendored CYW43439 firmware blobs (Infineon permissive binary license) embedded by the wifi HAL; .gitattributes marks these `*.bin` files binary so line endings are never converted.
 - build.rs: copies linker settings into the build output, forwards `EXPAD_*` variables from the environment or `.env` to the crate, and with `web` validates `EXPAD_WIFI_PASSWORD` and runs `npm ci`/`npm run build` in web/, writing to `OUT_DIR/web`.
 - .env.example: template for the untracked `.env` (WiFi password, PrimeUI license key, dev proxy target).
@@ -43,8 +43,12 @@ cd web
 npm run dev:mock     # dev server + mock device: develop the UI with live dummy data, no hardware needed
 npm run dev          # dev server against real hardware, proxies /ws to EXPAD_DEVICE_ADDRESS (default 192.168.4.1)
 npm run type-check
-npm run lint
+npm run lint          # formats and fixes: ESLint carries the @stylistic rules, so it is the formatter
 ```
+
+Formatting is a tool's job in both halves of the repository: run `cargo fmt` for Rust and
+`npm run lint` in web/ instead of hand-editing code to satisfy the formatter or the linter. Only
+what neither can fix automatically, such as a missing return type, is worth fixing by hand.
 
 The default `web` feature needs Node.js (`engines` in [web/package.json](web/package.json)); build.rs reruns `npm ci` whenever `web/package-lock.json` is newer than the installed packages. Before building, copy [.env.example](.env.example) to `.env` and set the WiFi password — required, the build fails without a valid 8-63 character WPA2 password — plus, optionally, the PrimeUI license key.
 
@@ -69,10 +73,10 @@ To extend the protocol, change [src/web/interface.rs](src/web/interface.rs) and 
 
 ## Code Style & Conventions
 
-- Rust 2024 edition conventions; small, explicit modules, `cargo fmt` formatting, code readable for embedded development.
+- Rust 2024 edition conventions; small, explicit modules, `cargo fmt` formatting (run it, never format by hand), code readable for embedded development.
 - Non-abbreviated, self-descriptive names; avoid single-letter ones outside very local contexts (e.g. loop indices).
 - Prefer self-documenting code over comments, splitting larger expressions into named variables to clarify intent. Prefer `Result`-based error handling and typed config structs over ad-hoc values, and keep hardware-facing logic close to its module, such as ADC or buffer handling.
-- In web/, write `<script setup lang="ts">` single-file components, import PrimeVue components individually (`primevue/<name>`) and icons from `@primeicons/vue/<name>`, style with Tailwind utilities (including `tailwindcss-primeui` color tokens), and prefer VueUse composables over hand-written browser glue. Color anything jack-specific through `--jack-color` and the `.jack-theme` design-token block in src/main.css instead of styling controls one by one. Keep `npm run type-check` and `npm run lint` clean.
+- In web/, write `<script setup lang="ts">` single-file components, import PrimeVue components individually (`primevue/<name>`) and icons from `@primeicons/vue/<name>`, style with Tailwind utilities (including `tailwindcss-primeui` color tokens), and prefer VueUse composables over hand-written browser glue. Color anything jack-specific through `--jack-color` and the `.jack-theme` design-token block in src/main.css instead of styling controls one by one. Leave layout, quoting, import order and Tailwind class order to `npm run lint`, which fixes them in place, and keep both it and `npm run type-check` clean.
 
 ## Architecture Notes
 

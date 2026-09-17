@@ -1,12 +1,22 @@
+import type { WebSocketStatus } from "@vueuse/core";
 import { throttleFilter, useWebSocket, watchIgnorable } from "@vueuse/core";
+import type { Ref, ShallowRef } from "vue";
 import { ref, shallowRef } from "vue";
 
 import type { Settings, Status, Update } from "@/interface";
 
 const SETTINGS_SEND_INTERVAL_MS = 100;
 
+export interface DeviceInterface {
+  connection: Ref<WebSocketStatus>;
+  /** Latest measurements, `undefined` while no status has arrived. */
+  status: ShallowRef<Status | undefined>;
+  /** Editable settings, `undefined` until the firmware sends them on connect. */
+  settings: Ref<Settings | undefined>;
+}
+
 /** Live connection to the firmware: `status` streams in, local edits to `settings` are sent back. */
-export function useInterface() {
+export function useInterface(): DeviceInterface {
   const status = shallowRef<Status>();
   const settings = ref<Settings>();
 
@@ -23,7 +33,7 @@ export function useInterface() {
     },
   });
 
-  const { ignoreUpdates } = watchIgnorable(settings, (value) => send(JSON.stringify(value)), {
+  const { ignoreUpdates } = watchIgnorable(settings, value => send(JSON.stringify(value)), {
     deep: true,
     eventFilter: throttleFilter(SETTINGS_SEND_INTERVAL_MS),
   });

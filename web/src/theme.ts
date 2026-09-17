@@ -30,7 +30,21 @@ const SURFACE = {
 
 export const EXPAD_PRESET = definePreset(Nora, {
   semantic: {
-    primary: palette(JACK_COLORS[2]),
+    primary: palette(JACK_COLORS[1]),
     surface: SURFACE,
+    // Remove borders from form fields
+    formField: {
+      borderColor: "transparent",
+      hoverBorderColor: "transparent",
+    },
+  },
+  components: {
+    toggleswitch: {
+      handle: {
+        // Re-apply the surface color here, otherwise it would inherit the transparent form field border color
+        background: "{surface.500}",
+        hoverBackground: "{surface.400}",
+      },
+    },
   },
 });

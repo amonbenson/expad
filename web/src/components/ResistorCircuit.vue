@@ -78,7 +78,7 @@ const HEIGHT = SPACING + DELTA_X + DELTA_Y + SPACING * 5;
 const { arms } = defineProps<{ arms: CircuitArm[] }>();
 
 const measuredVoltages = computed(() =>
-  arms.map((arm) => arm.voltage).filter((voltage) => voltage !== null),
+  arms.map(arm => arm.voltage).filter(voltage => voltage !== null),
 );
 
 /** Each tap voltage between the lowest and the highest one, `null` while they are indistinguishable. */
@@ -86,7 +86,7 @@ const voltageRatios = computed(() => {
   const minimum = Math.min(...measuredVoltages.value);
   const span = Math.max(...measuredVoltages.value) - minimum;
 
-  return arms.map((arm) =>
+  return arms.map(arm =>
     arm.voltage === null || span < 1e-6 ? null : (arm.voltage - minimum) / span,
   );
 });
@@ -94,7 +94,7 @@ const voltageRatios = computed(() => {
 const armViews = computed(() =>
   arms.map((arm, index) => {
     const geometry = DELTA_ARMS[index];
-    const towardTap = (fraction: number) => ({
+    const towardTap = (fraction: number): { x: number; y: number } => ({
       x: DELTA_CENTER_X + (geometry.tapX - DELTA_CENTER_X) * fraction,
       y: DELTA_CENTER_Y + (geometry.tapY - DELTA_CENTER_Y) * fraction,
     });
@@ -134,10 +134,25 @@ function formatVoltage(volts: number | null): string {
     stroke="currentColor"
     :stroke-width="STROKE"
   >
-    <template v-for="arm in armViews" :key="arm.name">
+    <template
+      v-for="arm in armViews"
+      :key="arm.name"
+    >
       <!-- Tap wire to the measurement point -->
-      <line :x1="arm.tapX" :y1="arm.tapY" :x2="arm.tapX" :y2="arm.wireY" :stroke="WIRE_COLOR" />
-      <line :x1="arm.tapX" :y1="arm.wireY" :x2="TAP_WIRE_EX" :y2="arm.wireY" :stroke="WIRE_COLOR" />
+      <line
+        :x1="arm.tapX"
+        :y1="arm.tapY"
+        :x2="arm.tapX"
+        :y2="arm.wireY"
+        :stroke="WIRE_COLOR"
+      />
+      <line
+        :x1="arm.tapX"
+        :y1="arm.wireY"
+        :x2="TAP_WIRE_EX"
+        :y2="arm.wireY"
+        :stroke="WIRE_COLOR"
+      />
       <circle
         :cx="TAP_WIRE_EX"
         :cy="arm.wireY"
@@ -161,7 +176,13 @@ function formatVoltage(volts: number | null): string {
 
       <!-- Pull-up rail -->
       <template v-if="arm.pull === 'up'">
-        <line :x1="VCC_X" :y1="SPACING / 2" :x2="VCC_X" :y2="arm.wireY" :stroke="HIGH_RAIL_COLOR" />
+        <line
+          :x1="VCC_X"
+          :y1="SPACING / 2"
+          :x2="VCC_X"
+          :y2="arm.wireY"
+          :stroke="HIGH_RAIL_COLOR"
+        />
         <line
           :x1="VCC_X - SPACING / 4"
           :y1="SPACING / 2"

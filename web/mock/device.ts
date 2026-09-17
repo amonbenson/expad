@@ -29,9 +29,9 @@ let settings: Settings = {
 const server = new WebSocketServer({ port: PORT, path: "/ws" });
 const startedAt = Date.now();
 
-function broadcast(update: Update) {
+function broadcast(update: Update): void {
   const message = JSON.stringify(update);
-  server.clients.forEach((client) => client.send(message));
+  server.clients.forEach(client => client.send(message));
 }
 
 /**
@@ -42,8 +42,8 @@ function broadcast(update: Update) {
 function armVoltages(relative: [number, number, number]): [number, number, number] {
   const pulledUpResistance = relative[1] * TOTAL_RESISTANCE;
   const pulledDownResistance = relative[2] * TOTAL_RESISTANCE;
-  const current =
-    HIGH_RAIL_VOLTAGE / (2 * PULL_RESISTANCE + pulledUpResistance + pulledDownResistance);
+  const current
+    = HIGH_RAIL_VOLTAGE / (2 * PULL_RESISTANCE + pulledUpResistance + pulledDownResistance);
 
   const pulledUpVoltage = HIGH_RAIL_VOLTAGE - current * PULL_RESISTANCE;
   const pulledDownVoltage = current * PULL_RESISTANCE;

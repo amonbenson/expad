@@ -1,3 +1,33 @@
 {
   "rust-analyzer.check.allTargets": false,
+
+  // Format on save: rustfmt for Rust, ESLint (which carries the @stylistic rules) for web/
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  // The web interface and its ESLint config live in web/, not at the repository root
+  "eslint.workingDirectories": [{ "directory": "web", "changeProcessCWD": true }],
+  "eslint.format.enable": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.tabSize": 2
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.tabSize": 2
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.tabSize": 2
+  },
+  "[css]": {
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.tabSize": 2
+  },
+  "[jsonc]": {
+    "editor.tabSize": 2
+  }
 }
