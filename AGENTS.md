@@ -16,7 +16,7 @@ expad is a Rust firmware project for an RP2350-based embedded target. It initial
   - src/hal/mod.rs: hardware abstraction layer module that re-exports the adc, buf, led, usb, and wifi submodules.
   - src/topology/: resistance-solving logic that interprets ADC measurements.
   - src/web/: web interface backend (`web` feature). interface.rs defines the `Status`/`Settings` protocol types and the global `INTERFACE` state; server.rs runs the `picoserve` HTTP server that serves the embedded UI at `/` and a WebSocket at `/ws`.
-- web/: web interface frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript). src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket connection, and src/App.vue plus src/components/ render the UI. It builds into a single gzipped index.html.
+- web/: web interface frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript). src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket connection, and src/App.vue plus src/components/ render the UI, and mock/device.ts replays the example's dummy data for hardware-free development. It builds into a single gzipped index.html.
 - firmware/cyw43/: vendored CYW43439 WiFi firmware blobs (Infineon permissive binary license) embedded by the wifi HAL.
 - build.rs: copies linker settings into the build output, forwards `EXPAD_*` variables from the environment or `.env` to the crate, and (with the `web` feature) validates `EXPAD_WIFI_PASSWORD` and runs `npm ci`/`npm run build` in web/, writing the web interface to `OUT_DIR/web`.
 - .gitattributes: marks the vendored `*.bin` firmware blobs as binary so line-ending conversion never touches them.
@@ -34,7 +34,8 @@ cargo clippy --all-features
 cargo test
 
 cd web
-npm run dev          # web interface dev server, proxies /ws to EXPAD_DEVICE_ADDRESS (default 192.168.4.1)
+npm run dev:mock     # dev server + mock device: develop the UI with live dummy data, no hardware needed
+npm run dev          # dev server against real hardware, proxies /ws to EXPAD_DEVICE_ADDRESS (default 192.168.4.1)
 npm run type-check
 npm run lint
 ```
@@ -111,7 +112,7 @@ The web interface separates the WiFi transport from the server. `start_access_po
 - No dedicated test suite is present yet.
 - Add unit tests for the topology solver and register encoding logic when behavior changes.
 - Run `cargo test` locally before merging changes.
-- For web interface changes, run `npm run dev` in web/ against a flashed `web_interface` device, or against any WebSocket server that speaks the same protocol (set `EXPAD_DEVICE_ADDRESS`).
+- For web interface changes, run `npm run dev:mock` in web/ (Vite dev server plus [web/mock/device.ts](web/mock/device.ts), which speaks the same protocol as the firmware) and check the browser. Use `npm run dev` against a flashed `web_interface` device to verify against real hardware, and keep mock/device.ts in sync when the protocol changes.
 - Validate hardware behavior on-device with the existing debug/RTT setup in [.vscode/launch.json](.vscode/launch.json).
 
 ## Security & Compliance
@@ -130,6 +131,12 @@ The web interface separates the WiFi transport from the server. `start_access_po
 - Prefer small, reviewable edits and verify them with `cargo build` first.
 - Do not modify generated artifacts under [target](target) directly.
 
+## Maintaining This File
+
+- Update this file in the same change as any larger change: new, renamed, or removed modules, binaries, features, dependencies, build steps, commands, or protocols. Small fixes inside an existing file need no update.
+- Touch only the affected lines, usually in Repository Structure, Build & Development Commands, Architecture Notes, and Extensibility Hooks.
+- Keep it condensed: one line per item, no changelog, no history, no rationale, nothing the code already states. Rewrite or delete stale lines instead of appending to them.
+
 ## Extensibility Hooks
 
 - [src/hal/adc/mod.rs](src/hal/adc/mod.rs) exposes `AdcChainConfig` and the ADC measurement flow for new channels or modes.
@@ -140,6 +147,7 @@ The web interface separates the WiFi transport from the server. `start_access_po
 - [src/topology/solver.rs](src/topology/solver.rs) is the main place to extend resistance-solving logic.
 - [src/hal/wifi/access_point.rs](src/hal/wifi/access_point.rs) defines `start_access_point`, `AccessPointConfig` (SSID, password, channel, address), and `AccessPointPeripherals`.
 - [src/web/interface.rs](src/web/interface.rs) defines the web interface protocol (`Status`, `JackStatus`, `Settings`, `JackSettings`) and the shared `INTERFACE` state; [src/web/server.rs](src/web/server.rs) defines the routes and `spawn_web_server`.
+- [web/mock/device.ts](web/mock/device.ts) is the firmware stand-in used by `npm run dev:mock`.
 - [web/src/](web/src/) holds the web interface UI; [web/vite.config.ts](web/vite.config.ts) configures the single-file gzip build and the dev proxy.
 - [src/bin/](src/bin/) is where new applications go — see "Adding a new application" above.
 - [Embed.toml](Embed.toml) and [.vscode/launch.json](.vscode/launch.json) are the main extension points for flashing and debugging.

@@ -12,6 +12,8 @@ const envDir = fileURLToPath(new URL("..", import.meta.url));
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const { EXPAD_DEVICE_ADDRESS = "192.168.4.1" } = loadEnv(mode, envDir, "EXPAD_");
+  // `--mode mock` (npm run dev:mock) always proxies to mock/device.ts instead of a real device
+  const deviceAddress = mode === "mock" ? "localhost:8765" : EXPAD_DEVICE_ADDRESS;
 
   return {
     envDir,
@@ -34,7 +36,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        "/ws": { target: `ws://${EXPAD_DEVICE_ADDRESS}`, ws: true },
+        "/ws": { target: `ws://${deviceAddress}`, ws: true },
       },
     },
   };
