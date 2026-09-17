@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import Wifi from "@primeicons/vue/wifi";
-import Card from "primevue/card";
+import { useMediaQuery } from "@vueuse/core";
 import Slider from "primevue/slider";
 import Tag from "primevue/tag";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
-import JackCard from "@/components/JackCard.vue";
+import JackStrip from "@/components/JackStrip.vue";
+import TopologyPanel from "@/components/TopologyPanel.vue";
 import { useInterface } from "@/composables/useInterface";
 
 const { connection, status, settings } = useInterface();
 
+const selectedJack = ref(0);
+const topologyCollapsed = ref(!useMediaQuery("(min-width: 64rem)").value);
+
 const connectionTag = computed(
   () =>
     ({
-      OPEN: { severity: "success", value: "Connected" },
+      OPEN: { severity: "secondary", value: "Connected" },
       CONNECTING: { severity: "warn", value: "Connecting" },
       CLOSED: { severity: "danger", value: "Disconnected" },
     })[connection.value],
@@ -21,44 +25,55 @@ const connectionTag = computed(
 </script>
 
 <template>
-  <main class="mx-auto flex max-w-5xl flex-col gap-4 p-4">
-    <header class="flex flex-wrap items-center justify-between gap-2">
-      <h1 class="flex items-center gap-2 text-2xl font-semibold">
-        <Wifi class="text-primary" :size="28" />
+  <div class="flex h-dvh flex-col">
+    <header class="border-surface-800 flex items-center justify-between gap-3 border-b px-4 py-3">
+      <h1 class="flex items-center gap-2 text-xl font-semibold">
+        <Wifi class="text-primary" :size="24" />
         Expression Adapter
       </h1>
       <div class="flex items-center gap-3">
-        <span v-if="status" class="text-muted-color">Uptime {{ status.uptimeSeconds }} s</span>
+        <span v-if="status" class="text-muted-color text-sm">
+          Uptime {{ status.uptimeSeconds }} s
+        </span>
         <Tag v-bind="connectionTag" />
       </div>
     </header>
 
-    <template v-if="settings">
-      <Card>
-        <template #title>LEDs</template>
-        <template #content>
-          <div class="flex items-center gap-4">
-            <span id="led-brightness">Brightness</span>
+    <div v-if="settings" class="flex min-h-0 flex-1">
+      <!-- Expression channel strips -->
+      <div class="flex min-w-0 flex-1 gap-3 overflow-x-auto p-3">
+        <JackStrip
+          v-for="(_, jack) in settings.jacks"
+          :key="jack"
+          v-model="settings.jacks[jack]"
+          :jack="jack"
+          :status="status?.jacks[jack]"
+          :selected="jack === selectedJack"
+          @select="selectedJack = jack"
+        />
+
+        <!-- LED brightness strip -->
+        <section class="bg-surface-900 flex w-24 shrink-0 flex-col">
+          <div class="bg-surface-700 h-1.5 shrink-0"></div>
+          <div class="flex min-h-0 flex-1 flex-col items-center gap-4 p-3">
+            <h2 class="text-muted-color self-start text-sm font-semibold">LEDs</h2>
             <Slider
               v-model="settings.ledBrightness"
-              aria-labelledby="led-brightness"
+              aria-label="LED brightness"
+              orientation="vertical"
               :max="255"
-              class="grow"
+              class="min-h-24 flex-1"
             />
-            <span class="w-10 text-right">{{ settings.ledBrightness }}</span>
+            <span class="text-sm tabular-nums">{{ settings.ledBrightness }}</span>
           </div>
-        </template>
-      </Card>
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <JackCard
-          v-for="(_, index) in settings.jacks"
-          :key="index"
-          v-model="settings.jacks[index]"
-          :index="index"
-          :status="status?.jacks[index]"
-        />
+        </section>
       </div>
-    </template>
-  </main>
+
+      <TopologyPanel
+        v-model:collapsed="topologyCollapsed"
+        :jack="selectedJack"
+        :status="status?.jacks[selectedJack]"
+      />
+    </div>
+  </div>
 </template>

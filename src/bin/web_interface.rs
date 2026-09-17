@@ -10,12 +10,18 @@ use embassy_rp::{dma, pio};
 use embassy_time::{Duration, Instant, Ticker};
 use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
 use expad::topology::solver::ArmResistances;
-use expad::web::{INTERFACE, JACK_COUNT, JackStatus, Status, spawn_web_server};
+use expad::web::{ArmPull, INTERFACE, JACK_COUNT, JackStatus, Status, spawn_web_server};
 
 use {defmt_rtt as _, panic_probe as _};
 
 const STATUS_INTERVAL: Duration = Duration::from_millis(100);
 const SWEEP_PERIOD_MILLISECONDS: u64 = 4000;
+
+/// Pretended circuit the dummy voltages are derived from: a 10 kOhm potentiometer measured
+/// between a pulled-up and a pulled-down arm. Resistances are in kOhm and currents in mA.
+const DUMMY_TOTAL_RESISTANCE: f32 = 10.0;
+const DUMMY_PULL_RESISTANCE: f32 = 1.0;
+const HIGH_RAIL_VOLTAGE: f32 = 3.3;
 
 bind_interrupts!(struct Irqs {
     PIO1_IRQ_0 => pio::InterruptHandler<PIO1>;
@@ -44,13 +50,34 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     let phase = (uptime_milliseconds + phase_offset) % SWEEP_PERIOD_MILLISECONDS;
     let value = 1.0 - (2.0 * phase as f32 / SWEEP_PERIOD_MILLISECONDS as f32 - 1.0).abs();
 
+    // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2.
+    let resistances = ArmResistances {
+        relative: [0.0, 1.0 - value, value],
+        total: DUMMY_TOTAL_RESISTANCE,
+    };
+
     JackStatus {
         value,
-        resistances: ArmResistances {
-            relative: [0.0, value, 1.0 - value],
-            total: 10.0,
-        },
+        resistances,
+        voltages: dummy_arm_voltages(resistances),
+        pulls: [ArmPull::Floating, ArmPull::Up, ArmPull::Down],
     }
+}
+
+/// Voltages the arms of `resistances` would show while arm 1 is pulled up and arm 2 pulled down:
+/// the driven arms drop the current across their pull resistors, and the floating arm 0 carries no
+/// current, so its tap sits at the center node voltage.
+fn dummy_arm_voltages(resistances: ArmResistances) -> [f32; 3] {
+    let pulled_up_resistance = resistances.relative[1] * resistances.total;
+    let pulled_down_resistance = resistances.relative[2] * resistances.total;
+    let current = HIGH_RAIL_VOLTAGE
+        / (2.0 * DUMMY_PULL_RESISTANCE + pulled_up_resistance + pulled_down_resistance);
+
+    let pulled_up_voltage = HIGH_RAIL_VOLTAGE - current * DUMMY_PULL_RESISTANCE;
+    let pulled_down_voltage = current * DUMMY_PULL_RESISTANCE;
+    let center_voltage = pulled_down_voltage + current * pulled_down_resistance;
+
+    [center_voltage, pulled_up_voltage, pulled_down_voltage]
 }
 
 #[embassy_executor::main]

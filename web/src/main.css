@@ -1,2 +1,55 @@
 @import "tailwindcss";
 @import "tailwindcss-primeui";
+
+/* The device interface is a dark console; Nora picks its dark values from `color-scheme`. */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--p-surface-950);
+  color: var(--p-text-color);
+}
+
+/*
+ * Everything belonging to one jack carries that jack's accent in `--jack-color`. PrimeVue declares
+ * its design tokens on `:root`, where the references between them are already resolved, so the
+ * tokens the controls of a strip are built from are re-declared here to resolve against the accent
+ * instead. Tokens flow semantic -> shared (list, form field) -> component, hence the three groups.
+ */
+.jack-theme {
+  --p-primary-color: var(--jack-color);
+  --p-primary-hover-color: color-mix(in oklab, var(--jack-color) 85%, white);
+  --p-primary-active-color: color-mix(in oklab, var(--jack-color) 70%, white);
+  --p-primary-contrast-color: var(--p-surface-950);
+  --p-highlight-background: var(--jack-color);
+  --p-highlight-focus-background: var(--p-primary-hover-color);
+  --p-highlight-color: var(--p-surface-950);
+  --p-highlight-focus-color: var(--p-surface-950);
+  --p-focus-ring-color: var(--jack-color);
+
+  --p-form-field-focus-border-color: var(--jack-color);
+  --p-form-field-focus-ring-color: var(--jack-color);
+  --p-list-option-selected-background: var(--p-highlight-background);
+  --p-list-option-selected-focus-background: var(--p-highlight-focus-background);
+  --p-list-option-selected-color: var(--p-highlight-color);
+  --p-list-option-selected-focus-color: var(--p-highlight-focus-color);
+
+  --p-inputtext-focus-border-color: var(--p-form-field-focus-border-color);
+  --p-inputtext-focus-ring-color: var(--p-form-field-focus-ring-color);
+  --p-select-focus-border-color: var(--p-form-field-focus-border-color);
+  --p-select-focus-ring-color: var(--p-form-field-focus-ring-color);
+  --p-select-option-selected-background: var(--p-list-option-selected-background);
+  --p-select-option-selected-focus-background: var(--p-list-option-selected-focus-background);
+  --p-select-option-selected-color: var(--p-list-option-selected-color);
+  --p-select-option-selected-focus-color: var(--p-list-option-selected-focus-color);
+  --p-toggleswitch-checked-background: var(--p-primary-color);
+  --p-toggleswitch-checked-hover-background: var(--p-primary-hover-color);
+  --p-toggleswitch-checked-border-color: var(--p-primary-color);
+  --p-toggleswitch-checked-hover-border-color: var(--p-primary-hover-color);
+  --p-toggleswitch-handle-checked-background: var(--p-primary-contrast-color);
+  --p-toggleswitch-handle-checked-hover-background: var(--p-primary-contrast-color);
+  --p-toggleswitch-handle-checked-color: var(--p-primary-color);
+  --p-toggleswitch-handle-checked-hover-color: var(--p-primary-hover-color);
+  --p-toggleswitch-focus-ring-color: var(--p-focus-ring-color);
+}

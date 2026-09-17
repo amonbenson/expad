@@ -7,9 +7,16 @@ export interface ArmResistances {
   total: number | null;
 }
 
+/** Rail an arm is driven to while it is measured. */
+export type ArmPull = "up" | "down" | "floating";
+
 export interface JackStatus {
   value: number;
   resistances: ArmResistances;
+  /** Voltage measured at each arm's tap, in V. */
+  voltages: [number | null, number | null, number | null];
+  /** Rail each arm is driven to while measuring. */
+  pulls: [ArmPull, ArmPull, ArmPull];
 }
 
 export interface Status {

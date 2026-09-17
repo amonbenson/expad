@@ -2,6 +2,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::Watch;
 use serde::{Deserialize, Serialize};
 
+use crate::hal::buf::TriState;
 use crate::topology::solver::ArmResistances;
 
 /// Expression pedal jacks on the board (J2-J5).
@@ -12,17 +13,42 @@ const MAX_RECEIVERS: usize = super::server::MAX_SESSIONS + 1;
 
 pub type SharedValue<T> = Watch<CriticalSectionRawMutex, T, MAX_RECEIVERS>;
 
+/// Rail an arm is driven to while it is measured, mirroring [`TriState`] for the web protocol.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ArmPull {
+    Up,
+    Down,
+    Floating,
+}
+
+impl From<TriState> for ArmPull {
+    fn from(state: TriState) -> Self {
+        match state {
+            TriState::High => ArmPull::Up,
+            TriState::Low => ArmPull::Down,
+            TriState::HiZ => ArmPull::Floating,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct JackStatus {
     /// Expression value in `0.0..=1.0` that is sent to the host.
     pub value: f32,
     pub resistances: ArmResistances,
+    /// Voltage measured at each arm's tap, in volts.
+    pub voltages: [f32; 3],
+    /// Rail each arm is driven to while measuring.
+    pub pulls: [ArmPull; 3],
 }
 
 impl JackStatus {
     pub const DISCONNECTED: Self = Self {
         value: 0.0,
         resistances: ArmResistances::DISCONNECTED,
+        voltages: [f32::NAN; 3],
+        pulls: [ArmPull::Floating; 3],
     };
 }
 
