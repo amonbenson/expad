@@ -67,8 +67,9 @@ function jackStatus(uptimeMs: number, jack: number): JackStatus {
   const phase = (uptimeMs + phaseOffset) % SWEEP_PERIOD_MS;
   const value = 1 - Math.abs((2 * phase) / SWEEP_PERIOD_MS - 1);
 
-  // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2.
-  const relative: [number, number, number] = [0, 1 - value, value];
+  // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2, with the wiper `value`
+  // of the way from arm 1's end.
+  const relative: [number, number, number] = [0, value, 1 - value];
 
   return {
     value,

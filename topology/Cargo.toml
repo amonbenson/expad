@@ -1,0 +1,20 @@
+[package]
+name = "expad-topology"
+version = "0.2.0"
+edition = "2024"
+description = "Resistance solving for a three-arm star network, independent of the hardware driving it"
+
+[lib]
+name = "expad_topology"
+path = "src/lib.rs"
+
+[dependencies]
+defmt = { version = "1.1.1", optional = true }
+serde = { version = "1.0.229", default-features = false, features = [
+  "derive",
+], optional = true }
+
+[features]
+default = []
+defmt = ["dep:defmt"]
+serde = ["dep:serde"]

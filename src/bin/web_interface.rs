@@ -9,7 +9,7 @@ use embassy_rp::peripherals::{DMA_CH0, PIO1};
 use embassy_rp::{dma, pio};
 use embassy_time::{Duration, Instant, Ticker};
 use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
-use expad::topology::solver::ArmResistances;
+use expad::topology::ArmResistances;
 use expad::web::{ArmPull, INTERFACE, JACK_COUNT, JackStatus, Status, spawn_web_server};
 
 use {defmt_rtt as _, panic_probe as _};
@@ -50,9 +50,10 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     let phase = (uptime_milliseconds + phase_offset) % SWEEP_PERIOD_MILLISECONDS;
     let value = 1.0 - (2.0 * phase as f32 / SWEEP_PERIOD_MILLISECONDS as f32 - 1.0).abs();
 
-    // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2.
+    // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2, with the wiper `value`
+    // of the way from arm 1's end, as `ArmResistances::wiper_position` reads it.
     let resistances = ArmResistances {
-        relative: [0.0, 1.0 - value, value],
+        relative: [0.0, value, 1.0 - value],
         total: DUMMY_TOTAL_RESISTANCE,
     };
 

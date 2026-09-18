@@ -3,7 +3,7 @@ use embassy_sync::watch::Watch;
 use serde::{Deserialize, Serialize};
 
 use crate::hal::buf::TriState;
-use crate::topology::solver::ArmResistances;
+use crate::topology::ArmResistances;
 
 /// Expression pedal jacks on the board (J2-J5).
 pub const JACK_COUNT: usize = 4;

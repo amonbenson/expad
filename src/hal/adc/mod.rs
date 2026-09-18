@@ -1,8 +1,9 @@
 use embassy_futures::join::join_array;
-use embassy_futures::select::select_array;
+use embassy_futures::select::{select, select_array};
 use embassy_rp::gpio::{Input, Level, Output, Pin, Pull};
 use embassy_rp::peripherals::SPI0;
 use embassy_rp::spi::{self, Blocking, ClkPin, Config, MisoPin, MosiPin, Spi};
+use embassy_time::{Duration, Timer, block_for};
 
 mod registers;
 
@@ -18,10 +19,28 @@ pub use registers::mode::ChannelCount;
 
 const AD7718_ID: u8 = 0x40;
 
+/// Reference voltage the AD7718's gain ranges are specified against. The actual full scale
+/// scales with whatever reference is applied to REFIN, so a board running a different one
+/// reads every range proportionally wider or narrower.
+const NOMINAL_REFERENCE_VOLTAGE: f32 = 2.5;
+
 /// Widest register on the wire (the 24-bit Data register), in bytes.
 const MAX_REGISTER_WIDTH: usize = 3;
 
-#[derive(Debug, Clone, Copy)]
+/// Time to wait after a soft reset before the registers may be accessed again.
+const RESET_DURATION: Duration = Duration::from_millis(1);
+
+/// Time chip select is held around every transaction. Found necessary on the breadboard once
+/// the driver runs optimized: with 2 µs the ADC loses sync with the transfers, and with 10 µs
+/// it stays in sync but noticeably more conversions land on outlying codes. 50 µs is clean
+/// and still small next to a conversion.
+const CHIP_SELECT_GUARD: Duration = Duration::from_micros(50);
+
+/// Longest the ADC takes to raise RDY after being given a new conversion or calibration.
+/// Its logic runs from a 32.768 kHz crystal, so this is a few dozen clock cycles.
+const COMMAND_PICKUP_TIMEOUT: Duration = Duration::from_millis(1);
+
+#[derive(Debug, Clone, Copy, defmt::Format)]
 pub enum AdcChainError {
     Spi(spi::Error),
     IdMismatch {
@@ -45,6 +64,7 @@ pub struct AdcChainConfig {
     oscillator_power_down: bool,
     coding: Coding,
     range: Range,
+    reference_voltage: f32,
     update_rate: u32,
 }
 
@@ -61,6 +81,7 @@ impl Default for AdcChainConfig {
             oscillator_power_down: false,
             coding: Coding::Unipolar,
             range: Range::V2_56V,
+            reference_voltage: NOMINAL_REFERENCE_VOLTAGE,
             update_rate,
         }
     }
@@ -82,6 +103,26 @@ impl AdcChainConfig {
     pub fn with_coding(mut self, coding: Coding) -> Self {
         self.coding = coding;
         self
+    }
+
+    /// Sets the conversion rate in Hz, rounded to the nearest one the filter supports. Slower
+    /// rates average over a longer window and so resolve far finer steps; the fastest one
+    /// leaves only around 11 noise-free bits.
+    pub fn with_update_rate(mut self, update_rate: u32) -> Self {
+        self.update_rate = update_rate;
+        self
+    }
+
+    /// Sets the voltage actually applied to the selected reference input, which every
+    /// range is scaled by when a code is converted back into a voltage.
+    pub fn with_reference_voltage(mut self, reference_voltage: f32) -> Self {
+        self.reference_voltage = reference_voltage;
+        self
+    }
+
+    /// Voltage at the top of the selected range, given the reference actually applied.
+    fn full_scale_voltage(&self) -> f32 {
+        self.range.voltage() * (self.reference_voltage / NOMINAL_REFERENCE_VOLTAGE)
     }
 
     fn filter_register(&self) -> Filter {
@@ -158,6 +199,17 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         }
     }
 
+    fn select(&mut self, chip: usize) {
+        self.cs[chip].set_low();
+        block_for(CHIP_SELECT_GUARD);
+    }
+
+    fn deselect(&mut self, chip: usize) {
+        block_for(CHIP_SELECT_GUARD);
+        self.cs[chip].set_high();
+        block_for(CHIP_SELECT_GUARD);
+    }
+
     fn control_byte(operation: Operation, address: u8) -> u8 {
         (operation as u8) << 6 | address & 0x0f
     }
@@ -176,9 +228,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         }
         let data = &buf[..1 + R::WIDTH];
 
-        self.cs[chip].set_low();
+        self.select(chip);
         let result = self.spi.blocking_write(data);
-        self.cs[chip].set_high();
+        self.deselect(chip);
 
         result.map_err(AdcChainError::Spi)
     }
@@ -188,9 +240,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         buf[0] = Self::control_byte(Operation::Read, R::ADDRESS);
         let data = &mut buf[..1 + R::WIDTH];
 
-        self.cs[chip].set_low();
+        self.select(chip);
         let result = self.spi.blocking_transfer_in_place(data);
-        self.cs[chip].set_high();
+        self.deselect(chip);
         result.map_err(AdcChainError::Spi)?;
 
         let bits = data[1..]
@@ -204,11 +256,17 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         let reset = [0xFFu8; 4];
 
         // Clock out 32 ones to reset the ADC (as described in the datasheet)
-        self.cs[chip].set_low();
+        self.select(chip);
         let result = self.spi.blocking_write(&reset);
-        self.cs[chip].set_high();
+        self.deselect(chip);
+        result.map_err(AdcChainError::Spi)?;
 
-        result.map_err(AdcChainError::Spi)
+        // The registers are not accessible until the reset has completed internally.
+        // Unoptimized builds used to spend long enough getting to the next access that
+        // this went unnoticed.
+        block_for(RESET_DURATION);
+
+        Ok(())
     }
 
     pub fn write_all_registers<R: Register + Copy>(
@@ -285,7 +343,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
                 }
 
                 // Wait for all chips to finish calibration in parallel
-                join_array(self.rdy.each_mut().map(Input::wait_for_low)).await;
+                join_array(self.rdy.each_mut().map(wait_for_completion)).await;
             }
         }
 
@@ -293,20 +351,23 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     fn code_to_voltage(&self, value: u32) -> f32 {
-        let range = self.config.range.voltage();
-        let coding = self.config.coding;
+        let full_scale = self.config.full_scale_voltage();
 
-        // TODO: verify this
-        match coding {
-            Coding::Unipolar => (value as f32 / 0xFFFFFF as f32) * range,
-            Coding::Bipolar => ((value as i32 - 0x800000) as f32 / 0x7FFFFF as f32) * range,
+        match self.config.coding {
+            Coding::Unipolar => (value as f32 / 0xFFFFFF as f32) * full_scale,
+            Coding::Bipolar => ((value as i32 - 0x800000) as f32 / 0x7FFFFF as f32) * full_scale,
         }
     }
 
-    fn start_single_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
-        let filter = self.config.filter_register();
-        self.write_register(chip, filter)?;
+    /// Voltage a reading of full scale corresponds to, which is also the highest voltage
+    /// this chain can tell apart from anything above it.
+    pub fn full_scale_voltage(&self) -> f32 {
+        self.config.full_scale_voltage()
+    }
 
+    /// Starts one conversion of `channel`. The filter register is left as `init` wrote it,
+    /// since it never changes afterwards.
+    fn start_single_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
         let control = self.config.control_register(channel)?;
         self.write_register(chip, control)?;
 
@@ -330,7 +391,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         channel: u8,
     ) -> Result<f32, AdcChainError> {
         self.start_single_conversion(chip, channel)?;
-        self.rdy[chip].wait_for_low().await;
+        wait_for_completion(&mut self.rdy[chip]).await;
 
         let data: Data = self.read_register(chip)?;
         Ok(self.code_to_voltage(data.bits()))
@@ -380,4 +441,15 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             voltage: self.code_to_voltage(value),
         })
     }
+}
+
+/// Waits for the conversion or calibration just started to finish.
+///
+/// RDY only rises once the ADC has picked the new command up, which takes tens of µs at its
+/// 32.768 kHz clock. Waiting for it to fall straight away returns immediately whenever it is
+/// still low from before - which it always is after a calibration, whose result is never
+/// read - and hands back a result that does not exist yet.
+async fn wait_for_completion(rdy: &mut Input<'_>) {
+    select(rdy.wait_for_high(), Timer::after(COMMAND_PICKUP_TIMEOUT)).await;
+    rdy.wait_for_low().await;
 }

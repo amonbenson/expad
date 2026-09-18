@@ -1,52 +1,34 @@
+use embassy_time::{Duration, Timer};
+use expad_topology::{
+    ARM_COUNT, ArmDrive, ArmResistances, PairMeasurement, PairVoltages, SolveError, SolveSequence,
+    SolveStep, SolverConfig,
+};
+
 use crate::hal::adc::{AdcChain, AdcChainError};
 use crate::hal::buf::{QuadBufferChain, QuadBufferChainError, TriState};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, defmt::Format)]
 pub enum ResistanceSolverError {
     QuadBufferChain(QuadBufferChainError),
     AdcChain(AdcChainError),
-    CurrentConsistency {
-        high_current: f32,
-        low_current: f32,
-    },
-    ResistanceConsistency {
-        shared_arm_disagreement: f32,
-        share_arm_resistance_sum: f32,
-    },
+    Solve(SolveError),
 }
 
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "web", derive(serde::Serialize))]
-pub struct ArmResistances {
-    /// Relative resistances of each arm, normalized such that the sum of all three is 1.0.
-    pub relative: [f32; 3],
-
-    /// Total absolute resistance of all three arms in series (in kΩ).
-    pub total: f32,
-}
-
-impl ArmResistances {
-    /// All three arms are isolated from each other ("nothing connected").
-    pub const DISCONNECTED: Self = Self {
-        relative: [f32::INFINITY; 3],
-        total: f32::NAN,
-    };
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PairMeasurement {
-    pub conducts: bool,
-    pub pair_resistance: f32,
-    pub low_resistance_fraction: f32,
-}
-
+/// Where one arm of one jack is wired and what it is driven through: the buffer output
+/// that pulls its tap to a rail, the ADC input that reads that tap back, and the series
+/// resistance in between.
+///
+/// These are the entries of the board's mapping table, so moving a jack to different
+/// channels is a change to that table rather than to any measurement code.
 #[derive(Debug, Clone, Copy)]
 pub struct ArmConfig {
     pub quadbuf_chip: usize,
     pub quadbuf_channel: u8,
     pub adc_chip: usize,
     pub adc_channel: u8,
+    /// Series resistance between the buffer output and the tap while pulled up, in kΩ.
     pub pull_up_resistance: f32,
+    /// Series resistance between the buffer output and the tap while pulled down, in kΩ.
     pub pull_down_resistance: f32,
 }
 
@@ -57,42 +39,85 @@ impl Default for ArmConfig {
             quadbuf_channel: 0,
             adc_chip: 0,
             adc_channel: 0,
-            pull_up_resistance: 1.0,
-            pull_down_resistance: 1.0,
+            pull_up_resistance: SolverConfig::DEFAULT_PULL_RESISTANCE,
+            pull_down_resistance: SolverConfig::DEFAULT_PULL_RESISTANCE,
         }
     }
+}
+
+/// Rail voltage each arm's tap reads while all three arms are driven to that rail, in V.
+///
+/// They are properties of the board - supply rails, buffer output levels - not of whatever
+/// is plugged into a jack, so they hold until the hardware itself drifts and do not have to
+/// be remeasured for every solve.
+#[derive(Debug, Clone, Copy, defmt::Format)]
+pub struct ArmRails {
+    pub high: [f32; ARM_COUNT],
+    pub low: [f32; ARM_COUNT],
+}
+
+/// One solved jack, together with the raw measurement it came from.
+#[derive(Debug, Clone, Copy, defmt::Format)]
+pub struct SolveOutcome {
+    pub resistances: ArmResistances,
+
+    /// Tap voltage of every arm during the last pair measurement, in V.
+    pub voltages: [f32; ARM_COUNT],
+
+    /// How every arm was driven during that same measurement.
+    pub pulls: [TriState; ARM_COUNT],
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct ResistanceSolverConfig {
-    pub open_current_threshold: f32,
-    pub short_resistance_threshold: f32,
-    pub current_consistency_threshold: f32,
-    pub resistance_consistency_threshold: f32,
-    pub resistance_sum_epsilon: f32,
-    pub ratio_division_epsilon: f32,
+    pub solver: SolverConfig,
+
+    /// Capacitance on every tap, in nF - the ADC input filter, mostly. Every floating tap
+    /// charges through whatever is plugged into the jack, so together with that network's
+    /// resistance this sets how long a pair measurement takes to settle.
+    pub tap_capacitance: f32,
+
+    /// Time constants of (network resistance x tap capacitance) to let a pair settle for
+    /// after the output drivers change. The ADC averages over its whole conversion window,
+    /// so a tap still moving while it converts corrupts that conversion rather than just
+    /// delaying it. Using the network's total resistance overestimates every tap's actual
+    /// time constant, so a small factor is already plenty.
+    pub settle_time_constants: f32,
+
+    /// Bounds on the settle time, the upper one also used while the network is unknown.
+    pub min_settle_delay: Duration,
+    pub max_settle_delay: Duration,
+
+    /// Readings averaged into every rail voltage. The solver treats the rails as practically
+    /// noise-free next to a single tap reading, and they are only measured once in a while,
+    /// so averaging them costs little.
+    pub rail_samples: u32,
 }
 
 impl Default for ResistanceSolverConfig {
     fn default() -> Self {
-        ResistanceSolverConfig {
-            open_current_threshold: 1e-9,
-            short_resistance_threshold: 1e-6,
-            current_consistency_threshold: 1e-9,
-            resistance_consistency_threshold: 1e-6,
-            resistance_sum_epsilon: 1e-9,
-            ratio_division_epsilon: 1e-12,
+        Self {
+            solver: SolverConfig::default(),
+            tap_capacitance: 10.0,
+            settle_time_constants: 2.0,
+            min_settle_delay: Duration::from_millis(1),
+            max_settle_delay: Duration::from_millis(400),
+            rail_samples: 8,
         }
     }
 }
 
+/// Measures the resistor network behind one jack at a time, by driving pairs of its arms
+/// to the rails through the output buffers and reading every tap back through the ADC
+/// chain.
+///
+/// The decision of which pair to measure next, and how the measurements resolve into
+/// resistances, belongs to [`SolveSequence`] in `expad-topology`; this type only carries
+/// those decisions out on real hardware.
 pub struct ResistanceSolver<'d, const N_QUADBUFS: usize, const N_ADCS: usize> {
     config: ResistanceSolverConfig,
     quadbufs: QuadBufferChain<'d, N_QUADBUFS>,
     adcs: AdcChain<'d, N_ADCS>,
-
-    high_rail_voltage: f32,
-    low_rail_voltage: f32,
 }
 
 impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QUADBUFS, N_ADCS> {
@@ -105,224 +130,169 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
             config,
             quadbufs,
             adcs,
-
-            // Todo: read from ADC calibration register OR measure directly (?)
-            high_rail_voltage: 3.3,
-            low_rail_voltage: 0.0,
         }
     }
 
+    /// Measures every arm's own high and low rail, by driving all three arms to the same
+    /// rail. No current can flow between arms at one potential, so every tap reads its own
+    /// rail exactly, whatever is plugged in - and each tap charges through its own pull
+    /// resistor rather than through the network, so it settles immediately.
+    pub async fn measure_rails(
+        &mut self,
+        arms: &[ArmConfig; ARM_COUNT],
+    ) -> Result<ArmRails, ResistanceSolverError> {
+        let mut rails = ArmRails {
+            high: [f32::NAN; ARM_COUNT],
+            low: [f32::NAN; ARM_COUNT],
+        };
+
+        for (state, voltages) in [
+            (TriState::High, &mut rails.high),
+            (TriState::Low, &mut rails.low),
+        ] {
+            self.drive(arms, [state; ARM_COUNT], self.config.min_settle_delay)
+                .await?;
+
+            for (arm, voltage) in arms.iter().zip(voltages.iter_mut()) {
+                *voltage = self.measure_average(arm).await?;
+            }
+        }
+
+        self.release(arms)?;
+
+        Ok(rails)
+    }
+
+    /// How long a pair measurement on a network of `expected_total` kΩ takes to settle, or
+    /// the longest allowed if that is not known (`f32::NAN`).
+    pub fn settle_delay(&self, expected_total: f32) -> Duration {
+        if !expected_total.is_finite() {
+            return self.config.max_settle_delay;
+        }
+
+        // kΩ x nF = µs
+        let time_constant = expected_total * self.config.tap_capacitance;
+        let settle_micros = self.config.settle_time_constants * time_constant;
+
+        Duration::from_micros(settle_micros as u64)
+            .clamp(self.config.min_settle_delay, self.config.max_settle_delay)
+    }
+
+    /// Works through the measurement sequence for one jack and resolves its arms. Leaves
+    /// every arm floating again once it is done, so nothing stays driven into whatever is
+    /// plugged in between solves.
+    ///
+    /// `expected_total` is the network's total resistance as last measured, in kΩ, which sets
+    /// how long every pair is left to settle; `f32::NAN` if it is not known.
     pub async fn solve(
         &mut self,
-        arms: [ArmConfig; 3],
-    ) -> Result<ArmResistances, ResistanceSolverError> {
-        let first_measurement = self.measure_pair(arms, 0, 1).await?;
-        let second_measurement = self.measure_pair(arms, 0, 2).await?;
+        arms: &[ArmConfig; ARM_COUNT],
+        rails: &ArmRails,
+        expected_total: f32,
+    ) -> Result<SolveOutcome, ResistanceSolverError> {
+        let settle_delay = self.settle_delay(expected_total);
+        let mut sequence = SolveSequence::new(self.config.solver);
+        let mut voltages = [f32::NAN; ARM_COUNT];
+        let mut pulls = [TriState::HiZ; ARM_COUNT];
 
-        if first_measurement.conducts && second_measurement.conducts {
-            self.resolve_from_both_pairs(first_measurement, second_measurement)
-        } else if first_measurement.conducts {
-            // Arm 2 is infinite (isolated)
-            self.resolve_from_single_pair(
-                first_measurement,
-                [0.0, 0.0, f32::INFINITY],
-                [f32::NAN, f32::NAN, f32::INFINITY],
-            )
-        } else if second_measurement.conducts {
-            // Arm 1 is infinite (isolated)
-            self.resolve_from_single_pair(
-                second_measurement,
-                [0.0, f32::INFINITY, 0.0],
-                [f32::NAN, f32::INFINITY, f32::NAN],
-            )
-        } else {
-            // Neither measurement conducted, so arm 0 must be isolated. Confirm with a third measurement.
-            let third_measurement = self.measure_pair(arms, 1, 2).await?;
-            if third_measurement.conducts {
-                // Arm 0 is infinite (isolated)
-                self.resolve_from_single_pair(
-                    third_measurement,
-                    [f32::INFINITY, 0.0, 0.0],
-                    [f32::INFINITY, f32::NAN, f32::NAN],
-                )
-            } else {
-                Ok(ArmResistances::DISCONNECTED)
+        loop {
+            match sequence.step() {
+                SolveStep::MeasurePair { high, low } => {
+                    let floating = ARM_COUNT - high - low;
+
+                    pulls = [TriState::HiZ; ARM_COUNT];
+                    pulls[high] = TriState::High;
+                    pulls[low] = TriState::Low;
+                    self.drive(arms, pulls, settle_delay).await?;
+
+                    // The floating tap is read last, since it is the one that has to charge
+                    // the ADC input's filter capacitor through the whole network behind it.
+                    voltages[high] = self.measure_arm(&arms[high]).await?;
+                    voltages[low] = self.measure_arm(&arms[low]).await?;
+                    voltages[floating] = self.measure_arm(&arms[floating]).await?;
+                    defmt::trace!("Pair {} high, {} low: taps {}V", high, low, voltages);
+
+                    sequence.record(
+                        PairMeasurement::from_voltages(
+                            PairVoltages {
+                                high: voltages[high],
+                                low: voltages[low],
+                                floating: voltages[floating],
+                            },
+                            ArmDrive {
+                                rail_voltage: rails.high[high],
+                                pull_resistance: arms[high].pull_up_resistance,
+                            },
+                            ArmDrive {
+                                rail_voltage: rails.low[low],
+                                pull_resistance: arms[low].pull_down_resistance,
+                            },
+                            &self.config.solver,
+                        )
+                        .map_err(ResistanceSolverError::Solve)?,
+                    );
+                }
+
+                SolveStep::Finished(result) => {
+                    self.release(arms)?;
+                    let resistances = result.map_err(ResistanceSolverError::Solve)?;
+
+                    return Ok(SolveOutcome {
+                        resistances,
+                        voltages,
+                        pulls,
+                    });
+                }
             }
         }
     }
 
-    fn resolve_from_both_pairs(
-        &self,
-        first_measurement: PairMeasurement,
-        second_measurement: PairMeasurement,
-    ) -> Result<ArmResistances, ResistanceSolverError> {
-        let first_pair_shorted =
-            first_measurement.pair_resistance < self.config.short_resistance_threshold;
-        let second_pair_shorted =
-            second_measurement.pair_resistance < self.config.short_resistance_threshold;
-
-        if first_pair_shorted && second_pair_shorted {
-            return Ok(ArmResistances {
-                relative: [0.0; 3],
-                total: 0.0,
-            });
-        }
-
-        if first_pair_shorted {
-            // Arms 0 and 1 are shorted, so arm 2 holds all the resistance
-            return Ok(ArmResistances {
-                relative: [0.0, 0.0, 1.0],
-                total: second_measurement.pair_resistance,
-            });
-        }
-
-        if second_pair_shorted {
-            // Arms 0 and 2 are shorted, so arm 1 holds all the resistance
-            return Ok(ArmResistances {
-                relative: [0.0, 1.0, 0.0],
-                total: first_measurement.pair_resistance,
-            });
-        }
-
-        let second_arm_resistance =
-            first_measurement.low_resistance_fraction * first_measurement.pair_resistance;
-        let third_arm_resistance =
-            second_measurement.low_resistance_fraction * second_measurement.pair_resistance;
-        let shared_arm_resistance_from_first_measurement =
-            (1.0 - first_measurement.low_resistance_fraction) * first_measurement.pair_resistance;
-        let shared_arm_resistance_from_second_measurement =
-            (1.0 - second_measurement.low_resistance_fraction) * second_measurement.pair_resistance;
-
-        // Both measurements drove arm 0, so they each produce an independent estimate of its resistance.
-        // We can also use this as a self-consistency check
-        let shared_arm_resistance_sum = shared_arm_resistance_from_first_measurement
-            + shared_arm_resistance_from_second_measurement;
-        let shared_arm_disagreement = (shared_arm_resistance_from_first_measurement
-            - shared_arm_resistance_from_second_measurement)
-            .abs();
-        if shared_arm_disagreement
-            / (shared_arm_resistance_sum + self.config.resistance_sum_epsilon)
-            > self.config.resistance_consistency_threshold
-        {
-            return Err(ResistanceSolverError::ResistanceConsistency {
-                shared_arm_disagreement,
-                share_arm_resistance_sum: shared_arm_resistance_sum,
-            });
-        }
-
-        let shared_arm_resistance = shared_arm_resistance_sum / 2.0;
-        let total_resistance = shared_arm_resistance + second_arm_resistance + third_arm_resistance;
-
-        Ok(ArmResistances {
-            relative: [
-                shared_arm_resistance / total_resistance,
-                second_arm_resistance / total_resistance,
-                third_arm_resistance / total_resistance,
-            ],
-            total: total_resistance,
-        })
+    /// Stops driving every arm of one jack.
+    pub fn release(&mut self, arms: &[ArmConfig; ARM_COUNT]) -> Result<(), ResistanceSolverError> {
+        self.set_outputs(arms, [TriState::HiZ; ARM_COUNT])
     }
 
-    fn resolve_from_single_pair(
-        &self,
-        measurement: PairMeasurement,
-        shorted_arms: [f32; 3],
-        unresolved_arms: [f32; 3],
-    ) -> Result<ArmResistances, ResistanceSolverError> {
-        if measurement.pair_resistance < self.config.short_resistance_threshold {
-            Ok(ArmResistances {
-                relative: shorted_arms,
-                total: f32::NAN,
-            })
-        } else {
-            Ok(ArmResistances {
-                relative: unresolved_arms,
-                total: measurement.pair_resistance,
-            })
+    async fn measure_average(&mut self, arm: &ArmConfig) -> Result<f32, ResistanceSolverError> {
+        let mut sum = 0.0;
+        for _ in 0..self.config.rail_samples {
+            sum += self.measure_arm(arm).await?;
         }
+
+        Ok(sum / self.config.rail_samples as f32)
     }
 
-    async fn measure_pair(
+    /// Applies one set of arm states and waits `settle_delay` for the taps to follow.
+    async fn drive(
         &mut self,
-        arms: [ArmConfig; 3],
-        low_index: usize,
-        high_index: usize,
-    ) -> Result<PairMeasurement, ResistanceSolverError> {
-        let floating_index = 3 - low_index - high_index;
+        arms: &[ArmConfig; ARM_COUNT],
+        states: [TriState; ARM_COUNT],
+        settle_delay: Duration,
+    ) -> Result<(), ResistanceSolverError> {
+        self.set_outputs(arms, states)?;
+        Timer::after(settle_delay).await;
 
-        let high_arm = arms[high_index];
-        let low_arm = arms[low_index];
-        let floating_arm = arms[floating_index];
+        Ok(())
+    }
 
-        // Set the arm states
-        self.quadbufs.set_output(
-            high_arm.quadbuf_chip,
-            high_arm.quadbuf_channel,
-            TriState::High,
-        );
-        self.quadbufs
-            .set_output(low_arm.quadbuf_chip, low_arm.quadbuf_channel, TriState::Low);
-        self.quadbufs.set_output(
-            floating_arm.quadbuf_chip,
-            floating_arm.quadbuf_channel,
-            TriState::HiZ,
-        );
+    fn set_outputs(
+        &mut self,
+        arms: &[ArmConfig; ARM_COUNT],
+        states: [TriState; ARM_COUNT],
+    ) -> Result<(), ResistanceSolverError> {
+        for (arm, state) in arms.iter().zip(states) {
+            self.quadbufs
+                .set_output(arm.quadbuf_chip, arm.quadbuf_channel, state);
+        }
+
         self.quadbufs
             .update()
-            .map_err(ResistanceSolverError::QuadBufferChain)?;
+            .map_err(ResistanceSolverError::QuadBufferChain)
+    }
 
-        // Measure the voltage on the floating arm
-        let high_voltage = self
-            .adcs
-            .measure_channel(high_arm.adc_chip, high_arm.adc_channel)
+    async fn measure_arm(&mut self, arm: &ArmConfig) -> Result<f32, ResistanceSolverError> {
+        self.adcs
+            .measure_channel(arm.adc_chip, arm.adc_channel)
             .await
-            .map_err(ResistanceSolverError::AdcChain)?;
-        let low_voltage = self
-            .adcs
-            .measure_channel(low_arm.adc_chip, low_arm.adc_channel)
-            .await
-            .map_err(ResistanceSolverError::AdcChain)?;
-        let floating_voltage = self
-            .adcs
-            .measure_channel(floating_arm.adc_chip, floating_arm.adc_channel)
-            .await
-            .map_err(ResistanceSolverError::AdcChain)?;
-
-        // Assuming no current flows into the ADC inputs, the current through the high arm pull up resistor must equal the current through the low arm pull down resistor.
-        // We can use this as a self-consistency check to determine if the measurement is valid.
-        let high_current = (self.high_rail_voltage - high_voltage) / high_arm.pull_up_resistance;
-        let low_current = (low_voltage - self.low_rail_voltage) / low_arm.pull_down_resistance;
-
-        if (high_current - low_current).abs() > self.config.current_consistency_threshold {
-            return Err(ResistanceSolverError::CurrentConsistency {
-                high_current,
-                low_current,
-            });
-        }
-
-        // Detect open circuit on either arm
-        let current = (high_current + low_current) / 2.0;
-        if current <= self.config.open_current_threshold {
-            return Ok(PairMeasurement {
-                conducts: false,
-                pair_resistance: f32::INFINITY,
-                low_resistance_fraction: f32::NAN,
-            });
-        }
-
-        // Calculate the pair resistance and the fraction of the total resistance in the low arm.
-        let voltage_span = high_voltage - low_voltage;
-        let pair_resistance = voltage_span / current;
-        let low_resistance_fraction = if voltage_span.abs() > self.config.ratio_division_epsilon {
-            (floating_voltage - low_voltage) / voltage_span
-        } else {
-            f32::NAN
-        };
-
-        Ok(PairMeasurement {
-            conducts: true,
-            pair_resistance,
-            low_resistance_fraction,
-        })
+            .map_err(ResistanceSolverError::AdcChain)
     }
 }

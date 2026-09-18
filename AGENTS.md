@@ -1,6 +1,6 @@
 # Project Overview
 
-expad is a Rust firmware project for an RP2350 target. It initializes a shift-register buffer chain and an ADC chain, measures analog voltages, and infers resistance distribution across three arms with a small topology solver. On the Pico 2 W it can also open a WiFi access point serving a live web interface (Vue app in web/) that shows device status and edits settings in real time.
+expad is a Rust firmware project for an RP2350 target. It initializes a shift-register buffer chain and an ADC chain, measures analog voltages, and infers resistance distribution across three arms with a small topology solver. On the Pico 2 W it can also open a WiFi access point serving a live web interface (Vue app in web/) that shows device status and edits settings in real time. The workspace's second crate, topology/, holds the solver's arithmetic without any hardware dependency, so it can be unit tested on the host.
 
 ## Repository Structure
 
@@ -15,19 +15,21 @@ These files are also the extensibility hooks: the types and functions named here
   - `potentiometer.rs`: drives buffer outputs 0 and 2 to the low/high rails, measures the floating wiper on channel 1 against them, prints voltage and position, and mirrors it by splitting brightness across the two nearest LEDs.
   - `midi_loopback.rs`: echoes every USB MIDI packet back to the host.
   - `web_interface.rs`: serves the web interface over WiFi with dummy status data, logging every settings change.
+  - `expression_controller.rs`: the full firmware - continuously solves every jack's topology, publishes it to the web interface, shows each jack's position on the LED strip and sends it as a MIDI control change. Its `JACKS` table maps each jack's three arms onto buffer and ADC channels and is the only place that knows the board's wiring.
 - src/hal/mod.rs: hardware abstraction layer, re-exporting:
   - adc/: AD7718 chain driver, register abstractions, measurement flow; mod.rs exposes `AdcChainConfig` for new channels or modes.
   - buf/: output channels — quad_buffer.rs (tri-state control, `TriState` model, output-state encoding), shift_register.rs (SPI shift-register wrapper).
   - led/: ws2812.rs defines `Ws2812Chain`, a PIO-backed WS2812B ("NeoPixel") driver generic over LED count; strip.rs defines `LedStrip`, the stateful per-LED color and global-brightness driver over it used by `rainbow` and `potentiometer`.
   - usb/midi.rs: USB MIDI over `embassy-usb`'s MIDI class with `usbd-midi` packet and message types. Defines `UsbMidiConfig` and `UsbMidi` (`receive`, `send_packet`, `send_message`); `UsbMidi::new` also returns a `UsbMidiDevice` whose `run()` must be polled concurrently (e.g. with `join`).
   - wifi/ (`web` only): access_point.rs drives the Pico 2 W CYW43439 on PIO1 plus the `embassy-net` stack — `start_access_point`, `AccessPointConfig` (SSID, password, channel, address), `AccessPointPeripherals`; dhcp.rs is its DHCP server.
-- src/topology/solver.rs: resistance-solving logic over ADC measurements, and the place to extend it. Implements tri-state toggling and resistance inference, but no binary calls it yet.
+- src/topology/solver.rs: the hardware half of the solver - `ResistanceSolver` drives the arms through `QuadBufferChain`, reads every tap through `AdcChain` and carries out the sequence `expad-topology` hands it. `ArmConfig` is one arm's entry in a binary's mapping table, `measure_rails` reads every arm's rails with all three driven alike (so no current flows), and `solve` returns a `SolveOutcome` (resistances plus the raw voltages and pulls behind them). Before reading a pair it waits as many time constants (floating arm's source resistance x `tap_capacitance`) as the expected swing needs to fall below `settle_accuracy`, from a per-jack `JackHistory` of the last solved resistances, tap voltages and shared arm. mod.rs re-exports the crate's `ArmResistances`, `ARM_COUNT` and `SolverConfig`.
+- topology/: the `expad-topology` crate, the solver's hardware-independent arithmetic. `SolveSequence` decides which pair of arms to measure next around a shared arm (`with_shared_arm`; the previous solve's `largest_arm`, so no tap charges through it) and resolves the results with a weighted least-squares fit (fit.rs) of every arm and loop current to every measured drop - `PairMeasurement::from_voltages` reduces one pair's tap voltages, `SolverConfig` expresses every tolerance in standard deviations of the ADC noise, and `ArmResistances::wiper_position` reads a potentiometer's position out of a solved network. tests/ drives that same sequence from `StarNetwork`, a model of the real circuit, so the whole algorithm is covered on the host.
 - src/web/ (`web` feature): interface.rs defines the protocol types (`Status`, `JackStatus`, `ArmPull`, `Settings`, `JackSettings`) and the global `INTERFACE` state; server.rs defines `spawn_web_server` and the `picoserve` HTTP routes serving the embedded UI at `/` and a WebSocket at `/ws`.
 - web/: frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript; eslint.config.ts formats it through `@stylistic`, sorts imports and orders Tailwind classes) built into a single gzipped index.html. src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket, src/theme.ts defines the flat Nora-based preset, the blue-gray surface ramp and `JACK_COLORS`, src/App.vue lays the jacks out as a mixing desk, and src/components/ renders it (JackStrip.vue per jack, TopologyPanel.vue with ResistorCircuit.vue drawing the selected jack's arm network). mock/device.ts is the firmware stand-in and vite.config.ts configures the gzip build and dev proxy.
 - firmware/cyw43/: vendored CYW43439 firmware blobs (Infineon permissive binary license) embedded by the wifi HAL; .gitattributes marks these `*.bin` files binary so line endings are never converted.
 - build.rs: copies linker settings into the build output, forwards `EXPAD_*` variables from the environment or `.env` to the crate, and with `web` validates `EXPAD_WIFI_PASSWORD` and runs `npm ci`/`npm run build` in web/, writing to `OUT_DIR/web`.
 - .env.example: template for the untracked `.env` (WiFi password, PrimeUI license key, dev proxy target).
-- Cargo.toml: manifest and embedded dependencies — the `expad` lib target, one `[[bin]]` per file in src/bin/, and the default `web` feature gating the networking dependencies.
+- Cargo.toml: manifest and embedded dependencies — the workspace (expad plus topology/), the `expad` lib target, one `[[bin]]` per file in src/bin/, and the default `web` feature gating the networking dependencies and `expad-topology/serde`.
 - Embed.toml, memory.x, rp235x_riscv.x: board and linker configuration for the RP2350.
 
 ## Build & Development Commands
@@ -37,7 +39,7 @@ cargo build --bin capture   # or: cargo build (builds the lib + every bin)
 cargo build --no-default-features   # skip the `web` feature (no Node.js needed)
 cargo fmt
 cargo clippy --all-features
-cargo test
+cargo test -p expad-topology --target x86_64-pc-windows-msvc   # host triple: the firmware's own target cannot run tests
 
 cd web
 npm run dev:mock     # dev server + mock device: develop the UI with live dummy data, no hardware needed
@@ -52,7 +54,7 @@ what neither can fix automatically, such as a missing return type, is worth fixi
 
 The default `web` feature needs Node.js (`engines` in [web/package.json](web/package.json)); build.rs reruns `npm ci` whenever `web/package-lock.json` is newer than the installed packages. Before building, copy [.env.example](.env.example) to `.env` and set the WiFi password — required, the build fails without a valid 8-63 character WPA2 password — plus, optionally, the PrimeUI license key.
 
-Debug and flash from VS Code with [.vscode/launch.json](.vscode/launch.json) and [.vscode/tasks.json](.vscode/tasks.json); both prompt with a dropdown of `src/bin/*.rs` programs via a shared `binName` input, so building, running, and debugging target the same binary. `cargo run --bin <name>` uploads that firmware to the RP2350 and captures serial output until canceled with Ctrl-C.
+Debug and flash from VS Code with [.vscode/launch.json](.vscode/launch.json) and [.vscode/tasks.json](.vscode/tasks.json); both prompt with a dropdown of `src/bin/*.rs` programs via a shared `binName` input, so building, running, and debugging target the same binary. `cargo run --bin <name>` uploads that firmware to the RP2350 and captures serial output until canceled with Ctrl-C. Dev builds use `opt-level = 1` and the probe runs at 10 MHz (.cargo/config.toml), which keeps flashing to ~13 s; add `DEFMT_LOG="debug,expad=trace"` to see every pair measurement's raw tap voltages.
 
 ### Adding a new application
 
@@ -83,7 +85,7 @@ To extend the protocol, change [src/web/interface.rs](src/web/interface.rs) and 
 Shared drivers and logic live in the `expad` library crate, which every file under src/bin/ depends on:
 
 ```text
-expad (lib): hal::{adc, buf, led, usb}, topology::solver
+expad (lib): hal::{adc, buf, led, usb}, topology::solver -> expad-topology (topology/)
 
 capture, detect_pin_mapping -> ShiftRegisterChain, QuadBufferChain, AdcChain
 rainbow                     -> LedStrip -> Ws2812Chain
@@ -92,14 +94,17 @@ midi_loopback               -> UsbMidi (+ UsbMidiDevice run future)
 web_interface               -> start_access_point (cyw43 + embassy-net + DHCP tasks)
                             -> spawn_web_server (picoserve tasks)
                                <-> INTERFACE (status/settings watches) <-> browser (web/, WebSocket /ws)
-topology::ResistanceSolver  -> AdcChain, QuadBufferChain   (not yet invoked from any binary)
+expression_controller       -> ResistanceSolver -> AdcChain, QuadBufferChain
+                            -> LedStrip, UsbMidi, start_access_point, spawn_web_server
+                               <-> INTERFACE (status/settings watches) <-> browser
 ```
 
 The web interface separates WiFi transport from server. `start_access_point` runs the CYW43439 as a WPA2-protected access point at 192.168.4.1/24 and spawns the WiFi, network, and DHCP tasks; `spawn_web_server` takes any `embassy_net::Stack` and spawns `MAX_SESSIONS` picoserve tasks on port 80. Each WebSocket session sends `{"settings": ...}` on connect, then `{"status": ...}` or `{"settings": ...}` whenever the matching `embassy_sync::watch::Watch` in `INTERFACE` changes; every text message from the browser is a full `Settings` JSON object, broadcast to the firmware and all sessions. Non-finite floats (e.g. in `ArmResistances::DISCONNECTED`) serialize as `null`.
 
 ## Testing Strategy
 
-- No dedicated test suite yet. Add unit tests for the topology solver and register encoding when behavior changes, and run `cargo test` before merging.
+- topology/tests/ covers the solver's arithmetic against a simulated network; run it with `cargo test -p expad-topology --target <host triple>` before merging, and extend it whenever the solving behavior changes. The `expad` crate itself only builds for the firmware target, so anything that needs a host test belongs in topology/.
+- Add unit tests for register encoding when its behavior changes.
 - For web interface changes, check the browser under `npm run dev:mock`, then against a flashed `web_interface` device with `npm run dev`. Keep [web/mock/device.ts](web/mock/device.ts), which speaks the firmware's protocol, in sync with protocol changes.
 - Validate hardware behavior on-device with the existing debug/RTT setup in [.vscode/launch.json](.vscode/launch.json).
 

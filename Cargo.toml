@@ -3,6 +3,11 @@ name = "expad"
 version = "0.2.0"
 edition = "2024"
 
+# expad-topology holds the hardware-independent half of the topology solver, so it can be
+# built and unit tested for the host: `cargo test -p expad-topology --target <host triple>`.
+[workspace]
+members = ["topology"]
+
 [lib]
 name = "expad"
 path = "src/lib.rs"
@@ -44,10 +49,18 @@ test = false
 doctest = false
 required-features = ["web"]
 
+[[bin]]
+name = "expression_controller"
+path = "src/bin/expression_controller.rs"
+test = false
+doctest = false
+required-features = ["web"]
+
 [features]
 default = ["web"]
 # Pico 2 W WiFi access point plus the web interface server. Building it runs `npm` in web/.
 web = [
+  "expad-topology/serde",
   "dep:cyw43",
   "dep:cyw43-pio",
   "dep:edge-dhcp",
@@ -61,6 +74,8 @@ web = [
 ]
 
 [dependencies]
+expad-topology = { path = "topology", features = ["defmt"] }
+
 embassy-executor = { version = "0.10", features = [
   "platform-cortex-m",
   "executor-thread",
@@ -121,3 +136,9 @@ serde-json-core = { version = "0.6.0", features = ["defmt"], optional = true }
 
 [build-dependencies]
 dotenvy = "0.15.7"
+
+# Dev builds are lightly optimized: unoptimized embassy, cyw43 and picoserve futures more than
+# double the image that has to be flashed on every run. Debug info is kept (it is not flashed),
+# so breakpoints and RTT logs still work; locals may occasionally show as optimized out.
+[profile.dev]
+opt-level = 1

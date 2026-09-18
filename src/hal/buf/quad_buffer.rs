@@ -1,7 +1,7 @@
 use super::shift_register::ShiftRegisterChain;
 use embassy_rp::spi;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, defmt::Format)]
 pub enum QuadBufferChainError {
     Spi(spi::Error),
     IdMismatch {
@@ -17,7 +17,7 @@ pub enum QuadBufferChainError {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, defmt::Format)]
 pub enum TriState {
     Low = 0b10,
     High = 0b11,

@@ -863,6 +863,7 @@ dependencies = [
  "embassy-sync",
  "embassy-time",
  "embassy-usb",
+ "expad-topology",
  "num_enum",
  "panic-probe",
  "picoserve",
@@ -871,6 +872,14 @@ dependencies = [
  "smart-leds",
  "static_cell",
  "usbd-midi",
+]
+
+[[package]]
+name = "expad-topology"
+version = "0.2.0"
+dependencies = [
+ "defmt 1.1.1",
+ "serde",
 ]
 
 [[package]]

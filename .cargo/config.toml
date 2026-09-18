@@ -1,5 +1,7 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-rs run --chip RP2350"
+# 10 MHz SWD roughly halves flashing time over the default clock and is still reliable over
+# jumper wires; 20 MHz saves only another second.
+runner = "probe-rs run --chip RP235x --speed 10000"
 #runner = "elf2uf2-rs -d"
 #runner = "picotool load -u -v -x -t elf"
 
