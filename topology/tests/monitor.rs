@@ -456,6 +456,27 @@ fn follows_a_switch_behind_a_mono_plug_with_single_readings() {
     assert!(delay <= 60, "empty after {delay} ms");
 }
 
+/// The plug checks between a switch's readings drive the tip low for a moment; the report
+/// keeps showing how the switch is followed, so nothing flickers between the two.
+#[test]
+fn reports_steady_drives_while_following_a_switch() {
+    let mut harness = Harness::new();
+    harness.jack.plug(Some(mono(0.0)));
+    harness.run_until(JackMode::Switch, 200);
+
+    let followed = [Drive::High, Drive::Floating, Drive::Low, Drive::Floating];
+    let mut plug_checks = 0;
+    for _ in 0..40 {
+        if harness.monitor.reading().contact == TIP_SWITCH {
+            plug_checks += 1;
+        }
+        harness.run_for(READING_TIME);
+        assert_eq!(harness.monitor.report().drives, followed);
+    }
+
+    assert!(plug_checks >= 3, "only {plug_checks} plug checks");
+}
+
 /// A stereo sustain pedal released reads like a plug with nothing behind it; pressing it has
 /// to be noticed straight away all the same.
 #[test]
@@ -547,6 +568,13 @@ fn follows_a_rheostat_behind_a_stereo_plug() {
     harness.run_for(20);
     assert_eq!(harness.mode(), JackMode::Rheostat);
     assert_close(harness.position(), 0.5, 1e-3);
+
+    // Reported as the tip's arm, with the star point on the sleeve and the ring isolated.
+    let resistances = harness.monitor.report().resistances;
+    let [tip, ring, sleeve] = resistances.relative;
+    assert_close(tip * resistances.total, 12.5, 0.05);
+    assert!(ring.is_infinite(), "ring at {ring}");
+    assert_close(sleeve, 0.0, 0.0);
 }
 
 /// Behind a mono plug a rheostat reads like a ring-wiper potentiometer resting on its heel

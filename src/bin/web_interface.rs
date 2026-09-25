@@ -43,7 +43,17 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 /// back and forth with a phase offset per jack.
 fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     if jack == JACK_COUNT - 1 {
-        return JackStatus::DISCONNECTED;
+        // Plug checks: the tip switch pulled up against the tip pulled down, halfway between.
+        return JackStatus {
+            voltages: [0.0, f32::NAN, f32::NAN, HIGH_RAIL_VOLTAGE / 2.0],
+            pulls: [
+                ArmPull::Down,
+                ArmPull::Floating,
+                ArmPull::Floating,
+                ArmPull::Up,
+            ],
+            ..JackStatus::DISCONNECTED
+        };
     }
 
     let phase_offset = jack as u64 * SWEEP_PERIOD_MILLISECONDS / JACK_COUNT as u64;
@@ -62,15 +72,21 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
         position: Some(value),
         value,
         resistances,
-        voltages: dummy_arm_voltages(resistances),
-        pulls: [ArmPull::Floating, ArmPull::Up, ArmPull::Down],
+        voltages: dummy_contact_voltages(resistances),
+        pulls: [
+            ArmPull::Floating,
+            ArmPull::Up,
+            ArmPull::Down,
+            ArmPull::Floating,
+        ],
     }
 }
 
-/// Voltages the arms of `resistances` would show while arm 1 is pulled up and arm 2 pulled down:
-/// the driven arms drop the current across their pull resistors, and the floating arm 0 carries no
-/// current, so its tap sits at the center node voltage.
-fn dummy_arm_voltages(resistances: ArmResistances) -> [f32; 3] {
+/// Voltages the contacts of `resistances` would show while arm 1 is pulled up and arm 2 pulled
+/// down: the driven arms drop the current across their pull resistors, and the floating arm 0
+/// carries no current, so its tap sits at the center node voltage. The tip switch keeps the
+/// high rail from the plug check that found the plug.
+fn dummy_contact_voltages(resistances: ArmResistances) -> [f32; 4] {
     let pulled_up_resistance = resistances.relative[1] * resistances.total;
     let pulled_down_resistance = resistances.relative[2] * resistances.total;
     let current = HIGH_RAIL_VOLTAGE
@@ -80,7 +96,12 @@ fn dummy_arm_voltages(resistances: ArmResistances) -> [f32; 3] {
     let pulled_down_voltage = current * DUMMY_PULL_RESISTANCE;
     let center_voltage = pulled_down_voltage + current * pulled_down_resistance;
 
-    [center_voltage, pulled_up_voltage, pulled_down_voltage]
+    [
+        center_voltage,
+        pulled_up_voltage,
+        pulled_down_voltage,
+        HIGH_RAIL_VOLTAGE,
+    ]
 }
 
 #[embassy_executor::main]

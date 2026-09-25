@@ -123,20 +123,25 @@ fn worth_sending(sent: Option<SentControlChange>, value: f32, control: u8) -> bo
 }
 
 fn jack_status(report: &JackReport, settings: &JackSettings) -> JackStatus {
-    if report.mode == JackMode::Empty {
-        return JackStatus::DISCONNECTED;
-    }
-
-    JackStatus {
+    let [tip, ring, sleeve] = report.voltages;
+    let mut status = JackStatus {
         mode: report.mode,
         position: report.position,
         value: report
             .position
             .map_or(0.0, |position| settings.value(position)),
         resistances: report.resistances,
-        voltages: report.voltages,
+        voltages: [tip, ring, sleeve, report.tip_switch_voltage],
         pulls: report.drives.map(ArmPull::from),
+    };
+
+    // An empty jack keeps its plug checks' voltages and drives, but nothing behind them.
+    if report.mode == JackMode::Empty {
+        status.resistances = JackStatus::DISCONNECTED.resistances;
+        status.value = 0.0;
     }
+
+    status
 }
 
 /// Hands the settings' wiper choices to the scanner.

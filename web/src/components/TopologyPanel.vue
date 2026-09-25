@@ -3,10 +3,12 @@ import ChevronLeft from "@primeicons/vue/chevron-left";
 import ChevronRight from "@primeicons/vue/chevron-right";
 import { computed } from "vue";
 
-import ResistorCircuit, { type CircuitArm } from "@/components/ResistorCircuit.vue";
+import JackNarrative from "@/components/JackNarrative.vue";
+import ResistorCircuit, { type CircuitArm, type CircuitContact } from "@/components/ResistorCircuit.vue";
 import type { JackStatus } from "@/interface";
 
 const ARM_COUNT = 3;
+const TIP_SWITCH = 3;
 
 const { jack, color = undefined, status = undefined } = defineProps<{
   jack: number;
@@ -23,6 +25,13 @@ const circuitArms = computed<CircuitArm[]>(() =>
     resistance: armResistance(arm),
   })),
 );
+
+const tipSwitch = computed<CircuitContact>(() => ({
+  pull: status?.pulls[TIP_SWITCH] ?? "floating",
+  voltage: status?.voltages[TIP_SWITCH] ?? null,
+}));
+
+const plugged = computed(() => status !== undefined && status.mode !== "empty");
 
 /** Absolute resistance of `arm` in kΩ, `null` while it is isolated or the total is unresolved. */
 function armResistance(arm: number): number | null {
@@ -62,7 +71,7 @@ function formatResistance(kiloOhms: number | null | undefined): string {
       class="overflow-hidden transition-[width] duration-200"
       :class="collapsed ? 'w-0' : 'w-180'"
     >
-      <div class="flex h-full w-180 flex-col gap-4 p-4">
+      <div class="flex h-full w-180 flex-col gap-4 overflow-y-auto p-4">
         <header class="flex items-baseline justify-between">
           <h2
             class="text-xl font-semibold"
@@ -75,9 +84,19 @@ function formatResistance(kiloOhms: number | null | undefined): string {
           </span>
         </header>
 
-        <div class="flex flex-1 items-center justify-center">
-          <ResistorCircuit :arms="circuitArms" />
+        <!-- The circuit scales down to the height the description leaves -->
+        <div class="flex min-h-64 flex-1 items-center justify-center">
+          <ResistorCircuit
+            :arms="circuitArms"
+            :tip-switch="tipSwitch"
+            :plugged="plugged"
+          />
         </div>
+
+        <JackNarrative
+          :status="status"
+          class="border-t border-surface-800 pt-3"
+        />
       </div>
     </div>
   </aside>

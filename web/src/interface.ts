@@ -28,10 +28,10 @@ export interface JackStatus {
   /** Expression value in 0..1 that is sent to the host. */
   value: number;
   resistances: ArmResistances;
-  /** Voltage measured at each arm's tap, in V. */
-  voltages: [number | null, number | null, number | null];
-  /** Rail each arm is driven to while measuring. */
-  pulls: [ArmPull, ArmPull, ArmPull];
+  /** Voltage last measured at each contact's tap - tip, ring, sleeve, tip switch - in V. */
+  voltages: [number | null, number | null, number | null, number | null];
+  /** Rail each contact is switched to while the jack is measured. */
+  pulls: [ArmPull, ArmPull, ArmPull, ArmPull];
 }
 
 export interface Status {

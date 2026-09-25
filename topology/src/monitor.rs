@@ -88,8 +88,10 @@ pub struct JackReport {
     pub resistances: ArmResistances,
     /// Last voltage read at each arm's tap, in V.
     pub voltages: [f32; ARM_COUNT],
-    /// How each arm was driven for its last reading.
-    pub drives: [Drive; ARM_COUNT],
+    /// How each contact (the arms, then the tip switch) is driven for the reading the monitor
+    /// is on: that of its last reading, except for the plug checks interleaved with following
+    /// a switch or rheostat, which briefly drive the tip low and the tip switch high.
+    pub drives: [Drive; CONTACT_COUNT],
     /// Last plug check's reading of the tip switch, in V: half the rails without a plug, the
     /// high rail with one.
     pub tip_switch_voltage: f32,
@@ -101,7 +103,7 @@ impl JackReport {
         position: None,
         resistances: ArmResistances::DISCONNECTED,
         voltages: [f32::NAN; ARM_COUNT],
-        drives: [Drive::Floating; ARM_COUNT],
+        drives: [Drive::Floating; CONTACT_COUNT],
         tip_switch_voltage: f32::NAN,
     };
 }
@@ -470,9 +472,13 @@ impl JackMonitor {
         } else {
             self.report.tip_switch_voltage = voltage;
         }
-        self.report
-            .drives
-            .copy_from_slice(&reading.drives[..ARM_COUNT]);
+        let interleaved_plug_check = matches!(
+            &self.task,
+            Task::TwoTerminal(element) if element.next == ElementRead::PlugCheck
+        );
+        if !interleaved_plug_check {
+            self.report.drives = reading.drives;
+        }
 
         match self.task {
             Task::Rails { .. } => self.record_rail(voltage, now),
@@ -1125,7 +1131,9 @@ fn tip_sleeve_element(resistances: &ArmResistances) -> Option<bool> {
     }
 }
 
-/// The arm resistances a tip-sleeve element of `resistance` kΩ shows as, for the report.
+/// The arm resistances a tip-sleeve element of `resistance` kΩ shows as, for the report: the
+/// tip's arm carries it and the star point sits on the sleeve, with the ring on the star point
+/// behind a mono plug and isolated behind a stereo one.
 fn element_resistances(ring_shorted: bool, resistance: f32) -> ArmResistances {
     let open = !resistance.is_finite();
     let shorted = resistance == 0.0;
@@ -1135,7 +1143,7 @@ fn element_resistances(ring_shorted: bool, resistance: f32) -> ArmResistances {
         (true, false, false) => [1.0, 0.0, 0.0],
         (false, true, _) => [f32::INFINITY; ARM_COUNT],
         (false, false, true) => [0.0, f32::INFINITY, 0.0],
-        (false, false, false) => [f32::NAN, f32::INFINITY, f32::NAN],
+        (false, false, false) => [1.0, f32::INFINITY, 0.0],
     };
 
     ArmResistances {

@@ -7,7 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::hal::led::RGB8;
 
-use crate::topology::{ARM_COUNT, ArmResistances, Drive, JackMode};
+use crate::topology::{ArmResistances, CONTACT_COUNT, Drive, JackMode};
 
 pub use crate::board::JACK_COUNT;
 
@@ -44,10 +44,10 @@ pub struct JackStatus {
     /// Expression value in `0.0..=1.0` that is sent to the host.
     pub value: f32,
     pub resistances: ArmResistances,
-    /// Voltage measured at each arm's tap, in volts.
-    pub voltages: [f32; ARM_COUNT],
-    /// Rail each arm is driven to while measuring.
-    pub pulls: [ArmPull; ARM_COUNT],
+    /// Voltage last measured at each contact's tap - tip, ring, sleeve, tip switch - in volts.
+    pub voltages: [f32; CONTACT_COUNT],
+    /// Rail each contact is switched to while the jack is measured.
+    pub pulls: [ArmPull; CONTACT_COUNT],
 }
 
 impl JackStatus {
@@ -56,8 +56,8 @@ impl JackStatus {
         position: None,
         value: 0.0,
         resistances: ArmResistances::DISCONNECTED,
-        voltages: [f32::NAN; ARM_COUNT],
-        pulls: [ArmPull::Floating; ARM_COUNT],
+        voltages: [f32::NAN; CONTACT_COUNT],
+        pulls: [ArmPull::Floating; CONTACT_COUNT],
     };
 }
 
