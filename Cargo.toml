@@ -13,6 +13,12 @@ name = "expad"
 path = "src/lib.rs"
 
 [[bin]]
+name = "adc_characterization"
+path = "src/bin/adc_characterization.rs"
+test = false
+doctest = false
+
+[[bin]]
 name = "capture"
 path = "src/bin/capture.rs"
 test = false

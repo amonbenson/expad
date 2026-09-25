@@ -359,6 +359,49 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         }
     }
 
+    /// Switches every chip to the filter setting closest to `update_rate`, keeping the
+    /// calibration taken at the previous one. Offset and gain can shift slightly between
+    /// filter settings, so readings meant to be compared should share one setting.
+    pub fn set_update_rate(&mut self, update_rate: u32) -> Result<(), AdcChainError> {
+        self.config = self.config.with_update_rate(update_rate);
+        let filter = self.config.filter_register();
+        self.write_all_registers(filter)
+    }
+
+    /// Conversion rate the chips actually run at, after rounding to the filter's steps.
+    pub fn update_rate(&self) -> u32 {
+        self.config
+            .filter_register()
+            .update_rate(self.config.chopping)
+    }
+
+    /// Converts `channel` continuously and fills `voltages` with consecutive results, then
+    /// leaves the chip idle. Staying on one channel, the ADC delivers a result every
+    /// conversion period instead of paying its filter's full settling time for each one;
+    /// only the first result waits for that settling.
+    pub async fn measure_continuous(
+        &mut self,
+        chip: usize,
+        channel: u8,
+        voltages: &mut [f32],
+    ) -> Result<(), AdcChainError> {
+        let control = self.config.control_register(channel)?;
+        self.write_register(chip, control)?;
+        let mode = self.config.mode_register(AdcMode::ContinuousConversion);
+        self.write_register(chip, mode)?;
+
+        for voltage in voltages.iter_mut() {
+            // Reading the data register raises RDY again, so only the first result can
+            // find it still low from before.
+            wait_for_completion(&mut self.rdy[chip]).await;
+            let data: Data = self.read_register(chip)?;
+            *voltage = self.code_to_voltage(data.bits());
+        }
+
+        let idle = self.config.mode_register(AdcMode::Idle);
+        self.write_register(chip, idle)
+    }
+
     /// Voltage a reading of full scale corresponds to, which is also the highest voltage
     /// this chain can tell apart from anything above it.
     pub fn full_scale_voltage(&self) -> f32 {
