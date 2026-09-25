@@ -3,7 +3,7 @@
 
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
-use embassy_time::{Instant, Timer};
+use embassy_time::{Duration, Instant, Timer};
 use expad::board::{self, Contact, JACKS};
 use expad::hal::adc::{AdcChain, AdcChainConfig, Coding};
 use expad::hal::buf::TriState;
@@ -21,6 +21,22 @@ const WIPER_CONTACT: Contact = Contact::Tip;
 /// controller's current one (13). Each lands on its filter word after the driver's
 /// rounding down of 4096 / rate.
 const UPDATE_RATES: [u32; 5] = [1365, 1024, 819, 682, 315];
+
+/// SPI clock (Hz) and chip select guard (µs) compared at the controller's update rate: what
+/// the breadboard needed, and the trimmed settings the driver now defaults to.
+const SPI_SETTINGS: [(u32, u64); 2] = [(1_000_000, 50), (4_000_000, 10)];
+const COMPARISON_UPDATE_RATE: u32 = 819;
+
+/// Readings of the wiper taken per SPI setting, both switching channels and staying on one.
+const COMPARISON_READINGS: usize = 300;
+
+/// Distance from the median, in robust standard deviations, beyond which a reading counts as
+/// an outlying code - what too short a chip select guard produced on the breadboard.
+const OUTLIER_SIGMAS: f32 = 6.0;
+
+/// Smallest robust standard deviation assumed, in V, so readings that barely move are not all
+/// taken for outliers: about one output step at 819 Hz.
+const MIN_OUTLIER_SIGMA: f32 = 0.0002;
 
 /// Readings averaged for every rail and self-test value.
 const AVERAGED_READINGS: usize = 16;
@@ -140,6 +156,74 @@ fn tone_amplitude(samples: &[f32], sample_rate: f32, frequency: f32) -> f32 {
     2.0 * square_root(power.max(0.0)) / samples.len() as f32 * 1e6
 }
 
+/// How many of `samples` are outlying codes, and how far the worst one lies from the median,
+/// in µV.
+fn outliers(samples: &[f32]) -> (usize, f32) {
+    let count = samples.len();
+    let mut sorted = [0.0f32; COMPARISON_READINGS];
+    let sorted = &mut sorted[..count];
+    sorted.copy_from_slice(samples);
+    sorted.sort_unstable_by(f32::total_cmp);
+    let median = sorted[count / 2];
+
+    let mut deviations = [0.0f32; COMPARISON_READINGS];
+    let deviations = &mut deviations[..count];
+    for (deviation, sample) in deviations.iter_mut().zip(samples) {
+        *deviation = (sample - median).abs();
+    }
+    deviations.sort_unstable_by(f32::total_cmp);
+    // The median absolute deviation, scaled to a standard deviation for normal noise.
+    let sigma = (1.4826 * deviations[count / 2]).max(MIN_OUTLIER_SIGMA);
+
+    let outlying = deviations
+        .iter()
+        .filter(|&&deviation| deviation > OUTLIER_SIGMAS * sigma)
+        .count();
+    (outlying, deviations[count - 1] * 1e6)
+}
+
+/// Reading time, noise and outlying codes of the wiper under one SPI setting: switching
+/// between the three taps as a solve does, then staying on the wiper as tracking one pedal
+/// does, which also skips rewriting the control register.
+async fn compare_spi(
+    adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>,
+    chip: usize,
+    channels: [u8; 3],
+) {
+    let [wiper_channel, high_channel, low_channel] = channels;
+    let mut wiper = [0.0f32; COMPARISON_READINGS];
+
+    let started = Instant::now();
+    for reading in wiper.iter_mut() {
+        *reading = unwrap!(adcs.measure_channel(chip, wiper_channel).await);
+        unwrap!(adcs.measure_channel(chip, high_channel).await);
+        unwrap!(adcs.measure_channel(chip, low_channel).await);
+    }
+    let reading_micros = started.elapsed().as_micros() / (3 * COMPARISON_READINGS) as u64;
+    let (outlying, worst) = outliers(&wiper);
+    info!(
+        "  switching: {} us per reading, wiper {}, {} outliers (worst {} uV)",
+        reading_micros,
+        statistics(&wiper),
+        outlying,
+        worst
+    );
+
+    let started = Instant::now();
+    for reading in wiper.iter_mut() {
+        *reading = unwrap!(adcs.measure_channel(chip, wiper_channel).await);
+    }
+    let reading_micros = started.elapsed().as_micros() / COMPARISON_READINGS as u64;
+    let (outlying, worst) = outliers(&wiper);
+    info!(
+        "  same channel: {} us per reading, wiper {}, {} outliers (worst {} uV)",
+        reading_micros,
+        statistics(&wiper),
+        outlying,
+        worst
+    );
+}
+
 async fn average(adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>, chip: usize, channel: u8) -> f32 {
     let mut sum = 0.0;
     for _ in 0..AVERAGED_READINGS {
@@ -190,6 +274,22 @@ async fn main(_spawner: Spawner) {
         JACK, HIGH_CONTACT, LOW_CONTACT, WIPER_CONTACT
     );
     Timer::after_millis(100).await;
+
+    for (spi_frequency, guard_micros) in SPI_SETTINGS {
+        let config = base_config
+            .with_update_rate(COMPARISON_UPDATE_RATE)
+            .with_spi_frequency(spi_frequency)
+            .with_chip_select_guard(Duration::from_micros(guard_micros));
+        unwrap!(adcs.init(config).await);
+        info!(
+            "=== {} Hz, SPI at {} kHz, chip select guard {} us",
+            adcs.update_rate(),
+            spi_frequency / 1000,
+            guard_micros
+        );
+        report_levels(&mut adcs, "levels").await;
+        compare_spi(&mut adcs, chip, [wiper_channel, high_channel, low_channel]).await;
+    }
 
     let mut wiper = [0.0f32; SWITCHING_ROUNDS];
     let mut positions = [0.0f32; SWITCHING_ROUNDS];

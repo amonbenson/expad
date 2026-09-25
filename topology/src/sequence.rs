@@ -51,6 +51,7 @@ pub enum SolveStep {
 /// Keeping the sequence separate from the hardware lets the identical state machine run
 /// against a simulated network in tests and against the real pull switches and ADC chain on the
 /// device.
+#[derive(Debug, Clone, Copy)]
 pub struct SolveSequence {
     config: SolverConfig,
     measurements: [Option<PairMeasurement>; ARM_COUNT],

@@ -8,7 +8,7 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIO0, PIO1, USB};
 use embassy_rp::{bind_interrupts, dma, pio, usb};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
-use embassy_time::{Duration, Instant, Ticker};
+use embassy_time::{Duration, Instant};
 use expad::board::{self, JACKS};
 use expad::hal::adc::AdcChainConfig;
 use expad::hal::led::RGB8;
@@ -17,26 +17,23 @@ use expad::hal::usb::{
     UsbMidiConfig,
 };
 use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
-use expad::topology::solver::{
-    ArmConfig, ArmRails, ResistanceSolver, ResistanceSolverConfig, SolveOutcome,
-};
-use expad::topology::{ARM_COUNT, ArmResistances, SolverConfig};
+use expad::topology::scanner::{JackScanner, SettleConfig};
+use expad::topology::{JackMode, JackReport, MonitorConfig, SolverConfig};
 use expad::web::{
-    ArmPull, INTERFACE, JACK_COUNT, JackSettings, JackStatus, Status, spawn_web_server,
+    ArmPull, INTERFACE, JACK_COUNT, JackSettings, JackStatus, Settings, Status, spawn_web_server,
 };
 
 use {defmt_rtt as _, panic_probe as _};
 
-/// ADC conversions per second. The fastest rate leaves ~11 noise-free bits, too coarse to see
-/// the few millivolts a high-value potentiometer drops across its pull resistors; 315 Hz is
-/// four times quieter at about 10 ms per reading.
-const ADC_UPDATE_RATE: u32 = 315;
+/// ADC conversions per second (filter word 5). A reading takes three conversion periods to
+/// settle after a channel change, 4.4 ms here against 10.2 ms at 315 Hz, and still resolves
+/// 0.2 mV. Faster words turn much coarser - see docs/fast-tracking.md for the measurements.
+const ADC_UPDATE_RATE: u32 = 819;
 
 /// Standard deviation of a single reading at [`ADC_UPDATE_RATE`], measured on the PCB with
-/// `capture`. Every tolerance the solver applies is derived from it. The board alone is
-/// quieter (20 µV near 0 V, 60 µV near the reference); a pedal's floating wiper tap is the
-/// noisiest reading at up to 0.36 mV, which this covers.
-const ADC_VOLTAGE_NOISE: f32 = 0.0004;
+/// `adc_characterization` through a pedal (0.39 mV, 0.45 mV sample to sample). Every tolerance
+/// the solver applies is derived from it.
+const ADC_VOLTAGE_NOISE: f32 = 0.0005;
 
 /// Colors the jacks are shown in, matching `JACK_COLORS` in web/src/theme.ts.
 const JACK_COLORS: [RGB8; JACK_COUNT] = [
@@ -66,18 +63,15 @@ const JACK_COLORS: [RGB8; JACK_COUNT] = [
 /// still reads as connected rather than as an unplugged jack.
 const CONNECTED_LED_FLOOR: f32 = 0.1;
 
-/// Shortest time one full sweep of every jack may take. Measuring is bounded by the ADC's
-/// conversion time in practice, but an empty mapping table would otherwise spin the loop
-/// without ever yielding to the network stack.
-const MINIMUM_SWEEP_INTERVAL: Duration = Duration::from_millis(20);
+/// How often the web interface is sent a new status. Positions update far more often than
+/// a browser can show, so this only bounds the WebSocket traffic.
+const STATUS_INTERVAL: Duration = Duration::from_millis(33);
 
-/// Sweeps between re-measuring the rail voltages. They are properties of the board rather
-/// than of what is plugged in, so they only have to keep up with thermal drift.
-const RAIL_REFRESH_SWEEPS: u32 = 500;
+/// How often the LED strip is rewritten with the latest positions.
+const LED_INTERVAL: Duration = Duration::from_millis(20);
 
-/// Sweeps between logging how long one takes, which is what the detection rate comes out
-/// of. Sweeps that remeasure the rails are reported separately, since they are not typical.
-const SWEEP_REPORT_SWEEPS: u32 = 100;
+/// How often the number of position updates each jack received is logged.
+const RATE_REPORT_INTERVAL: Duration = Duration::from_secs(5);
 
 /// Highest value of a MIDI control change.
 const MIDI_MAX_VALUE: u8 = 127;
@@ -119,62 +113,63 @@ struct MidiUpdate {
     value: u8,
 }
 
-/// What the last control change sent for a jack was, and the wiper position it was
+/// What the last control change sent for a jack was, and the expression value it was
 /// quantized from.
 #[derive(Debug, Clone, Copy)]
 struct SentControlChange {
-    position: f32,
-    value: u8,
+    value: f32,
+    control: u8,
 }
 
-/// Quantizes a wiper position to a control change value, inverted for jacks whose pedal is
-/// wired the other way round.
-fn control_value(position: f32, settings: &JackSettings) -> u8 {
-    let position = if settings.inverted {
-        1.0 - position
-    } else {
-        position
-    };
-
-    (position.clamp(0.0, 1.0) * MIDI_MAX_VALUE as f32 + 0.5) as u8
+/// Quantizes an expression value in `0.0..=1.0` to a control change value.
+fn control_value(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * MIDI_MAX_VALUE as f32 + 0.5) as u8
 }
 
-/// Whether `position` has moved far enough from what was last sent for `value` to be worth
-/// sending, which also covers the very first reading of a jack.
-fn worth_sending(sent: Option<SentControlChange>, position: f32, value: u8) -> bool {
+/// Whether `value` has moved far enough from what was last sent for its control change to be
+/// worth sending, which also covers the very first reading of a jack.
+fn worth_sending(sent: Option<SentControlChange>, value: f32, control: u8) -> bool {
     match sent {
-        Some(sent) => value != sent.value && (position - sent.position).abs() > MIDI_HYSTERESIS,
+        Some(sent) => control != sent.control && (value - sent.value).abs() > MIDI_HYSTERESIS,
         None => true,
     }
 }
 
-/// The total resistance the next solve of a jack should settle for: nothing to settle when
-/// the jack is empty, and as long as allowed when the total could not be determined.
-fn expected_total(resistances: &ArmResistances) -> f32 {
-    let disconnected = resistances
-        .relative
-        .iter()
-        .all(|relative| relative.is_infinite());
-    if disconnected { 0.0 } else { resistances.total }
+fn jack_status(report: &JackReport, settings: &JackSettings) -> JackStatus {
+    if report.mode == JackMode::Empty {
+        return JackStatus::DISCONNECTED;
+    }
+
+    JackStatus {
+        mode: report.mode,
+        position: report.position,
+        value: report
+            .position
+            .map_or(0.0, |position| settings.value(position)),
+        resistances: report.resistances,
+        voltages: report.voltages,
+        pulls: report.drives.map(ArmPull::from),
+    }
 }
 
-fn jack_status(outcome: &SolveOutcome, position: Option<f32>) -> JackStatus {
-    JackStatus {
-        value: position.unwrap_or(0.0),
-        resistances: outcome.resistances,
-        voltages: outcome.voltages,
-        pulls: outcome.pulls.map(ArmPull::from),
+/// Hands the settings' wiper choices to the scanner.
+fn apply_wiper_settings<const S: usize, const A: usize, const J: usize>(
+    scanner: &mut JackScanner<'_, S, A, J>,
+    settings: &Settings,
+) {
+    for (jack, jack_settings) in settings.jacks.iter().enumerate().take(J) {
+        scanner.set_preferred_wiper(jack, jack_settings.wiper.arm());
     }
 }
 
 /// Color the jack's LED shows: off while nothing usable is plugged in, otherwise the
-/// jack's own color brightened with the pedal's position.
-fn jack_color(jack: usize, position: Option<f32>) -> RGB8 {
-    let Some(position) = position else {
+/// jack's own color brightened with the pedal's expression value.
+fn jack_color(jack: usize, value: Option<f32>) -> RGB8 {
+    let Some(value) = value else {
         return RGB8::default();
     };
 
-    let intensity = CONNECTED_LED_FLOOR + (1.0 - CONNECTED_LED_FLOOR) * position.clamp(0.0, 1.0);
+    let intensity = CONNECTED_LED_FLOOR + (1.0 - CONNECTED_LED_FLOOR) * value.clamp(0.0, 1.0);
     let color = JACK_COLORS[jack];
 
     RGB8 {
@@ -239,125 +234,118 @@ async fn main(spawner: Spawner) {
     info!("Initializing USB MIDI");
     let (mut midi, mut usb_device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());
 
-    let solver_config = ResistanceSolverConfig {
-        solver: SolverConfig::from_voltage_noise(ADC_VOLTAGE_NOISE),
+    let monitor_config = MonitorConfig::new(
+        SolverConfig::from_voltage_noise(ADC_VOLTAGE_NOISE),
+        board::PULL_RESISTANCE,
+    );
+    let settle_config = SettleConfig {
         tap_capacitance: board::INPUT_FILTER_CAPACITANCE,
         tap_series_resistance: board::INPUT_FILTER_RESISTANCE,
         ..Default::default()
     };
-    let mut solver = ResistanceSolver::new(solver_config, switches, adcs);
-    let jack_arms: [[ArmConfig; ARM_COUNT]; JACK_COUNT] = JACKS.map(|jack| jack.arms());
+    let mut scanner = JackScanner::new(
+        switches,
+        adcs,
+        settle_config,
+        JACKS.map(|jack| jack.config()),
+        monitor_config,
+    );
     let mut settings_receiver = unwrap!(INTERFACE.settings.receiver());
     let mut settings = settings_receiver.get().await;
 
     let detect = async {
-        let mut ticker = Ticker::every(MINIMUM_SWEEP_INTERVAL);
-        let mut rails = [None::<ArmRails>; JACK_COUNT];
-        // What each jack measured last sweep, which is what the next one settles for.
-        let mut expected_totals = [f32::NAN; JACK_COUNT];
+        apply_wiper_settings(&mut scanner, &settings);
+        leds.set_brightness(settings.led_brightness);
+
         let mut sent = [None::<SentControlChange>; JACK_COUNT];
-        let mut sweep = 0u32;
+        let mut modes = [JackMode::Empty; JACK_COUNT];
+        let mut status_due = Instant::now();
+        let mut leds_due = Instant::now();
+        let mut rate_window_started = Instant::now();
+        let mut position_updates = [0u32; JACK_COUNT];
 
         loop {
             if let Some(changed) = settings_receiver.try_changed() {
                 info!("Settings changed: {}", changed);
                 settings = changed;
+                apply_wiper_settings(&mut scanner, &settings);
+                leds.set_brightness(settings.led_brightness);
                 // Everything a control change is built from may have changed with them, so
                 // let every jack send again rather than work out which parts still match.
                 sent = [None; JACK_COUNT];
             }
-            leds.set_brightness(settings.led_brightness);
 
-            let started = Instant::now();
-            let mut jacks = [JackStatus::DISCONNECTED; JACK_COUNT];
-            let mut measured_rails = false;
+            let changed = match scanner.step().await {
+                Ok(changed) => changed,
+                Err(error) => {
+                    warn!("Scanning the jacks failed: {}", error);
+                    continue;
+                }
+            };
 
-            for (index, arms) in jack_arms.iter().enumerate() {
-                if rails[index].is_none() || sweep.is_multiple_of(RAIL_REFRESH_SWEEPS) {
-                    measured_rails = true;
-                    match solver.measure_rails(arms).await {
-                        Ok(measured) => {
-                            info!("Jack {} rails: {}", index, measured);
-                            rails[index] = Some(measured);
-                        }
-                        Err(error) => {
-                            warn!("Jack {} rail measurement failed: {}", index, error);
-                            rails[index] = None;
-                        }
-                    }
+            for jack in (0..JACK_COUNT).filter(|&jack| changed[jack]) {
+                let report = *scanner.report(jack);
+                if report.mode != modes[jack] {
+                    info!(
+                        "Jack {}: {}, {}, tip switch {}V",
+                        jack, report.mode, report.resistances, report.tip_switch_voltage
+                    );
+                    modes[jack] = report.mode;
+                }
+                if report.mode == JackMode::Tracking {
+                    position_updates[jack] += 1;
                 }
 
-                let Some(jack_rails) = rails[index] else {
+                let jack_settings = &settings.jacks[jack];
+                let value = report
+                    .position
+                    .map(|position| jack_settings.value(position));
+                leds.set_color(jack, jack_color(jack, value));
+
+                let Some(value) = value else {
+                    sent[jack] = None;
                     continue;
                 };
 
-                // A jack being unplugged mid-measurement leaves the readings of one solve
-                // inconsistent with each other, which is a transient rather than a fault:
-                // report the jack as disconnected and pick it up again next sweep.
-                let outcome = match solver
-                    .solve(arms, &jack_rails, expected_totals[index])
-                    .await
-                {
-                    Ok(outcome) => outcome,
-                    Err(error) => {
-                        debug!("Jack {} did not solve: {}", index, error);
-                        sent[index] = None;
-                        expected_totals[index] = f32::NAN;
-                        continue;
+                let control = control_value(value);
+                if worth_sending(sent[jack], value, control) {
+                    sent[jack] = Some(SentControlChange { value, control });
+                    let update = MidiUpdate {
+                        channel: jack_settings.midi_channel,
+                        controller: jack_settings.midi_controller,
+                        value: control,
+                    };
+
+                    if MIDI_UPDATES.try_send(update).is_err() {
+                        debug!("Dropped {}, the MIDI queue is full", update);
                     }
-                };
-                expected_totals[index] = expected_total(&outcome.resistances);
-
-                let position = outcome
-                    .resistances
-                    .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE);
-                jacks[index] = jack_status(&outcome, position);
-
-                if sweep.is_multiple_of(SWEEP_REPORT_SWEEPS) {
-                    info!(
-                        "Jack {}: {}, position {}",
-                        index, outcome.resistances, position
-                    );
                 }
-
-                if let Some(position) = position {
-                    let jack_settings = &settings.jacks[index];
-                    let value = control_value(position, jack_settings);
-
-                    if worth_sending(sent[index], position, value) {
-                        sent[index] = Some(SentControlChange { position, value });
-                        let update = MidiUpdate {
-                            channel: jack_settings.midi_channel,
-                            controller: jack_settings.midi_controller,
-                            value,
-                        };
-
-                        if MIDI_UPDATES.try_send(update).is_err() {
-                            debug!("Dropped {}, the MIDI queue is full", update);
-                        }
-                    }
-                } else {
-                    sent[index] = None;
-                }
-
-                leds.set_color(index, jack_color(index, position));
             }
 
-            INTERFACE.status.sender().send(Status {
-                uptime_seconds: Instant::now().as_secs(),
-                jacks,
-            });
-            leds.update().await;
-
-            let elapsed = started.elapsed().as_millis();
-            if measured_rails {
-                info!("Sweep took {}ms, including a rail measurement", elapsed);
-            } else if sweep.is_multiple_of(SWEEP_REPORT_SWEEPS) {
-                info!("Sweep took {}ms", elapsed);
+            let now = Instant::now();
+            if now >= status_due {
+                status_due = now + STATUS_INTERVAL;
+                INTERFACE.status.sender().send(Status {
+                    uptime_seconds: now.as_secs(),
+                    jacks: core::array::from_fn(|jack| {
+                        jack_status(scanner.report(jack), &settings.jacks[jack])
+                    }),
+                });
             }
 
-            sweep = sweep.wrapping_add(1);
-            ticker.next().await;
+            if now >= leds_due {
+                leds_due = now + LED_INTERVAL;
+                leds.update().await;
+            }
+
+            let window = now - rate_window_started;
+            if window >= RATE_REPORT_INTERVAL {
+                let window_millis = window.as_millis() as u32;
+                let rates = position_updates.map(|updates| updates * 1000 / window_millis);
+                info!("Position updates per second: {}", rates);
+                position_updates = [0; JACK_COUNT];
+                rate_window_started = now;
+            }
         }
     };
 

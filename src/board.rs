@@ -22,7 +22,7 @@ use crate::hal::adc::{AdcChain, ChannelCount};
 use crate::hal::buf::{PullSwitchChain, ShiftRegisterChain};
 use crate::hal::led::{LedStrip, Ws2812Chain};
 use crate::topology::ARM_COUNT;
-use crate::topology::solver::ArmConfig;
+use crate::topology::scanner::JackConfig;
 
 /// Expression pedal jacks on the board (J2-J5).
 pub const JACK_COUNT: usize = 4;
@@ -98,25 +98,25 @@ impl JackWiring {
         self.adc_channels[contact as usize]
     }
 
-    /// The jack's tip, ring and sleeve as the solver's three arms.
-    pub const fn arms(&self) -> [ArmConfig; ARM_COUNT] {
-        let mut arms = [ArmConfig {
+    /// The jack's wiring as the scanner takes it: tip, ring and sleeve as the three arms,
+    /// then the tip switch - the contact order of `expad-topology`.
+    pub const fn config(&self) -> JackConfig {
+        JackConfig {
             switch_chip: self.switch_chip,
-            switch_tap: 0,
+            switch_taps: [
+                Contact::Tip.tap(),
+                Contact::Ring.tap(),
+                Contact::Sleeve.tap(),
+                Contact::TipSwitch.tap(),
+            ],
             adc_chip: self.adc_chip,
-            adc_channel: 0,
-            pull_up_resistance: PULL_RESISTANCE,
-            pull_down_resistance: PULL_RESISTANCE,
-        }; ARM_COUNT];
-
-        let mut arm = 0;
-        while arm < ARM_COUNT {
-            arms[arm].switch_tap = Contact::ARMS[arm].tap();
-            arms[arm].adc_channel = self.adc_channel(Contact::ARMS[arm]);
-            arm += 1;
+            adc_channels: [
+                self.adc_channel(Contact::Tip),
+                self.adc_channel(Contact::Ring),
+                self.adc_channel(Contact::Sleeve),
+                self.adc_channel(Contact::TipSwitch),
+            ],
         }
-
-        arms
     }
 }
 

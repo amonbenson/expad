@@ -9,7 +9,7 @@ use embassy_rp::peripherals::{DMA_CH0, PIO1};
 use embassy_rp::{dma, pio};
 use embassy_time::{Duration, Instant, Ticker};
 use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
-use expad::topology::ArmResistances;
+use expad::topology::{ArmResistances, JackMode};
 use expad::web::{ArmPull, INTERFACE, JACK_COUNT, JackStatus, Status, spawn_web_server};
 
 use {defmt_rtt as _, panic_probe as _};
@@ -21,7 +21,7 @@ const SWEEP_PERIOD_MILLISECONDS: u64 = 4000;
 /// between a pulled-up and a pulled-down arm. Resistances are in kOhm and currents in mA.
 const DUMMY_TOTAL_RESISTANCE: f32 = 10.0;
 const DUMMY_PULL_RESISTANCE: f32 = 1.0;
-const HIGH_RAIL_VOLTAGE: f32 = 3.3;
+const HIGH_RAIL_VOLTAGE: f32 = 2.5;
 
 bind_interrupts!(struct Irqs {
     PIO1_IRQ_0 => pio::InterruptHandler<PIO1>;
@@ -51,13 +51,15 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     let value = 1.0 - (2.0 * phase as f32 / SWEEP_PERIOD_MILLISECONDS as f32 - 1.0).abs();
 
     // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2, with the wiper `value`
-    // of the way from arm 1's end, as `ArmResistances::wiper_position` reads it.
+    // of the way from arm 2's (the sleeve's) end, as `ArmResistances::wiper_position` reads it.
     let resistances = ArmResistances {
-        relative: [0.0, value, 1.0 - value],
+        relative: [0.0, 1.0 - value, value],
         total: DUMMY_TOTAL_RESISTANCE,
     };
 
     JackStatus {
+        mode: JackMode::Tracking,
+        position: Some(value),
         value,
         resistances,
         voltages: dummy_arm_voltages(resistances),

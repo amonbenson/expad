@@ -24,11 +24,16 @@
 
 mod config;
 mod measurement;
+mod monitor;
 mod resistances;
 mod resolve;
 mod sequence;
 
 pub use config::SolverConfig;
 pub use measurement::{ArmDrive, PairMeasurement, PairVoltages};
-pub use resistances::{ARM_COUNT, ArmResistances};
+pub use monitor::{
+    CONTACT_COUNT, Drive, JackMode, JackMonitor, JackReport, MonitorConfig, Reading, TIP,
+    TIP_SWITCH,
+};
+pub use resistances::{ARM_COUNT, ArmResistances, GROUNDED_END, Potentiometer, track_ends};
 pub use sequence::{PAIR_SEQUENCE, SolveError, SolveSequence, SolveStep};

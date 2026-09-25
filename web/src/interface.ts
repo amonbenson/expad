@@ -10,7 +10,21 @@ export interface ArmResistances {
 /** Rail an arm is driven to while it is measured. */
 export type ArmPull = "up" | "down" | "floating";
 
+/**
+ * What the firmware makes of a jack: `identifying` runs full solves (just plugged in, or tracking
+ * lost the pedal), `tracking` follows a potentiometer's wiper, `other` is any other
+ * network (switch pedals, mono cables) and `open` a plug with nothing conducting behind it.
+ */
+export type JackMode = "empty" | "identifying" | "tracking" | "other" | "open";
+
+/** Contact a potentiometer's wiper is on, deciding the one ambiguous end stop (ring and sleeve shorted). */
+export type WiperContact = "auto" | "tip" | "ring" | "sleeve";
+
 export interface JackStatus {
+  mode: JackMode;
+  /** Wiper position in 0..1 as measured, before range and inversion; `null` without a potentiometer. */
+  position: number | null;
+  /** Expression value in 0..1 that is sent to the host. */
   value: number;
   resistances: ArmResistances;
   /** Voltage measured at each arm's tap, in V. */
@@ -29,6 +43,10 @@ export interface JackSettings {
   midiChannel: number;
   midiController: number;
   inverted: boolean;
+  /** Wiper positions in 0..1 the pedal's travel starts and ends at, stretched to the full expression range. */
+  minimum: number;
+  maximum: number;
+  wiper: WiperContact;
 }
 
 export interface Settings {

@@ -3,7 +3,7 @@
 
 use defmt::{error, info, unwrap, warn};
 use embassy_executor::Spawner;
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Instant, Timer};
 use expad::board::{self, ADC_CHIPS, Contact, JACKS};
 use expad::hal::adc::{AdcChain, AdcChainConfig};
 use expad::hal::buf::TriState;
@@ -40,9 +40,13 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 
 async fn measure_all(adcs: &mut AdcChain<'_, ADC_CHIPS>) -> Readings {
     let mut readings = [[0.0; ADC_CHANNELS]; ADC_CHIPS];
-    for (chip, voltages) in readings.iter_mut().enumerate() {
-        for (channel, voltage) in voltages.iter_mut().enumerate() {
-            *voltage = unwrap!(adcs.measure_channel(chip, channel as u8).await);
+    for channel in 0..ADC_CHANNELS {
+        let voltages = unwrap!(
+            adcs.measure_parallel([Some(channel as u8); ADC_CHIPS])
+                .await
+        );
+        for (chip_readings, voltage) in readings.iter_mut().zip(voltages) {
+            chip_readings[channel] = unwrap!(voltage);
         }
     }
     readings
@@ -125,6 +129,7 @@ async fn main(_spawner: Spawner) {
     let mut failures = self_test_adcs(&mut adcs).await;
 
     info!("Switching every contact to both rails - unplug all jacks for a clean result");
+    let started = Instant::now();
     for (jack, wiring) in JACKS.iter().enumerate() {
         for contact in Contact::ALL {
             let tap = contact.tap();
@@ -213,6 +218,10 @@ async fn main(_spawner: Spawner) {
     }
 
     unwrap!(switches.clear());
+    info!(
+        "Checked every contact in {}ms, both ADCs converting in parallel",
+        started.elapsed().as_millis()
+    );
 
     if failures == 0 {
         info!("Every contact matches the board table");

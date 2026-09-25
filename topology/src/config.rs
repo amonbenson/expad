@@ -45,13 +45,17 @@ pub struct SolverConfig {
     /// as the sum of the unnormalized ratios they produce (`1.0` is perfect, `0.0` hopeless).
     /// It drops towards zero as the arm the two pairs share approaches 0 kΩ, which leaves
     /// them unable to say anything about the other two - a third pair is measured then.
+    /// Noise in the ratios is amplified by roughly its inverse, so a potentiometer whose wiper
+    /// is the shared arm (conditioning ~0.03-0.1, depending on the wiper's contact resistance)
+    /// must always take the third pair: at 0.05 a 1.5% wiper passed, and its position jittered
+    /// by 0.5% of travel instead of 0.02%.
     pub min_ratio_conditioning: f32,
 }
 
 impl SolverConfig {
-    /// Standard deviation of a single AD7718 reading at a 315 Hz update rate, as measured on
+    /// Standard deviation of a single AD7718 reading at an 819 Hz update rate, as measured on
     /// the expression controller PCB through a pedal.
-    pub const DEFAULT_VOLTAGE_NOISE: f32 = 0.0004;
+    pub const DEFAULT_VOLTAGE_NOISE: f32 = 0.0005;
 
     /// Series resistance each arm is driven through on the expression controller, in kΩ.
     pub const DEFAULT_PULL_RESISTANCE: f32 = 1.0;
@@ -68,7 +72,7 @@ impl SolverConfig {
             total_consistency_fraction: 0.1,
             short_resistance_threshold: 0.05,
             ratio_division_epsilon: 10.0 * voltage_noise,
-            min_ratio_conditioning: 0.05,
+            min_ratio_conditioning: 0.5,
         }
     }
 }

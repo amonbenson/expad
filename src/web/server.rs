@@ -55,7 +55,8 @@ impl WebSocketCallback for InterfaceSession {
         // Receivers only report values sent after their creation, so push the current settings first.
         send(&mut tx, Update::Settings(settings.get().await)).await?;
 
-        let mut buffer = [0; 512];
+        // Fits a full settings message with every jack's range at full float precision.
+        let mut buffer = [0; 1024];
         let close_reason = loop {
             let update = select(status.changed(), settings.changed());
             let message = match rx.next_message(&mut buffer, update).await? {

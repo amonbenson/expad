@@ -52,4 +52,10 @@ body {
   --p-toggleswitch-handle-checked-color: var(--p-primary-color);
   --p-toggleswitch-handle-checked-hover-color: var(--p-primary-hover-color);
   --p-toggleswitch-focus-ring-color: var(--p-focus-ring-color);
+  --p-slider-range-background: var(--p-primary-color);
+  --p-slider-handle-background: var(--p-primary-color);
+  --p-slider-handle-hover-background: var(--p-primary-hover-color);
+  --p-slider-handle-content-background: var(--p-primary-color);
+  --p-slider-handle-content-hover-background: var(--p-primary-hover-color);
+  --p-slider-handle-focus-ring-color: var(--p-focus-ring-color);
 }

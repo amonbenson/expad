@@ -285,7 +285,8 @@ fn rejects_two_measurements_that_disagree_about_the_total_resistance() {
 }
 
 /// The wiper sits on the shared arm here, so both pairs sharing it only report "all of it
-/// is in the other arm" - the third pair, across the two track ends, has to split them.
+/// is in the other arm" - the third pair, across the two track ends, has to split them. The
+/// position counts from the sleeve (arm 2) end.
 #[test]
 fn reads_a_potentiometers_wiper_position_from_its_two_track_halves() {
     let resistances = solve(&StarNetwork::new([0.0, 3.0, 7.0])).unwrap();
@@ -294,7 +295,7 @@ fn reads_a_potentiometers_wiper_position_from_its_two_track_halves() {
         .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
         .expect("a shorted arm between two track halves is a potentiometer");
 
-    assert_close(position, 0.3, TOLERANCE);
+    assert_close(position, 0.7, TOLERANCE);
 }
 
 /// The breadboard's potentiometer: about 1 MΩ with the wiper a third of the way along, so the
@@ -307,7 +308,7 @@ fn resolves_a_high_value_potentiometer_whose_currents_are_barely_above_the_noise
         .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
         .expect("a shorted arm between two track halves is a potentiometer");
 
-    assert_close(position, 0.3, TOLERANCE);
+    assert_close(position, 0.7, TOLERANCE);
     assert_close(resistances.total, 1000.0, HIGH_RESISTANCE_TOLERANCE);
 }
 
@@ -325,7 +326,34 @@ fn keeps_the_position_accurate_when_the_currents_are_dominated_by_noise() {
         .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
         .expect("a shorted arm between two track halves is a potentiometer");
 
-    assert_close(position, 0.3, HIGH_RESISTANCE_TOLERANCE);
+    assert_close(position, 0.7, HIGH_RESISTANCE_TOLERANCE);
+}
+
+/// The PCB's 10.85 kΩ pedal a fifth of the way along, its wiper on the shared arm with 1.5%
+/// contact resistance. The two pairs sharing the wiper are just well-conditioned enough to
+/// look usable, but split the track halves through a drop of a few millivolts across the
+/// wiper - one standard deviation of noise moved the position by most of a MIDI step, until
+/// the solver was made to take the third pair across the two track ends instead.
+#[test]
+fn keeps_the_position_steady_when_the_wiper_contact_resistance_is_the_shared_arm() {
+    let network = StarNetwork::new([0.16, 2.3, 8.4]);
+    let expected_position = 8.4 / (2.3 + 8.4);
+    let quarter_midi_step = 0.25 / 127.0;
+
+    for offsets in [
+        [NOISE_OFFSET, -NOISE_OFFSET, NOISE_OFFSET],
+        [-NOISE_OFFSET, NOISE_OFFSET, -NOISE_OFFSET],
+        [NOISE_OFFSET, NOISE_OFFSET, -NOISE_OFFSET],
+        [-NOISE_OFFSET, -NOISE_OFFSET, NOISE_OFFSET],
+    ] {
+        let resistances = solve_with_offsets(&network, offsets).unwrap();
+
+        let position = resistances
+            .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
+            .expect("a near-shorted arm between two track halves is a potentiometer");
+
+        assert_close(position, expected_position, quarter_midi_step);
+    }
 }
 
 #[test]

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-mock-device",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "mock", "--prefix", "web"],
+      "port": 8765
+    },
+    {
+      "name": "web-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "web", "--", "--mode", "mock", "--port", "5190", "--strictPort"],
+      "port": 5190
+    }
+  ]
+}

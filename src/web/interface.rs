@@ -2,8 +2,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::Watch;
 use serde::{Deserialize, Serialize};
 
-use crate::hal::buf::TriState;
-use crate::topology::ArmResistances;
+use crate::topology::{ARM_COUNT, ArmResistances, Drive, JackMode};
 
 pub use crate::board::JACK_COUNT;
 
@@ -12,7 +11,7 @@ const MAX_RECEIVERS: usize = super::server::MAX_SESSIONS + 1;
 
 pub type SharedValue<T> = Watch<CriticalSectionRawMutex, T, MAX_RECEIVERS>;
 
-/// Rail an arm is driven to while it is measured, mirroring [`TriState`] for the web protocol.
+/// Rail an arm is driven to while it is measured, mirroring [`Drive`] for the web protocol.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ArmPull {
@@ -21,33 +20,39 @@ pub enum ArmPull {
     Floating,
 }
 
-impl From<TriState> for ArmPull {
-    fn from(state: TriState) -> Self {
-        match state {
-            TriState::High => ArmPull::Up,
-            TriState::Low => ArmPull::Down,
-            TriState::HiZ => ArmPull::Floating,
+impl From<Drive> for ArmPull {
+    fn from(drive: Drive) -> Self {
+        match drive {
+            Drive::High => ArmPull::Up,
+            Drive::Low => ArmPull::Down,
+            Drive::Floating => ArmPull::Floating,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct JackStatus {
+    pub mode: JackMode,
+    /// Wiper position in `0.0..=1.0` as measured, before the jack's range and inversion
+    /// settings apply; `None` while no potentiometer is plugged in.
+    pub position: Option<f32>,
     /// Expression value in `0.0..=1.0` that is sent to the host.
     pub value: f32,
     pub resistances: ArmResistances,
     /// Voltage measured at each arm's tap, in volts.
-    pub voltages: [f32; 3],
+    pub voltages: [f32; ARM_COUNT],
     /// Rail each arm is driven to while measuring.
-    pub pulls: [ArmPull; 3],
+    pub pulls: [ArmPull; ARM_COUNT],
 }
 
 impl JackStatus {
     pub const DISCONNECTED: Self = Self {
+        mode: JackMode::Empty,
+        position: None,
         value: 0.0,
         resistances: ArmResistances::DISCONNECTED,
-        voltages: [f32::NAN; 3],
-        pulls: [ArmPull::Floating; 3],
+        voltages: [f32::NAN; ARM_COUNT],
+        pulls: [ArmPull::Floating; ARM_COUNT],
     };
 }
 
@@ -59,6 +64,30 @@ pub struct Status {
     pub jacks: [JackStatus; JACK_COUNT],
 }
 
+/// Which contact of a jack a potentiometer's wiper is on, for the one end stop where the
+/// measurement cannot tell: ring and sleeve shorted together.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, defmt::Format)]
+#[serde(rename_all = "camelCase")]
+pub enum WiperContact {
+    /// The wiper last seen in the jack, or the ring.
+    Auto,
+    Tip,
+    Ring,
+    Sleeve,
+}
+
+impl WiperContact {
+    /// Arm index of the contact, `None` for [`Auto`](Self::Auto).
+    pub fn arm(self) -> Option<usize> {
+        match self {
+            Self::Auto => None,
+            Self::Tip => Some(0),
+            Self::Ring => Some(1),
+            Self::Sleeve => Some(2),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, defmt::Format)]
 #[serde(rename_all = "camelCase")]
 pub struct JackSettings {
@@ -67,6 +96,27 @@ pub struct JackSettings {
     /// MIDI control change number (`0..=127`).
     pub midi_controller: u8,
     pub inverted: bool,
+    /// Wiper positions the pedal's travel starts and ends at, in `0.0..=1.0`, which are
+    /// stretched to the full expression range.
+    pub minimum: f32,
+    pub maximum: f32,
+    pub wiper: WiperContact,
+}
+
+impl JackSettings {
+    /// The expression value a wiper `position` stands for: stretched from the jack's range
+    /// to `0.0..=1.0` and inverted if the jack is.
+    pub fn value(&self, position: f32) -> f32 {
+        let range = self.maximum - self.minimum;
+        let stretched = if range > 0.0 {
+            (position - self.minimum) / range
+        } else {
+            position
+        };
+        let value = stretched.clamp(0.0, 1.0);
+
+        if self.inverted { 1.0 - value } else { value }
+    }
 }
 
 /// User-tweakable configuration, editable from the web interface.
@@ -87,6 +137,9 @@ impl Settings {
             midi_channel: 0,
             midi_controller: Self::EXPRESSION_CONTROLLER,
             inverted: false,
+            minimum: 0.0,
+            maximum: 1.0,
+            wiper: WiperContact::Auto,
         }; JACK_COUNT],
     };
 }

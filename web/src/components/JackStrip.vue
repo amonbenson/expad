@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import Button from "primevue/button";
 import InputNumber from "primevue/inputnumber";
 import Select from "primevue/select";
+import Slider from "primevue/slider";
 import ToggleSwitch from "primevue/toggleswitch";
 import { computed, useId } from "vue";
 
-import type { JackSettings, JackStatus } from "@/interface";
+import type { JackMode, JackSettings, JackStatus, WiperContact } from "@/interface";
 import { JACK_COLORS } from "@/theme";
 
 const { jack, status = undefined, selected } = defineProps<{
@@ -20,10 +22,47 @@ const midiChannels = Array.from({ length: 16 }, (_, channel) => ({
   value: channel,
 }));
 
+const wiperContacts: { label: string; value: WiperContact }[] = [
+  { label: "Auto", value: "auto" },
+  { label: "Tip", value: "tip" },
+  { label: "Ring", value: "ring" },
+  { label: "Sleeve", value: "sleeve" },
+];
+
+const modeLabels: Record<JackMode, string> = {
+  empty: "Empty",
+  identifying: "Identifying",
+  tracking: "Tracking",
+  other: "Other pedal",
+  open: "Nothing connected",
+};
+
 const id = useId();
 const color = computed(() => JACK_COLORS[jack]);
-const connected = computed(() => status?.resistances.relative.some(arm => arm !== null) ?? false);
+const mode = computed(() => status?.mode ?? "empty");
 const valuePercent = computed(() => Math.round((status?.value ?? 0) * 100));
+const position = computed(() => status?.position ?? null);
+
+/** The pedal's range in percent of the wiper's travel, as the range slider edits it. */
+const rangePercent = computed<number[]>({
+  get: () => [settings.value.minimum * 100, settings.value.maximum * 100],
+  set: ([minimum = 0, maximum = 100]) => {
+    settings.value.minimum = minimum / 100;
+    settings.value.maximum = maximum / 100;
+  },
+});
+
+function setMinimum(): void {
+  if (position.value !== null) {
+    settings.value.minimum = position.value;
+  }
+}
+
+function setMaximum(): void {
+  if (position.value !== null) {
+    settings.value.maximum = position.value;
+  }
+}
 </script>
 
 <template>
@@ -47,11 +86,14 @@ const valuePercent = computed(() => Math.round((status?.value ?? 0) * 100));
         <h2
           class="text-5xl font-bold"
           :style="{ color }"
-          :title="`Jack ${jack + 1}: ${connected ? 'Connected' : 'Disconnected'}`"
+          :title="`Jack ${jack + 1}: ${modeLabels[mode]}`"
         >
           {{ jack + 1 }}
         </h2>
       </header>
+      <p class="-mt-2 text-center text-xs text-muted-color">
+        {{ modeLabels[mode] }}
+      </p>
 
       <div class="flex flex-col gap-3">
         <div class="flex flex-col gap-1">
@@ -100,6 +142,72 @@ const valuePercent = computed(() => Math.round((status?.value ?? 0) * 100));
           <ToggleSwitch
             v-model="settings.inverted"
             :input-id="`${id}-inverted`"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <span
+            :id="`${id}-range`"
+            class="text-sm text-muted-color"
+          >
+            Range
+          </span>
+          <div class="flex justify-between text-xs whitespace-nowrap text-muted-color tabular-nums">
+            <span>{{ rangePercent[0]?.toFixed(1) }} %</span>
+            <span>{{ rangePercent[1]?.toFixed(1) }} %</span>
+          </div>
+          <div class="relative mx-2 my-2">
+            <Slider
+              v-model="rangePercent"
+              :aria-labelledby="`${id}-range`"
+              :step="0.5"
+              range
+            />
+            <!-- Where the wiper is now, to set the range from -->
+            <div
+              v-if="position !== null"
+              class="pointer-events-none absolute top-1/2 h-3 w-0.5 -translate-1/2 bg-surface-0"
+              :style="{ left: `${position * 100}%` }"
+              :title="`Wiper at ${(position * 100).toFixed(1)} %`"
+            />
+          </div>
+          <div class="flex gap-1">
+            <Button
+              label="Min"
+              title="Set the range's start to the wiper's current position"
+              size="small"
+              severity="secondary"
+              :disabled="position === null"
+              fluid
+              @click="setMinimum"
+            />
+            <Button
+              label="Max"
+              title="Set the range's end to the wiper's current position"
+              size="small"
+              severity="secondary"
+              :disabled="position === null"
+              fluid
+              @click="setMaximum"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label
+            :id="`${id}-wiper`"
+            class="text-sm text-muted-color"
+          >
+            Wiper
+          </label>
+          <Select
+            v-model="settings.wiper"
+            :label-id="`${id}-wiper`"
+            :options="wiperContacts"
+            option-label="label"
+            option-value="value"
+            size="small"
+            append-to="self"
           />
         </div>
       </div>

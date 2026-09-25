@@ -14,7 +14,7 @@ const ADC_CHANNELS: usize = 10;
 
 /// Conversions per second, as in `expression_controller`, so the noise seen here is the noise
 /// the solver works with.
-const UPDATE_RATE: u32 = 315;
+const UPDATE_RATE: u32 = 819;
 
 /// Bipolar, so readings around 0 V show their noise instead of clipping at zero.
 const CODING: Coding = Coding::Bipolar;

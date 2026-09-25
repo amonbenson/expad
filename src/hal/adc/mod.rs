@@ -30,11 +30,15 @@ const MAX_REGISTER_WIDTH: usize = 3;
 /// Time to wait after a soft reset before the registers may be accessed again.
 const RESET_DURATION: Duration = Duration::from_millis(1);
 
-/// Time chip select is held around every transaction. Found necessary on the breadboard once
-/// the driver runs optimized: with 2 µs the ADC loses sync with the transfers, and with 10 µs
-/// it stays in sync but noticeably more conversions land on outlying codes. 50 µs is clean
-/// and still small next to a conversion.
-const CHIP_SELECT_GUARD: Duration = Duration::from_micros(50);
+/// Time chip select is held around every transaction, by default. On the breadboard 2 µs lost
+/// sync with the ADC and 10 µs let noticeably more conversions land on outlying codes, so
+/// 50 µs was used there. On the PCB, `adc_characterization` found no outlying code in 300
+/// readings at 10 µs and 4 MHz either, and the same noise as at 50 µs and 1 MHz.
+const DEFAULT_CHIP_SELECT_GUARD: Duration = Duration::from_micros(10);
+
+/// SPI clock, by default: comfortably below the AD7718's 5 MHz limit, so a transaction takes a
+/// few µs instead of the 32 µs of the 1 MHz the driver used to run at.
+const DEFAULT_SPI_FREQUENCY: u32 = 4_000_000;
 
 /// Longest the ADC takes to raise RDY after being given a new conversion or calibration.
 /// Its logic runs from a 32.768 kHz crystal, so this is a few dozen clock cycles.
@@ -66,6 +70,8 @@ pub struct AdcChainConfig {
     range: Range,
     reference_voltage: f32,
     update_rate: u32,
+    spi_frequency: u32,
+    chip_select_guard: Duration,
 }
 
 impl Default for AdcChainConfig {
@@ -83,6 +89,8 @@ impl Default for AdcChainConfig {
             range: Range::V2_56V,
             reference_voltage: NOMINAL_REFERENCE_VOLTAGE,
             update_rate,
+            spi_frequency: DEFAULT_SPI_FREQUENCY,
+            chip_select_guard: DEFAULT_CHIP_SELECT_GUARD,
         }
     }
 }
@@ -110,6 +118,18 @@ impl AdcChainConfig {
     /// leaves only around 11 noise-free bits.
     pub fn with_update_rate(mut self, update_rate: u32) -> Self {
         self.update_rate = update_rate;
+        self
+    }
+
+    /// Sets the SPI clock in Hz, applied by [`AdcChain::init`].
+    pub fn with_spi_frequency(mut self, spi_frequency: u32) -> Self {
+        self.spi_frequency = spi_frequency;
+        self
+    }
+
+    /// Sets how long chip select is held around every transaction.
+    pub fn with_chip_select_guard(mut self, chip_select_guard: Duration) -> Self {
+        self.chip_select_guard = chip_select_guard;
         self
     }
 
@@ -175,6 +195,9 @@ pub struct AdcChain<'d, const N: usize> {
     rdy: [Input<'d>; N],
     config: AdcChainConfig,
     continuous_capture: Option<[u8; N]>,
+    /// Channel each chip's control register currently selects, if known, so a conversion on the
+    /// same channel as the last one can skip rewriting it.
+    selected_channels: [Option<u8>; N],
 }
 
 impl<'d, const N: usize> AdcChain<'d, N> {
@@ -196,18 +219,19 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             rdy,
             config: AdcChainConfig::default(),
             continuous_capture: None,
+            selected_channels: [None; N],
         }
     }
 
     fn select(&mut self, chip: usize) {
         self.cs[chip].set_low();
-        block_for(CHIP_SELECT_GUARD);
+        block_for(self.config.chip_select_guard);
     }
 
     fn deselect(&mut self, chip: usize) {
-        block_for(CHIP_SELECT_GUARD);
+        block_for(self.config.chip_select_guard);
         self.cs[chip].set_high();
-        block_for(CHIP_SELECT_GUARD);
+        block_for(self.config.chip_select_guard);
     }
 
     fn control_byte(operation: Operation, address: u8) -> u8 {
@@ -227,6 +251,12 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             *byte = (bits >> (8 * (R::WIDTH - 1 - i))) as u8;
         }
         let data = &buf[..1 + R::WIDTH];
+
+        // Whatever channel this selects, the cached one no longer holds; `select_channel`
+        // records its own after writing.
+        if R::ADDRESS == <Control as Register>::ADDRESS {
+            self.selected_channels[chip] = None;
+        }
 
         self.select(chip);
         let result = self.spi.blocking_write(data);
@@ -303,8 +333,10 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     pub async fn init(&mut self, config: AdcChainConfig) -> Result<(), AdcChainError> {
-        self.ensure_connected()?;
         self.config = config;
+        self.spi.set_frequency(config.spi_frequency);
+        self.selected_channels = [None; N];
+        self.ensure_connected()?;
 
         let filter = self.config.filter_register();
         self.write_all_registers(filter)?;
@@ -347,6 +379,10 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             }
         }
 
+        // Every chip is left on the last calibration group's channel.
+        let last_group = calibration_groups.checked_sub(1);
+        self.selected_channels = [last_group; N];
+
         Ok(())
     }
 
@@ -385,8 +421,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         channel: u8,
         voltages: &mut [f32],
     ) -> Result<(), AdcChainError> {
-        let control = self.config.control_register(channel)?;
-        self.write_register(chip, control)?;
+        self.select_channel(chip, channel)?;
         let mode = self.config.mode_register(AdcMode::ContinuousConversion);
         self.write_register(chip, mode)?;
 
@@ -411,11 +446,23 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     /// Starts one conversion of `channel`. The filter register is left as `init` wrote it,
     /// since it never changes afterwards.
     fn start_single_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
-        let control = self.config.control_register(channel)?;
-        self.write_register(chip, control)?;
+        self.select_channel(chip, channel)?;
 
         let mode = self.config.mode_register(AdcMode::SingleConversion);
         self.write_register(chip, mode)?;
+
+        Ok(())
+    }
+
+    /// Points `chip`'s control register at `channel`, unless it already is.
+    fn select_channel(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
+        if self.selected_channels[chip] == Some(channel) {
+            return Ok(());
+        }
+
+        let control = self.config.control_register(channel)?;
+        self.write_register(chip, control)?;
+        self.selected_channels[chip] = Some(channel);
 
         Ok(())
     }
@@ -433,11 +480,55 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         chip: usize,
         channel: u8,
     ) -> Result<f32, AdcChainError> {
-        self.start_single_conversion(chip, channel)?;
+        self.start_conversion(chip, channel)?;
+        self.finish_conversion(chip).await
+    }
+
+    /// Starts one conversion of `channel` on `chip`, to be collected with
+    /// [`finish_conversion`](Self::finish_conversion). Conversions started on different chips
+    /// run at the same time.
+    pub fn start_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
+        self.start_single_conversion(chip, channel)
+    }
+
+    /// Waits for the conversion last started on `chip` and returns its voltage.
+    pub async fn finish_conversion(&mut self, chip: usize) -> Result<f32, AdcChainError> {
         wait_for_completion(&mut self.rdy[chip]).await;
 
         let data: Data = self.read_register(chip)?;
         Ok(self.code_to_voltage(data.bits()))
+    }
+
+    /// Measures one channel on every chip that has one in `channels`, all chips converting at
+    /// the same time, so the whole call takes as long as a single conversion.
+    pub async fn measure_parallel(
+        &mut self,
+        channels: [Option<u8>; N],
+    ) -> Result<[Option<f32>; N], AdcChainError> {
+        for (chip, channel) in channels.iter().enumerate() {
+            if let Some(channel) = *channel {
+                self.start_conversion(chip, channel)?;
+            }
+        }
+
+        // Every chip has to be waited on at once: one finishing while another's result is
+        // being read would leave its RDY low and cost the next wait its pickup timeout.
+        let mut requested = channels.iter().map(Option::is_some);
+        let waits = self
+            .rdy
+            .each_mut()
+            .map(|rdy| wait_if_requested(rdy, requested.next().unwrap_or(false)));
+        join_array(waits).await;
+
+        let mut voltages = [None; N];
+        for (chip, voltage) in voltages.iter_mut().enumerate() {
+            if channels[chip].is_some() {
+                let data: Data = self.read_register(chip)?;
+                *voltage = Some(self.code_to_voltage(data.bits()));
+            }
+        }
+
+        Ok(voltages)
     }
 
     pub fn start_continuous_capture(&mut self) -> Result<(), AdcChainError> {
@@ -483,6 +574,12 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             value,
             voltage: self.code_to_voltage(value),
         })
+    }
+}
+
+async fn wait_if_requested(rdy: &mut Input<'_>, requested: bool) {
+    if requested {
+        wait_for_completion(rdy).await;
     }
 }
 

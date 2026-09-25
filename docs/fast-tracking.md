@@ -53,6 +53,22 @@ One MIDI step is 1/127 = 7874 ppm of travel.
 what `ADC_VOLTAGE_NOISE` already assumes, so the solver keeps its tolerances while reading 2.3x
 faster, with no averaging and no filter switching.
 
+### Phase 1 result: 819 Hz and the third pair
+
+At 819 Hz the full sweep dropped from 382 ms to 156 ms, but exposed a solver weakness that
+already cost accuracy at 315 Hz. With the wiper on the tip, the two pairs sharing it are
+conditioned roughly t / ((t + r)(t + s)), t being the wiper's contact resistance share: 0.03 at
+0.5% (third pair measured, accurate) but 0.083 at 1.5%, just above the old threshold of 0.05.
+The solver then split the track halves through a few millivolts across the wiper and amplified
+the noise ~25x. `min_ratio_conditioning` is now 0.5, so such a pedal always takes the third pair
+(its conditioning here is 0.95), at ~15 ms per sweep:
+
+| Pedal at 0.21, held still | Position σ | Total σ | Sweep |
+|---|---|---|---|
+| 315 Hz, threshold 0.05 | 2588 ppm | 0.91% | 382 ms |
+| 819 Hz, threshold 0.05 | 4880 ppm | 1.75% | 156 ms |
+| 819 Hz, threshold 0.5 | 274 ppm | 0.11% | 171 ms |
+
 ## Pull resistor value
 
 Voltage across a pedal of R with pulls of Rp: 2.5 V x R / (R + 2Rp); drop across each pull
@@ -72,6 +88,9 @@ resolves, so the resistors stay. 4.7 kΩ would be the value to fit if accurate t
 
 ## Design
 
+Implemented in `expad-topology`'s `JackMonitor` (monitor.rs, host-tested in tests/monitor.rs)
+and the firmware's `JackScanner` (src/topology/scanner.rs).
+
 ### Plug detection
 
 Each jack's tip switch contact (TN) touches the tip while no plug is inserted. Pulling the tip
@@ -86,28 +105,57 @@ whatever the pedal was driven with before.
 | State | Readings | Leaves when |
 |---|---|---|
 | Empty | Plug check every 50 ms | Plug seen: Identify |
-| Identify | Plug check, then back-to-back full solves | The solve classifies the network (below) |
-| Tracking | Track ends driven (lower-numbered end low, higher high), only the wiper read; one end tap read every ~25 ms, alternating | An end tap's pull drop disagrees with the identified total (unplugged, polarity switched): Identify |
-| Other | A full solve every ~40 ms (switch pedals, rheostats, TS cables), reported like today | The classification changes, or the solve finds nothing: Identify |
+| Identify | Back-to-back full solves (rails re-measured first when older than 30 s) | The solve classifies the network (below) |
+| Tracking | Track ends driven (the start low, the other end high; see Position below), only the wiper read; one end tap read every ~25 ms, alternating | An end tap's pull drop strays from what the solve implied (6σ, or 25% on its first reading and 3% after), or the wiper leaves the span of the ends (unplugged, polarity switched): Identify |
+| Other | Back-to-back full solves (switch pedals, rheostats, TS cables), reported like today | The classification changes, or the solve finds nothing |
+| Open | A plug check and a full solve every 100 ms | Something conducts, or the plug is gone |
 
 Identify classifies each solve:
 
 - **Potentiometer** (every arm resolved, exactly one near the star point): Tracking, remembering
   which arm is the wiper until the jack is next seen empty.
-- **Potentiometer at an end stop** (two arms near the star point, the third finite): the wiper
-  touches one track end, shorting two pins. Position is still unambiguous unless the shorted
-  pair is tip and sleeve (the ring's index lies between them, so the two readings of which pin is
-  the wiper give opposite positions). Report the position using, in order, the wiper remembered
-  for the jack, a per-jack setting, or the tip; keep solving (~25 Hz, and a pedal resting at a
-  stop is not moving) and switch to Tracking as soon as the pedal leaves the stop.
+- **Potentiometer at an end stop** (a second arm within 2% of the star point, the third carrying
+  the track): the wiper touches one track end, shorting two pins. Position is still unambiguous
+  unless the shorted pair is ring and sleeve (a ring wiper on the sleeve end, or a sleeve wiper
+  on the ring end - opposite positions). Track straight away, taking the per-jack wiper
+  setting, the wiper remembered for the jack, the tip or the ring as the wiper. A wrong
+  guess drives the true wiper as a track end, so the end-to-end resistance the track ends see
+  changes with the pedal's travel; the 3% end-drop tolerance (after the first reading) notices that within ~5% of travel
+  (host test) and the jack is identified again once the pedal slows down.
+
+  The end-stop threshold was 10% at first, the wiper's own allowance: the PCB's pedal fully
+  closed leaves 9% of its track on the sleeve, so it was taken for an end stop and solved over
+  and over instead of tracked.
 - **Nothing conducts**: plug check, then Empty or (plugged cable with nothing at the end) a full
   solve every 100 ms.
 - **Anything else**: Other.
 
 While tracking, a pedal returning to an end stop is harmless: the wiper then reads exactly one
-end tap, and the remembered roles keep the position at 0 or 1. The same ambiguity currently
-lets `wiper_position` flip between 0 and 1 at the tip-sleeve stop, where the wiper's contact
-resistance and the shorted track end are both near 0 Ω.
+end tap, and the remembered roles keep the position at 0 or 1. Before, the ambiguity let the
+position flip between 0 and 1 at the ambiguous stop, where the wiper's contact resistance and
+the shorted track end are both near 0 Ω.
+
+### Position
+
+The position is the share of the track between its start and the wiper. The start is the sleeve
+whenever the sleeve is a track end, so the value rises as the wiper leaves the sleeve - the TRS
+convention of both common wirings (wiper on tip, ring as reference, sleeve grounded; or wiper on
+ring, tip as reference) - and the lower-numbered end otherwise. The first version counted from
+the lower-numbered end, which read the PCB's tip-wiper pedal backwards (bright when closed).
+With the sleeve convention that pedal reads 0.09 closed and 1.0 open.
+
+Each track end's first reading is checked against the pull drop the identifying solve implies,
+so a pedal unplugged the moment tracking starts is not taken for the reference; that check is
+loose (25%), since solves of a pedal on an end stop were seen 10% off in total resistance on the
+PCB - held to 3% from the start, tracking dropped such a pedal at its first end-tap check. From
+then on the first reading is the reference, refined by every agreeing one and held to 3%. A freshly plugged network is settled for as if it were 100 kΩ until its first solve;
+after three rejected solves in a row, for as long as allowed (400 ms per pair).
+
+### Range and output
+
+The web interface sets a range per jack (`minimum`/`maximum` of the wiper position, with
+buttons taking the current position), which `JackSettings::value` stretches to the full
+expression range before inverting. The status carries both the raw position and that value.
 
 ### Scheduling
 
@@ -118,11 +166,24 @@ costs no tap settling, only the ADC's own. Each jack carries a due time (as soon
 while tracking or identifying, every 50 ms while empty), and each ADC serves its most overdue
 jack.
 
-### Expected rates at 819 Hz (4.4 ms per slot, ~3.7 ms with trimmed SPI overhead)
+### Rates at 819 Hz
+
+Measured on the PCB with the pedal in jack 1, after trimming the SPI overhead (phase 6):
+
+| At 819 Hz | 1 MHz SPI, 50 µs chip select guard | 4 MHz, 10 µs (default) |
+|---|---|---|
+| Reading, switching channels | 4357 µs | 4021 µs |
+| Reading, same channel (no control register write) | 4188 µs | 3985 µs |
+| Wiper noise (σ) | 442 µV | 431 µV |
+| Outlying codes in 300 readings | 0 | 0 |
+
+Three conversion periods alone take 3.66 ms, so ~0.35 ms of overhead is left per reading.
 
 | Situation | Update rate per pedal |
 |---|---|
-| One pedal on its ADC | ~200 Hz (~15% of slots go to end-tap checks) |
-| Two pedals on one ADC, or all four | ~100 Hz |
-| Plug-in to tracking | ≤ ~0.1 s (50 ms plug poll + ~40 ms identify) |
-| Unplug noticed | ≤ ~50 ms |
+| One pedal on its ADC | 168/s before the SPI trim, 188-189/s after (measured; ~15% of readings go to end-tap checks) |
+| Two pedals on one ADC, or all four | ~95/s (expected: the two jacks alternate) |
+| Plug-in to tracking | ≤ ~0.1 s (50 ms plug poll + ~45 ms identify; ≤ 120 ms in the host tests) |
+| Unplug noticed | ≤ ~0.1 s (next end-tap check within 25 ms, a solve finding nothing, a plug check) |
+
+Before: one full solve of every jack per 382 ms sweep, 2.6 updates per second.
