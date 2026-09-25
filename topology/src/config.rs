@@ -50,8 +50,8 @@ pub struct SolverConfig {
 
 impl SolverConfig {
     /// Standard deviation of a single AD7718 reading at a 315 Hz update rate, as measured on
-    /// the breadboard.
-    pub const DEFAULT_VOLTAGE_NOISE: f32 = 0.001;
+    /// the expression controller PCB through a pedal.
+    pub const DEFAULT_VOLTAGE_NOISE: f32 = 0.0004;
 
     /// Series resistance each arm is driven through on the expression controller, in kΩ.
     pub const DEFAULT_PULL_RESISTANCE: f32 = 1.0;

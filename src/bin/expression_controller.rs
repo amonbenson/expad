@@ -32,9 +32,11 @@ use {defmt_rtt as _, panic_probe as _};
 /// four times quieter at about 10 ms per reading.
 const ADC_UPDATE_RATE: u32 = 315;
 
-/// Standard deviation of a single reading at [`ADC_UPDATE_RATE`], measured on the breadboard.
-/// Every tolerance the solver applies is derived from it.
-const ADC_VOLTAGE_NOISE: f32 = 0.001;
+/// Standard deviation of a single reading at [`ADC_UPDATE_RATE`], measured on the PCB with
+/// `capture`. Every tolerance the solver applies is derived from it. The board alone is
+/// quieter (20 µV near 0 V, 60 µV near the reference); a pedal's floating wiper tap is the
+/// noisiest reading at up to 0.36 mV, which this covers.
+const ADC_VOLTAGE_NOISE: f32 = 0.0004;
 
 /// Colors the jacks are shown in, matching `JACK_COLORS` in web/src/theme.ts.
 const JACK_COLORS: [RGB8; JACK_COUNT] = [
