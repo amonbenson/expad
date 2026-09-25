@@ -49,7 +49,7 @@ pub enum SolveStep {
 /// of the network is known.
 ///
 /// Keeping the sequence separate from the hardware lets the identical state machine run
-/// against a simulated network in tests and against the real buffers and ADC chain on the
+/// against a simulated network in tests and against the real pull switches and ADC chain on the
 /// device.
 pub struct SolveSequence {
     config: SolverConfig,

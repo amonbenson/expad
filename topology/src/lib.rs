@@ -5,10 +5,10 @@
 //! floats.
 //!
 //! This crate is the arithmetic half of the topology solver and knows nothing about ADCs
-//! or output buffers: [`SolveSequence`] hands out the pair to measure next,
+//! or pull switches: [`SolveSequence`] hands out the pair to measure next,
 //! [`PairMeasurement::from_voltages`] turns the voltages that pair produced into a
 //! measurement, and the sequence resolves them into [`ArmResistances`]. The hardware half
-//! lives in `expad::topology::solver`, which drives the real buffers and ADC chain; tests
+//! lives in `expad::topology::solver`, which drives the real pull switches and ADC chain; tests
 //! drive the same sequence from a simulated network instead.
 //!
 //! All resistances are in kΩ and all currents in mA throughout the crate (kΩ × mA = V, so

@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::hal::buf::TriState;
 use crate::topology::ArmResistances;
 
-/// Expression pedal jacks on the board (J2-J5).
-pub const JACK_COUNT: usize = 4;
+pub use crate::board::JACK_COUNT;
 
 /// Receivers each shared value supports: one for the firmware plus one per browser session.
 const MAX_RECEIVERS: usize = super::server::MAX_SESSIONS + 1;
@@ -83,7 +82,7 @@ impl Settings {
     const EXPRESSION_CONTROLLER: u8 = 11;
 
     pub const DEFAULT: Self = Self {
-        led_brightness: u8::MAX / 10,
+        led_brightness: u8::MAX / 2,
         jacks: [JackSettings {
             midi_channel: 0,
             midi_controller: Self::EXPRESSION_CONTROLLER,

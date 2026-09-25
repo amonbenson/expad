@@ -1,29 +1,30 @@
 # Project Overview
 
-expad is a Rust firmware project for an RP2350 target. It initializes a shift-register buffer chain and an ADC chain, measures analog voltages, and infers resistance distribution across three arms with a small topology solver. On the Pico 2 W it can also open a WiFi access point serving a live web interface (Vue app in web/) that shows device status and edits settings in real time. The workspace's second crate, topology/, holds the solver's arithmetic without any hardware dependency, so it can be unit tested on the host.
+expad is a Rust firmware project for an RP2350 target. On the expression controller PCB (hardware/, KiCad) it switches every jack contact to shared pull-up/pull-down resistors through shift-register-driven analog switches, reads the contacts back through an ADC chain, and infers the resistance distribution across each jack's three arms with a small topology solver. On the Pico 2 W it can also open a WiFi access point serving a live web interface (Vue app in web/) that shows device status and edits settings in real time. The workspace's second crate, topology/, holds the solver's arithmetic without any hardware dependency, so it can be unit tested on the host.
 
 ## Repository Structure
 
 These files are also the extensibility hooks: the types and functions named here are where new behavior goes.
 
 - .vscode/: build, run, and debug tasks plus launch configuration; with Embed.toml, the main extension point for flashing and debugging. settings.json turns on format-on-save (rustfmt for Rust, the ESLint extension for web/) and extensions.json recommends the extensions that provide it.
-- src/lib.rs: `#![no_std]` library crate (`expad`), re-exporting `hal`, `topology`, and (with the `web` feature) `web` to every binary.
+- src/lib.rs: `#![no_std]` library crate (`expad`), re-exporting `board`, `hal`, `topology`, and (with the `web` feature) `web` to every binary.
+- src/board.rs: the PCB's wiring and the only place that knows it - pins, chip counts, `REFERENCE_VOLTAGE`, pull and ADC filter values, `Contact` (tip, ring, sleeve, tip switch) and the `JACKS` table of `JackWiring` (switch chip, ADC chip, ADC channel per contact; `arms()` gives the solver's `ArmConfig`s). `pull_switches`, `adcs` and `leds` construct the drivers on the board's pins.
 - src/bin/: one flashable application per file, each with its own `#[embassy_executor::main]` — see "Adding a new application".
-  - `capture.rs`: the entry point today — configures the SPI shift-register chain, clears the quad-buffer outputs, initializes the ADC chain for direct channel measurements, then loops over continuous capture.
-  - `detect_pin_mapping.rs`: maps buffer outputs to ADC channels.
+  - `capture.rs`: opens every pull switch, reads each ADC input once, then loops over continuous capture of both ADCs.
+  - `detect_pin_mapping.rs`: board self-test - checks each ADC's grounded (AIN6) and reference (AIN10) input, then pulls every contact of every jack up and down, verifying against `board::JACKS` that exactly the expected ADC input follows (the tip switch also follows the tip while no plug is inserted).
   - `rainbow.rs`: cycles a rainbow pattern across a WS2812B strip.
-  - `potentiometer.rs`: drives buffer outputs 0 and 2 to the low/high rails, measures the floating wiper on channel 1 against them, prints voltage and position, and mirrors it by splitting brightness across the two nearest LEDs.
+  - `potentiometer.rs`: pulls the first jack's sleeve low and ring high, measures the tip (wiper) against them, prints voltage and position, and mirrors it by splitting brightness across the two nearest LEDs.
   - `midi_loopback.rs`: echoes every USB MIDI packet back to the host.
   - `web_interface.rs`: serves the web interface over WiFi with dummy status data, logging every settings change.
-  - `expression_controller.rs`: the full firmware - continuously solves every jack's topology, publishes it to the web interface, shows each jack's position on the LED strip and sends it as a MIDI control change. Its `JACKS` table maps each jack's three arms onto buffer and ADC channels and is the only place that knows the board's wiring.
+  - `expression_controller.rs`: the full firmware - continuously solves every jack's topology, publishes it to the web interface, shows each jack's position on the LED strip and sends it as a MIDI control change. Its arms come from `board::JACKS`.
 - src/hal/mod.rs: hardware abstraction layer, re-exporting:
   - adc/: AD7718 chain driver, register abstractions, measurement flow; mod.rs exposes `AdcChainConfig` for new channels or modes.
-  - buf/: output channels — quad_buffer.rs (tri-state control, `TriState` model, output-state encoding), shift_register.rs (SPI shift-register wrapper).
-  - led/: ws2812.rs defines `Ws2812Chain`, a PIO-backed WS2812B ("NeoPixel") driver generic over LED count; strip.rs defines `LedStrip`, the stateful per-LED color and global-brightness driver over it used by `rainbow` and `potentiometer`.
+  - buf/: pull switches — pull_switch.rs (`PullSwitchChain`: one 74HC595 per jack driving two TMUX1511s, `TriState` per tap and its bit encoding, chip 0 nearest the MCU), shift_register.rs (SPI shift-register wrapper; outputs stay disabled until the first write, then latch atomically).
+  - led/: ws2812.rs defines `Ws2812Chain`, a PIO-backed WS2812B ("NeoPixel") driver generic over LED count that scales every frame to at most `MAX_CHANNEL_VALUE` (~20%), since the strip runs off the 5 V linear regulator; strip.rs defines `LedStrip`, the stateful per-LED color and global-brightness driver over it.
   - usb/midi.rs: USB MIDI over `embassy-usb`'s MIDI class with `usbd-midi` packet and message types. Defines `UsbMidiConfig` and `UsbMidi` (`receive`, `send_packet`, `send_message`); `UsbMidi::new` also returns a `UsbMidiDevice` whose `run()` must be polled concurrently (e.g. with `join`).
   - wifi/ (`web` only): access_point.rs drives the Pico 2 W CYW43439 on PIO1 plus the `embassy-net` stack — `start_access_point`, `AccessPointConfig` (SSID, password, channel, address), `AccessPointPeripherals`; dhcp.rs is its DHCP server.
-- src/topology/solver.rs: the hardware half of the solver - `ResistanceSolver` drives the arms through `QuadBufferChain`, reads every tap through `AdcChain` and carries out the sequence `expad-topology` hands it. `ArmConfig` is one arm's entry in a binary's mapping table, `measure_rails` reads every arm's rails with all three driven alike (so no current flows), and `solve` returns a `SolveOutcome` (resistances plus the raw voltages and pulls behind them). Before reading a pair it waits as many time constants (floating arm's source resistance x `tap_capacitance`) as the expected swing needs to fall below `settle_accuracy`, from a per-jack `JackHistory` of the last solved resistances, tap voltages and shared arm. mod.rs re-exports the crate's `ArmResistances`, `ARM_COUNT` and `SolverConfig`.
-- topology/: the `expad-topology` crate, the solver's hardware-independent arithmetic. `SolveSequence` decides which pair of arms to measure next around a shared arm (`with_shared_arm`; the previous solve's `largest_arm`, so no tap charges through it) and resolves the results with a weighted least-squares fit (fit.rs) of every arm and loop current to every measured drop - `PairMeasurement::from_voltages` reduces one pair's tap voltages, `SolverConfig` expresses every tolerance in standard deviations of the ADC noise, and `ArmResistances::wiper_position` reads a potentiometer's position out of a solved network. tests/ drives that same sequence from `StarNetwork`, a model of the real circuit, so the whole algorithm is covered on the host.
+- src/topology/solver.rs: the hardware half of the solver - `ResistanceSolver` drives the arms through `PullSwitchChain`, reads every tap through `AdcChain` and carries out the sequence `expad-topology` hands it. `ArmConfig` is one arm's entry in a binary's mapping table, `measure_rails` reads every arm's rails with all three driven alike (so no current flows), and `solve` returns a `SolveOutcome` (resistances plus the raw voltages and pulls behind them). Before reading a pair it waits `settle_time_constants` x (the jack's last solved total + `tap_series_resistance`) x `tap_capacitance`, clamped to `min/max_settle_delay`. mod.rs re-exports the crate's `ArmResistances`, `ARM_COUNT` and `SolverConfig`.
+- topology/: the `expad-topology` crate, the solver's hardware-independent arithmetic. `SolveSequence` hands out the pairs of `PAIR_SEQUENCE` (arm 0 high against arms 1 and 2, then 1 against 2 only when needed) and resolves them in resolve.rs from the floating taps' voltage ratios, scaled by the SNR-weighted total the loop currents imply - `PairMeasurement::from_voltages` reduces one pair's tap voltages, `SolverConfig` expresses every tolerance in standard deviations of the ADC noise, and `ArmResistances::wiper_position` reads a potentiometer's position out of a solved network. tests/ drives that same sequence from `StarNetwork`, a model of the real circuit, so the whole algorithm is covered on the host.
 - src/web/ (`web` feature): interface.rs defines the protocol types (`Status`, `JackStatus`, `ArmPull`, `Settings`, `JackSettings`) and the global `INTERFACE` state; server.rs defines `spawn_web_server` and the `picoserve` HTTP routes serving the embedded UI at `/` and a WebSocket at `/ws`.
 - web/: frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript; eslint.config.ts formats it through `@stylistic`, sorts imports and orders Tailwind classes) built into a single gzipped index.html. src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket, src/theme.ts defines the flat Nora-based preset, the blue-gray surface ramp and `JACK_COLORS`, src/App.vue lays the jacks out as a mixing desk, and src/components/ renders it (JackStrip.vue per jack, TopologyPanel.vue with ResistorCircuit.vue drawing the selected jack's arm network). mock/device.ts is the firmware stand-in and vite.config.ts configures the gzip build and dev proxy.
 - firmware/cyw43/: vendored CYW43439 firmware blobs (Infineon permissive binary license) embedded by the wifi HAL; .gitattributes marks these `*.bin` files binary so line endings are never converted.
@@ -85,28 +86,30 @@ To extend the protocol, change [src/web/interface.rs](src/web/interface.rs) and 
 Shared drivers and logic live in the `expad` library crate, which every file under src/bin/ depends on:
 
 ```text
-expad (lib): hal::{adc, buf, led, usb}, topology::solver -> expad-topology (topology/)
+expad (lib): board -> hal::{adc, buf, led, usb}, topology::solver -> expad-topology (topology/)
 
-capture, detect_pin_mapping -> ShiftRegisterChain, QuadBufferChain, AdcChain
-rainbow                     -> LedStrip -> Ws2812Chain
-potentiometer               -> ShiftRegisterChain, QuadBufferChain, AdcChain, LedStrip -> Ws2812Chain
+capture, detect_pin_mapping -> board -> PullSwitchChain -> ShiftRegisterChain, AdcChain
+rainbow                     -> board -> LedStrip -> Ws2812Chain
+potentiometer               -> board -> PullSwitchChain, AdcChain, LedStrip
 midi_loopback               -> UsbMidi (+ UsbMidiDevice run future)
 web_interface               -> start_access_point (cyw43 + embassy-net + DHCP tasks)
                             -> spawn_web_server (picoserve tasks)
                                <-> INTERFACE (status/settings watches) <-> browser (web/, WebSocket /ws)
-expression_controller       -> ResistanceSolver -> AdcChain, QuadBufferChain
+expression_controller       -> board, ResistanceSolver -> AdcChain, PullSwitchChain
                             -> LedStrip, UsbMidi, start_access_point, spawn_web_server
                                <-> INTERFACE (status/settings watches) <-> browser
 ```
 
 The web interface separates WiFi transport from server. `start_access_point` runs the CYW43439 as a WPA2-protected access point at 192.168.4.1/24 and spawns the WiFi, network, and DHCP tasks; `spawn_web_server` takes any `embassy_net::Stack` and spawns `MAX_SESSIONS` picoserve tasks on port 80. Each WebSocket session sends `{"settings": ...}` on connect, then `{"status": ...}` or `{"settings": ...}` whenever the matching `embassy_sync::watch::Watch` in `INTERFACE` changes; every text message from the browser is a full `Settings` JSON object, broadcast to the firmware and all sessions. Non-finite floats (e.g. in `ArmResistances::DISCONNECTED`) serialize as `null`.
 
+The board's 5 V rail is a 200 mA linear regulator shared by the LEDs and the Pico, so LED brightness is capped in `Ws2812Chain` and must never be raised past ~20%; `Settings::led_brightness` and `LedStrip` brightness scale within that cap.
+
 ## Testing Strategy
 
 - topology/tests/ covers the solver's arithmetic against a simulated network; run it with `cargo test -p expad-topology --target <host triple>` before merging, and extend it whenever the solving behavior changes. The `expad` crate itself only builds for the firmware target, so anything that needs a host test belongs in topology/.
 - Add unit tests for register encoding when its behavior changes.
 - For web interface changes, check the browser under `npm run dev:mock`, then against a flashed `web_interface` device with `npm run dev`. Keep [web/mock/device.ts](web/mock/device.ts), which speaks the firmware's protocol, in sync with protocol changes.
-- Validate hardware behavior on-device with the existing debug/RTT setup in [.vscode/launch.json](.vscode/launch.json).
+- Validate hardware behavior on-device with the existing debug/RTT setup in [.vscode/launch.json](.vscode/launch.json); after any change to the switch driver or `board::JACKS`, run `cargo run --bin detect_pin_mapping` with the jacks unplugged.
 
 ## Security & Compliance
 
@@ -117,7 +120,7 @@ The web interface separates WiFi transport from server. `start_access_point` run
 
 ## Agent Guardrails
 
-- Do not change linker scripts, board targets, or pin assignments without verifying the hardware implications.
+- Do not change linker scripts, board targets, or pin assignments without verifying the hardware implications; derive wiring from the KiCad project in hardware/ (e.g. `kicad-cli sch export netlist`).
 - Avoid broad rewrites of the ADC or buffer abstractions unless justified and tested.
 - Prefer small, reviewable edits, verified with `cargo build` first.
 - Do not modify generated artifacts under target/ directly.

@@ -7,11 +7,10 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::{dma, pio};
 use embassy_time::{Duration, Ticker};
-use expad::hal::led::{LedStrip, RGB8, Ws2812Chain};
+use expad::board::{self, LED_COUNT};
+use expad::hal::led::RGB8;
 
 use {defmt_rtt as _, panic_probe as _};
-
-const LED_COUNT: usize = 8;
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
@@ -48,8 +47,7 @@ async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     info!("Initializing WS2812B strip");
-    let chain = Ws2812Chain::<_, LED_COUNT>::new(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
-    let mut leds = LedStrip::new(chain);
+    let mut leds = board::leds(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
 
     info!("Cycling rainbow pattern");
     let mut ticker = Ticker::every(Duration::from_millis(20));

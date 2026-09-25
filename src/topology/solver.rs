@@ -5,38 +5,37 @@ use expad_topology::{
 };
 
 use crate::hal::adc::{AdcChain, AdcChainError};
-use crate::hal::buf::{QuadBufferChain, QuadBufferChainError, TriState};
+use crate::hal::buf::{PullSwitchChain, PullSwitchChainError, TriState};
 
 #[derive(Debug, Clone, Copy, defmt::Format)]
 pub enum ResistanceSolverError {
-    QuadBufferChain(QuadBufferChainError),
+    PullSwitchChain(PullSwitchChainError),
     AdcChain(AdcChainError),
     Solve(SolveError),
 }
 
-/// Where one arm of one jack is wired and what it is driven through: the buffer output
-/// that pulls its tap to a rail, the ADC input that reads that tap back, and the series
-/// resistance in between.
+/// Where one arm of one jack is wired and what it is driven through: the switch tap that
+/// pulls it to a rail, the ADC input that reads it back, and the pull resistances in between.
 ///
 /// These are the entries of the board's mapping table, so moving a jack to different
 /// channels is a change to that table rather than to any measurement code.
 #[derive(Debug, Clone, Copy)]
 pub struct ArmConfig {
-    pub quadbuf_chip: usize,
-    pub quadbuf_channel: u8,
+    pub switch_chip: usize,
+    pub switch_tap: u8,
     pub adc_chip: usize,
     pub adc_channel: u8,
-    /// Series resistance between the buffer output and the tap while pulled up, in kΩ.
+    /// Series resistance between the pull-up rail and the tap while pulled up, in kΩ.
     pub pull_up_resistance: f32,
-    /// Series resistance between the buffer output and the tap while pulled down, in kΩ.
+    /// Series resistance between the pull-down rail and the tap while pulled down, in kΩ.
     pub pull_down_resistance: f32,
 }
 
 impl Default for ArmConfig {
     fn default() -> Self {
         ArmConfig {
-            quadbuf_chip: 0,
-            quadbuf_channel: 0,
+            switch_chip: 0,
+            switch_tap: 0,
             adc_chip: 0,
             adc_channel: 0,
             pull_up_resistance: SolverConfig::DEFAULT_PULL_RESISTANCE,
@@ -47,7 +46,7 @@ impl Default for ArmConfig {
 
 /// Rail voltage each arm's tap reads while all three arms are driven to that rail, in V.
 ///
-/// They are properties of the board - supply rails, buffer output levels - not of whatever
+/// They are properties of the board - reference and ground, switch resistance - not of whatever
 /// is plugged into a jack, so they hold until the hardware itself drifts and do not have to
 /// be remeasured for every solve.
 #[derive(Debug, Clone, Copy, defmt::Format)]
@@ -77,8 +76,12 @@ pub struct ResistanceSolverConfig {
     /// resistance this sets how long a pair measurement takes to settle.
     pub tap_capacitance: f32,
 
-    /// Time constants of (network resistance x tap capacitance) to let a pair settle for
-    /// after the output drivers change. The ADC averages over its whole conversion window,
+    /// Resistance between each tap and its capacitance, in kΩ - the ADC input filter's
+    /// series resistor, which the network charges that capacitance through as well.
+    pub tap_series_resistance: f32,
+
+    /// Time constants of ((network + series resistance) x tap capacitance) to let a pair settle for
+    /// after the pull switches change. The ADC averages over its whole conversion window,
     /// so a tap still moving while it converts corrupts that conversion rather than just
     /// delaying it. Using the network's total resistance overestimates every tap's actual
     /// time constant, so a small factor is already plenty.
@@ -99,6 +102,7 @@ impl Default for ResistanceSolverConfig {
         Self {
             solver: SolverConfig::default(),
             tap_capacitance: 10.0,
+            tap_series_resistance: 0.0,
             settle_time_constants: 2.0,
             min_settle_delay: Duration::from_millis(1),
             max_settle_delay: Duration::from_millis(400),
@@ -108,34 +112,34 @@ impl Default for ResistanceSolverConfig {
 }
 
 /// Measures the resistor network behind one jack at a time, by driving pairs of its arms
-/// to the rails through the output buffers and reading every tap back through the ADC
+/// to the rails through the pull switches and reading every tap back through the ADC
 /// chain.
 ///
 /// The decision of which pair to measure next, and how the measurements resolve into
 /// resistances, belongs to [`SolveSequence`] in `expad-topology`; this type only carries
 /// those decisions out on real hardware.
-pub struct ResistanceSolver<'d, const N_QUADBUFS: usize, const N_ADCS: usize> {
+pub struct ResistanceSolver<'d, const N_SWITCHES: usize, const N_ADCS: usize> {
     config: ResistanceSolverConfig,
-    quadbufs: QuadBufferChain<'d, N_QUADBUFS>,
+    switches: PullSwitchChain<'d, N_SWITCHES>,
     adcs: AdcChain<'d, N_ADCS>,
 }
 
-impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QUADBUFS, N_ADCS> {
+impl<'d, const N_SWITCHES: usize, const N_ADCS: usize> ResistanceSolver<'d, N_SWITCHES, N_ADCS> {
     pub fn new(
         config: ResistanceSolverConfig,
-        quadbufs: QuadBufferChain<'d, N_QUADBUFS>,
+        switches: PullSwitchChain<'d, N_SWITCHES>,
         adcs: AdcChain<'d, N_ADCS>,
     ) -> Self {
         ResistanceSolver {
             config,
-            quadbufs,
+            switches,
             adcs,
         }
     }
 
     /// Measures every arm's own high and low rail, by driving all three arms to the same
     /// rail. No current can flow between arms at one potential, so every tap reads its own
-    /// rail exactly, whatever is plugged in - and each tap charges through its own pull
+    /// rail exactly, whatever is plugged in - and every tap charges through the jack's pull
     /// resistor rather than through the network, so it settles immediately.
     pub async fn measure_rails(
         &mut self,
@@ -171,7 +175,8 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
         }
 
         // kΩ x nF = µs
-        let time_constant = expected_total * self.config.tap_capacitance;
+        let charging_resistance = expected_total + self.config.tap_series_resistance;
+        let time_constant = charging_resistance * self.config.tap_capacitance;
         let settle_micros = self.config.settle_time_constants * time_constant;
 
         Duration::from_micros(settle_micros as u64)
@@ -280,13 +285,13 @@ impl<'d, const N_QUADBUFS: usize, const N_ADCS: usize> ResistanceSolver<'d, N_QU
         states: [TriState; ARM_COUNT],
     ) -> Result<(), ResistanceSolverError> {
         for (arm, state) in arms.iter().zip(states) {
-            self.quadbufs
-                .set_output(arm.quadbuf_chip, arm.quadbuf_channel, state);
+            self.switches
+                .set_output(arm.switch_chip, arm.switch_tap, state);
         }
 
-        self.quadbufs
+        self.switches
             .update()
-            .map_err(ResistanceSolverError::QuadBufferChain)
+            .map_err(ResistanceSolverError::PullSwitchChain)
     }
 
     async fn measure_arm(&mut self, arm: &ArmConfig) -> Result<f32, ResistanceSolverError> {

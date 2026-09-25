@@ -9,9 +9,9 @@ use embassy_rp::{bind_interrupts, dma, pio, usb};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Instant, Ticker};
-use expad::hal::adc::{AdcChain, AdcChainConfig};
-use expad::hal::buf::{QuadBufferChain, ShiftRegisterChain};
-use expad::hal::led::{LedStrip, RGB8, Ws2812Chain};
+use expad::board::{self, JACKS};
+use expad::hal::adc::AdcChainConfig;
+use expad::hal::led::RGB8;
 use expad::hal::usb::{
     CableNumber, Channel as MidiChannel, ControlFunction, FromClamped, Message, U7, UsbMidi,
     UsbMidiConfig,
@@ -27,19 +27,6 @@ use expad::web::{
 
 use {defmt_rtt as _, panic_probe as _};
 
-/// 74HC595 shift registers and AD7718 converters wired into their respective chains.
-const QUADBUF_CHIPS: usize = 1;
-const ADC_CHIPS: usize = 1;
-
-/// WS2812B LEDs on the strip. Only the first [`JACK_COUNT`] of them are driven, one per jack.
-const LED_COUNT: usize = 8;
-const _: () = assert!(JACK_COUNT <= LED_COUNT);
-
-/// Voltage on the ADC's reference input, which is also the analog supply the arms are
-/// driven from. Every reading is scaled by it, and no tap above its full scale can be told
-/// apart from one at it.
-const REFERENCE_VOLTAGE: f32 = 3.3;
-
 /// ADC conversions per second. The fastest rate leaves ~11 noise-free bits, too coarse to see
 /// the few millivolts a high-value potentiometer drops across its pull resistors; 315 Hz is
 /// four times quieter at about 10 ms per reading.
@@ -48,28 +35,6 @@ const ADC_UPDATE_RATE: u32 = 315;
 /// Standard deviation of a single reading at [`ADC_UPDATE_RATE`], measured on the breadboard.
 /// Every tolerance the solver applies is derived from it.
 const ADC_VOLTAGE_NOISE: f32 = 0.001;
-
-/// Series resistance between each buffer output and the arm's tap, in kΩ.
-const PULL_RESISTANCE: f32 = 1.0;
-
-/// Capacitance on every tap, in nF, which sets how long a measurement takes to settle
-/// through a high-resistance pedal. Worked out from how slowly the breadboard's floating
-/// taps settle; the assembled board's ADC input filters are 10 nF.
-const TAP_CAPACITANCE: f32 = 100.0;
-
-/// Where every jack's three arms are wired, as `None` for a jack that is not connected on
-/// this board. This table is the whole board mapping: the measurement code below reads it
-/// and never assumes a channel of its own.
-///
-/// Breadboard: one potentiometer on the first buffer and ADC chip, wired like
-/// [`potentiometer.rs`](potentiometer) - one track end on channel 1, the wiper on channel
-/// 2, the other end on channel 3. Which of the three is the wiper is what the solver works
-/// out, so the arms are listed in plain channel order.
-///
-/// On the assembled board this becomes four jacks across two ADCs and four shift
-/// registers, with each jack's tip, ring and sleeve as its three arms.
-const JACKS: [Option<[ArmConfig; ARM_COUNT]>; JACK_COUNT] =
-    [Some(jack(0, [1, 2, 3], 0, [1, 2, 3])), None, None, None];
 
 /// Colors the jacks are shown in, matching `JACK_COLORS` in web/src/theme.ts.
 const JACK_COLORS: [RGB8; JACK_COUNT] = [
@@ -143,32 +108,6 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
     embassy_rp::binary_info::rp_cargo_version!(),
     embassy_rp::binary_info::rp_program_build_attribute!(),
 ];
-
-/// One jack's three arms, all on the same buffer and ADC chip, in arm order.
-const fn jack(
-    quadbuf_chip: usize,
-    quadbuf_channels: [u8; ARM_COUNT],
-    adc_chip: usize,
-    adc_channels: [u8; ARM_COUNT],
-) -> [ArmConfig; ARM_COUNT] {
-    let mut arms = [ArmConfig {
-        quadbuf_chip,
-        quadbuf_channel: 0,
-        adc_chip,
-        adc_channel: 0,
-        pull_up_resistance: PULL_RESISTANCE,
-        pull_down_resistance: PULL_RESISTANCE,
-    }; ARM_COUNT];
-
-    let mut arm = 0;
-    while arm < ARM_COUNT {
-        arms[arm].quadbuf_channel = quadbuf_channels[arm];
-        arms[arm].adc_channel = adc_channels[arm];
-        arm += 1;
-    }
-
-    arms
-}
 
 /// A control change the measurement loop has decided to send.
 #[derive(Debug, Clone, Copy, defmt::Format)]
@@ -259,50 +198,53 @@ async fn main(spawner: Spawner) {
     let stack = start_access_point(spawner, access_point, Irqs, AccessPointConfig::default()).await;
     spawn_web_server(spawner, stack);
 
-    info!("Initializing tristate buffers");
-    let shift_registers = ShiftRegisterChain::<QUADBUF_CHIPS>::new(
+    info!("Initializing pull switches");
+    let mut switches = board::pull_switches(
         peripherals.SPI1,
         peripherals.PIN_14,
         peripherals.PIN_15,
         peripherals.PIN_11,
         peripherals.PIN_13,
     );
-    let mut buffers = QuadBufferChain::new(shift_registers);
-    unwrap!(buffers.clear());
+    unwrap!(switches.clear());
 
     info!("Initializing ADCs");
-    let mut adcs = AdcChain::<ADC_CHIPS>::new(
+    let mut adcs = board::adcs(
         peripherals.SPI0,
         peripherals.PIN_18,
         peripherals.PIN_19,
         peripherals.PIN_16,
-        [peripherals.PIN_17],
-        [peripherals.PIN_21],
+        peripherals.PIN_17,
+        peripherals.PIN_20,
+        peripherals.PIN_21,
+        peripherals.PIN_22,
     );
     let adc_config = AdcChainConfig::default()
-        .with_reference_voltage(REFERENCE_VOLTAGE)
+        .with_channel_count(board::ADC_CHANNEL_COUNT)
+        .with_reference_voltage(board::REFERENCE_VOLTAGE)
         .with_update_rate(ADC_UPDATE_RATE);
     unwrap!(adcs.init(adc_config).await);
     info!("ADC full scale: {}V", adcs.full_scale_voltage());
 
     info!("Initializing LED strip");
-    let led_chain = Ws2812Chain::<_, LED_COUNT>::new(
+    let mut leds = board::leds(
         peripherals.PIO0,
         Irqs,
         peripherals.DMA_CH1,
         peripherals.PIN_6,
     );
-    let mut leds = LedStrip::new(led_chain);
 
     info!("Initializing USB MIDI");
     let (mut midi, mut usb_device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());
 
     let solver_config = ResistanceSolverConfig {
         solver: SolverConfig::from_voltage_noise(ADC_VOLTAGE_NOISE),
-        tap_capacitance: TAP_CAPACITANCE,
+        tap_capacitance: board::INPUT_FILTER_CAPACITANCE,
+        tap_series_resistance: board::INPUT_FILTER_RESISTANCE,
         ..Default::default()
     };
-    let mut solver = ResistanceSolver::new(solver_config, buffers, adcs);
+    let mut solver = ResistanceSolver::new(solver_config, switches, adcs);
+    let jack_arms: [[ArmConfig; ARM_COUNT]; JACK_COUNT] = JACKS.map(|jack| jack.arms());
     let mut settings_receiver = unwrap!(INTERFACE.settings.receiver());
     let mut settings = settings_receiver.get().await;
 
@@ -328,11 +270,7 @@ async fn main(spawner: Spawner) {
             let mut jacks = [JackStatus::DISCONNECTED; JACK_COUNT];
             let mut measured_rails = false;
 
-            for (index, arms) in JACKS.iter().enumerate() {
-                let Some(arms) = arms else {
-                    continue;
-                };
-
+            for (index, arms) in jack_arms.iter().enumerate() {
                 if rails[index].is_none() || sweep.is_multiple_of(RAIL_REFRESH_SWEEPS) {
                     measured_rails = true;
                     match solver.measure_rails(arms).await {

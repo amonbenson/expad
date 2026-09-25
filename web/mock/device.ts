@@ -18,7 +18,7 @@ const PULL_RESISTANCE = 1;
 const HIGH_RAIL_VOLTAGE = 3.3;
 
 let settings: Settings = {
-  ledBrightness: 25,
+  ledBrightness: 127,
   jacks: Array.from({ length: JACK_COUNT }, () => ({
     midiChannel: 0,
     midiController: 11,

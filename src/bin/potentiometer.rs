@@ -6,21 +6,22 @@ use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::{dma, pio};
-use expad::hal::adc::{AdcChain, AdcChainConfig};
-use expad::hal::buf::{QuadBufferChain, ShiftRegisterChain, TriState};
-use expad::hal::led::{LedStrip, RGB8, Ws2812Chain};
+use expad::board::{self, Contact, JACKS, LED_COUNT};
+use expad::hal::adc::AdcChainConfig;
+use expad::hal::buf::TriState;
+use expad::hal::led::{LedStrip, RGB8};
 
 use {defmt_rtt as _, panic_probe as _};
 
-const CHANNELS: usize = 1;
-const LED_COUNT: usize = 8;
+/// Jack the potentiometer is plugged into (J2).
+const JACK: usize = 0;
 
-/// Buffer output (and matching ADC input) pulled to the low rail.
-const LOW_CHANNEL: u8 = 1;
-/// Buffer output (and matching ADC input) left floating on the potentiometer wiper.
-const WIPER_CHANNEL: u8 = 2;
-/// Buffer output (and matching ADC input) pulled to the high rail.
-const HIGH_CHANNEL: u8 = 3;
+/// Contact pulled to the low rail, as on most expression pedals.
+const LOW_CONTACT: Contact = Contact::Sleeve;
+/// Contact left floating on the potentiometer wiper.
+const WIPER_CONTACT: Contact = Contact::Tip;
+/// Contact pulled to the high rail.
+const HIGH_CONTACT: Contact = Contact::Ring;
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
@@ -32,7 +33,7 @@ bind_interrupts!(struct Irqs {
 pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
     embassy_rp::binary_info::rp_program_name!(c"Potentiometer"),
     embassy_rp::binary_info::rp_program_description!(
-        c"Measures a potentiometer wiper between buffered low/high rails and shows its position on the LED strip"
+        c"Measures a pedal potentiometer wiper between the low/high rails and shows its position on the LED strip"
     ),
     embassy_rp::binary_info::rp_cargo_version!(),
     embassy_rp::binary_info::rp_program_build_attribute!(),
@@ -72,28 +73,40 @@ fn show_position(leds: &mut LedStrip<'_, PIO0, LED_COUNT>, position: f32) {
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
-    info!("Initializing tristate buffers");
-    let sr = ShiftRegisterChain::<CHANNELS>::new(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
-    let mut buffers = QuadBufferChain::new(sr);
-    buffers.clear().unwrap();
-    buffers.set_output(0, LOW_CHANNEL, TriState::Low);
-    buffers.set_output(0, HIGH_CHANNEL, TriState::High);
-    buffers.update().unwrap();
+    let wiring = JACKS[JACK];
+
+    info!("Initializing pull switches");
+    let mut switches = board::pull_switches(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
+    switches.set_output(wiring.switch_chip, LOW_CONTACT.tap(), TriState::Low);
+    switches.set_output(wiring.switch_chip, HIGH_CONTACT.tap(), TriState::High);
+    switches.update().unwrap();
 
     info!("Initializing ADCs");
-    let mut adcs =
-        AdcChain::<CHANNELS>::new(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, [p.PIN_17], [p.PIN_21]);
-    adcs.init(AdcChainConfig::default()).await.unwrap();
+    let mut adcs = board::adcs(
+        p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_20, p.PIN_21, p.PIN_22,
+    );
+    let adc_config = AdcChainConfig::default()
+        .with_channel_count(board::ADC_CHANNEL_COUNT)
+        .with_reference_voltage(board::REFERENCE_VOLTAGE);
+    adcs.init(adc_config).await.unwrap();
 
     info!("Initializing WS2812B strip");
-    let chain = Ws2812Chain::<_, LED_COUNT>::new(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
-    let mut leds = LedStrip::new(chain);
+    let mut leds = board::leds(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
 
     info!("Measuring potentiometer wiper position");
     loop {
-        let low = adcs.measure_channel(0, LOW_CHANNEL).await.unwrap();
-        let wiper = adcs.measure_channel(0, WIPER_CHANNEL).await.unwrap();
-        let high = adcs.measure_channel(0, HIGH_CHANNEL).await.unwrap();
+        let low = adcs
+            .measure_channel(wiring.adc_chip, wiring.adc_channel(LOW_CONTACT))
+            .await
+            .unwrap();
+        let wiper = adcs
+            .measure_channel(wiring.adc_chip, wiring.adc_channel(WIPER_CONTACT))
+            .await
+            .unwrap();
+        let high = adcs
+            .measure_channel(wiring.adc_chip, wiring.adc_channel(HIGH_CONTACT))
+            .await
+            .unwrap();
         let position = (wiper - low) / (high - low);
 
         info!(
@@ -104,9 +117,7 @@ async fn main(_spawner: Spawner) {
             position * 100.0
         );
 
-        // The LED strip is wired in the opposite direction to the wiper, so invert
-        // the position before mapping it onto LED indices.
-        show_position(&mut leds, 1.0 - position);
+        show_position(&mut leds, position);
         leds.update().await;
     }
 }

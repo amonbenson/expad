@@ -3,19 +3,20 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
-use expad::hal::adc::{AdcChain, AdcChainConfig};
-use expad::hal::buf::{QuadBufferChain, ShiftRegisterChain};
+use expad::board::{self, ADC_CHIPS};
+use expad::hal::adc::AdcChainConfig;
 
 use {defmt_rtt as _, panic_probe as _};
 
-const CHANNELS: usize = 1;
+/// Inputs every AD7718 converts in ten-channel mode.
+const ADC_CHANNELS: usize = 10;
 
 #[unsafe(link_section = ".bi_entries")]
 #[used]
 pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
-    embassy_rp::binary_info::rp_program_name!(c"Blinky Example"),
+    embassy_rp::binary_info::rp_program_name!(c"Capture"),
     embassy_rp::binary_info::rp_program_description!(
-        c"This example tests the RP Pico on board LED, connected to gpio 25"
+        c"Continuously captures every ADC input with all pull switches open"
     ),
     embassy_rp::binary_info::rp_cargo_version!(),
     embassy_rp::binary_info::rp_program_build_attribute!(),
@@ -25,39 +26,39 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
-    info!("Initializing tristate buffers");
-    let sr = ShiftRegisterChain::<CHANNELS>::new(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
-    let mut buffers = QuadBufferChain::new(sr);
-    buffers.clear().unwrap();
+    info!("Initializing pull switches");
+    let mut switches = board::pull_switches(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
+    switches.clear().unwrap();
 
     info!("Initializing ADCs");
-    let mut adcs =
-        AdcChain::<CHANNELS>::new(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, [p.PIN_17], [p.PIN_21]);
-    adcs.init(AdcChainConfig::default()).await.unwrap();
+    let mut adcs = board::adcs(
+        p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_20, p.PIN_21, p.PIN_22,
+    );
+    let adc_config = AdcChainConfig::default()
+        .with_channel_count(board::ADC_CHANNEL_COUNT)
+        .with_reference_voltage(board::REFERENCE_VOLTAGE);
+    adcs.init(adc_config).await.unwrap();
 
     info!("Taking individual measurements");
-    for channel in 0..3u8 {
-        let value = adcs.measure_channel(0, channel).await.unwrap();
-        info!("chip 0 channel {}: {}", channel, value);
+    for chip in 0..ADC_CHIPS {
+        for channel in 0..ADC_CHANNELS as u8 {
+            let voltage = adcs.measure_channel(chip, channel).await.unwrap();
+            info!("chip {} channel {}: {}V", chip, channel, voltage);
+        }
     }
 
     info!("Starting continuous capture");
-    let mut measurements = [0.0; 8];
+    let mut voltages = [[0.0; ADC_CHANNELS]; ADC_CHIPS];
 
     adcs.start_continuous_capture().unwrap();
     loop {
         let measurement = adcs.wait_for_next_result().await.unwrap();
-        measurements[measurement.channel as usize] = measurement.value as f32 / 0xFFFFFF as f32;
-        info!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
-            measurements[0],
-            measurements[1],
-            measurements[2],
-            measurements[3],
-            measurements[4],
-            measurements[5],
-            measurements[6],
-            measurements[7]
-        );
+        let chip = measurement.chip as usize;
+        voltages[chip][measurement.channel as usize] = measurement.voltage;
+
+        // Report each chip once per round through its inputs.
+        if measurement.channel as usize == ADC_CHANNELS - 1 {
+            info!("chip {}: {}V", chip, voltages[chip]);
+        }
     }
 }

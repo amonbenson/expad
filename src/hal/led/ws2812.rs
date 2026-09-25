@@ -6,6 +6,13 @@ use embassy_rp::pio_programs::ws2812::{Grb, PioWs2812, PioWs2812Program};
 
 pub use smart_leds::RGB8;
 
+/// Highest duty cycle any LED channel is ever driven at, out of `u8::MAX`: about 20%.
+///
+/// The strip runs from the board's 5 V linear regulator (200 mA, shared with the Pico), which
+/// cannot supply every LED at full white. Every frame is scaled into this range right before
+/// it is sent, so no caller can exceed it - full scale for a caller means this much.
+pub const MAX_CHANNEL_VALUE: u8 = 51;
+
 /// Drives a WS2812B ("NeoPixel") LED strip over one PIO block's state machine 0.
 ///
 /// `N` is the number of LEDs wired in series on the strip.
@@ -35,9 +42,23 @@ impl<'d, P: Instance, const N: usize> Ws2812Chain<'d, P, N> {
         Self { common, driver }
     }
 
-    /// Sends a full frame of colors to the strip. Blocks (asynchronously) for the
-    /// WS2812B latch delay after the data has been shifted out.
+    /// Sends a full frame of colors to the strip, scaled down to at most
+    /// [`MAX_CHANNEL_VALUE`]. Blocks (asynchronously) for the WS2812B latch delay after the
+    /// data has been shifted out.
     pub async fn write(&mut self, colors: &[RGB8; N]) {
-        self.driver.write(colors).await;
+        let limited_colors = colors.map(limit_color);
+        self.driver.write(&limited_colors).await;
     }
+}
+
+fn limit_color(color: RGB8) -> RGB8 {
+    RGB8::new(
+        limit_channel(color.r),
+        limit_channel(color.g),
+        limit_channel(color.b),
+    )
+}
+
+fn limit_channel(value: u8) -> u8 {
+    (value as u16 * MAX_CHANNEL_VALUE as u16 / u8::MAX as u16) as u8
 }

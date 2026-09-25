@@ -1,5 +1,5 @@
-mod quad_buffer;
+mod pull_switch;
 mod shift_register;
 
-pub use quad_buffer::{QuadBufferChain, QuadBufferChainError, TriState};
+pub use pull_switch::{PullSwitchChain, PullSwitchChainError, TAPS_PER_CHIP, TriState};
 pub use shift_register::ShiftRegisterChain;
