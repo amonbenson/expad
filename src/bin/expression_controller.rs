@@ -292,7 +292,11 @@ async fn main(spawner: Spawner) {
                     );
                     modes[jack] = report.mode;
                 }
-                if report.mode == JackMode::Tracking {
+                let followed = matches!(
+                    report.mode,
+                    JackMode::Tracking | JackMode::Switch | JackMode::Rheostat
+                );
+                if followed {
                     position_updates[jack] += 1;
                 }
 

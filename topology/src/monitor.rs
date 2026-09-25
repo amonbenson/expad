@@ -22,6 +22,17 @@ pub const TIP: usize = 0;
 /// Arm of the ring, the wiper of the one common wiring without it on the tip.
 const RING: usize = 1;
 
+/// Arm of the sleeve, the ground end of every common wiring.
+const SLEEVE: usize = 2;
+
+/// Standard values of rheostat pedals, in kΩ, the full scale a rheostat's resistance is read
+/// against.
+const RHEOSTAT_VALUES: [f32; 10] = [1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0];
+
+/// How far a rheostat may measure above its standard value before the next larger one is
+/// taken as its full scale: its own tolerance.
+const RHEOSTAT_TOLERANCE: f32 = 1.25;
+
 /// How one contact is driven.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -56,10 +67,14 @@ pub enum JackMode {
     Identifying,
     /// A potentiometer, followed by reading its wiper against its two track ends.
     Tracking,
-    /// Some other network (a switch pedal, a variable resistor, a mono cable), solved in full
-    /// again and again.
+    /// A switch between tip and sleeve (a sustain pedal), followed by reading the tip.
+    Switch,
+    /// A variable resistor between tip and sleeve (a two-wire expression pedal), followed by
+    /// reading the tip.
+    Rheostat,
+    /// Some other network, solved in full again and again.
     Other,
-    /// A plug with nothing conducting behind it.
+    /// A plug with nothing conducting behind it, watched for tip and sleeve connecting.
     Open,
 }
 
@@ -104,10 +119,19 @@ pub struct MonitorConfig {
     /// Largest relative resistance that still counts as a wiper at the star point.
     pub max_wiper_relative: f32,
 
-    /// How often an empty jack is checked for a plug.
+    /// How often an empty jack is checked for a plug, and a jack followed through its tip
+    /// for the plug still being there.
     pub empty_poll_interval: u64,
-    /// How often a plug with nothing conducting behind it is solved again.
-    pub open_poll_interval: u64,
+    /// How often a plug with nothing conducting behind it is solved in full, for networks
+    /// that do not connect tip and sleeve.
+    pub open_solve_interval: u64,
+    /// How often a mono plug's ring is checked for still being shorted to the sleeve.
+    pub ring_check_interval: u64,
+    /// Fraction of the sleeve's pull drop a mono plug's ring may read away from the sleeve
+    /// voltage the tip implies, on top of the noise: that estimate takes both pull paths to
+    /// be equal, which 0.1% resistors and a few ohms of switch resistance are not - a few
+    /// millivolts at the full current of a closed switch, which dropped it on the PCB.
+    pub ring_check_fraction: f32,
     /// How often a tracked potentiometer's track ends are read, alternating between them, to
     /// check it is still there and unchanged.
     pub end_tap_interval: u64,
@@ -139,8 +163,23 @@ pub struct MonitorConfig {
     /// resistance, so this only has to tell a pedal apart from an unplugged jack (no drop).
     pub first_end_drop_fraction: f32,
 
-    /// Standard deviations of noise the wiper may read outside the span of its track ends.
+    /// Standard deviations of noise the wiper may read outside the span of its track ends,
+    /// and a mono plug's ring away from the sleeve.
     pub wiper_range_sigmas: f32,
+
+    /// Largest resistance between tip and sleeve that counts as a closed switch, in kΩ.
+    pub closed_resistance: f32,
+    /// Standard deviations of current noise the tip's current has to exceed for tip and
+    /// sleeve to count as connected. Checked on every reading of an open plug, so it has to
+    /// be far rarer to trip on noise than a solve's one-off check; 6 still resolves ~800 kΩ.
+    pub element_open_sigmas: f32,
+    /// Consecutive readings between closed and open after which a tip-sleeve element is a
+    /// rheostat rather than a switch caught mid-bounce.
+    pub rheostat_readings: u32,
+    /// Change of the total resistance, as a fraction, that tells a rheostat behind a mono plug
+    /// from a potentiometer resting on its end stop with ring and sleeve shorted: the same
+    /// network until the pedal moves, but only the rheostat's total changes with it.
+    pub end_stop_change_fraction: f32,
 }
 
 impl MonitorConfig {
@@ -151,7 +190,9 @@ impl MonitorConfig {
             pull_down_resistances: [pull_resistance; ARM_COUNT],
             max_wiper_relative: ArmResistances::DEFAULT_MAX_WIPER_RELATIVE,
             empty_poll_interval: 50,
-            open_poll_interval: 100,
+            open_solve_interval: 1000,
+            ring_check_interval: 100,
+            ring_check_fraction: 0.01,
             end_tap_interval: 25,
             rail_refresh_interval: 30_000,
             rail_samples: 8,
@@ -161,6 +202,10 @@ impl MonitorConfig {
             end_drop_fraction: 0.03,
             first_end_drop_fraction: 0.25,
             wiper_range_sigmas: 6.0,
+            closed_resistance: 0.2,
+            element_open_sigmas: 6.0,
+            rheostat_readings: 3,
+            end_stop_change_fraction: 0.2,
         }
     }
 }
@@ -203,6 +248,51 @@ enum Task {
         read: usize,
     },
     Track(Tracking),
+    TwoTerminal(TwoTerminal),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ElementRead {
+    Tip,
+    Ring,
+    PlugCheck,
+}
+
+/// Following whatever connects tip and sleeve: the tip driven high, the sleeve low, and the
+/// resistance between them read off the tip's pull drop.
+#[derive(Debug, Clone, Copy)]
+struct TwoTerminal {
+    /// A mono plug shorts the ring to the sleeve, which every ring check confirms.
+    ring_shorted: bool,
+    /// Nothing is known to connect: the first conduction sends the jack to be identified.
+    open: bool,
+    next: ElementRead,
+    next_plug_check_at: u64,
+    next_ring_check_at: u64,
+    next_solve_at: u64,
+    /// Voltage the sleeve's tap is at, from the last tip reading.
+    sleeve_voltage: f32,
+    /// The last ring check disagreed with the sleeve. The element may just have switched
+    /// between that check and the tip reading before it, so a fresh pair has to confirm it.
+    ring_mismatch: bool,
+}
+
+/// What has been learned about the element between tip and sleeve since the plug went in.
+#[derive(Debug, Clone, Copy)]
+struct Element {
+    rheostat: bool,
+    /// Consecutive readings between closed and open.
+    between_readings: u32,
+    /// A rheostat's full scale, in kΩ.
+    full_scale: f32,
+}
+
+impl Element {
+    const UNKNOWN: Self = Self {
+        rheostat: false,
+        between_readings: 0,
+        full_scale: 0.0,
+    };
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,6 +339,9 @@ pub struct JackMonitor {
     preferred_wiper: Option<usize>,
     /// Wiper of the last potentiometer seen in this jack, the next choice at an end stop.
     remembered_wiper: Option<usize>,
+    element: Element,
+    /// Total resistance of the first ring-sleeve end stop since the plug went in, in kΩ.
+    first_end_stop_total: f32,
 }
 
 impl JackMonitor {
@@ -263,6 +356,8 @@ impl JackMonitor {
             failed_solves: 0,
             preferred_wiper: None,
             remembered_wiper: None,
+            element: Element::UNKNOWN,
+            first_end_stop_total: f32::NAN,
         }
     }
 
@@ -322,6 +417,32 @@ impl JackMonitor {
                 }
             }
 
+            Task::TwoTerminal(element) => {
+                let mut drives = floating;
+                let contact = match element.next {
+                    ElementRead::PlugCheck => {
+                        drives[TIP] = Drive::Low;
+                        drives[TIP_SWITCH] = Drive::High;
+                        TIP_SWITCH
+                    }
+                    ElementRead::Tip | ElementRead::Ring => {
+                        drives[TIP] = Drive::High;
+                        drives[SLEEVE] = Drive::Low;
+                        if element.next == ElementRead::Ring {
+                            RING
+                        } else {
+                            TIP
+                        }
+                    }
+                };
+                // Only driven taps and a ring shorted to one of them are read.
+                Reading {
+                    drives,
+                    contact,
+                    settle_resistance: 0.0,
+                }
+            }
+
             Task::Track(tracking) => {
                 let mut drives = floating;
                 drives[tracking.low_end] = Drive::Low;
@@ -358,6 +479,7 @@ impl JackMonitor {
             Task::PlugCheck => self.record_plug_check(voltage, now),
             Task::Solve { .. } => self.record_solve(voltage, now),
             Task::Track(_) => self.record_track(voltage, now),
+            Task::TwoTerminal(_) => self.record_two_terminal(voltage, now),
         }
     }
 
@@ -448,48 +570,55 @@ impl JackMonitor {
         false
     }
 
-    fn record_plug_check(&mut self, voltage: f32, now: u64) -> bool {
-        let rails = self.rails.as_ref();
-        // Without a plug the tip switch touches the pulled-down tip and the two pulls divide
-        // the rails in half; with one it is isolated and reads its own rail.
-        let threshold = rails.map_or(f32::NAN, |rails| {
+    /// Whether the tip switch's reading during a plug check shows a plug: without one it
+    /// touches the pulled-down tip and the two pulls divide the rails in half, with one it is
+    /// isolated and reads its own rail.
+    fn plugged(&self, tip_switch_voltage: f32) -> bool {
+        let threshold = self.rails.as_ref().map_or(f32::NAN, |rails| {
             rails.low[TIP] + 0.75 * (rails.high[TIP] - rails.low[TIP])
         });
-        let plugged = voltage > threshold;
+        tip_switch_voltage > threshold
+    }
 
-        if !plugged {
-            let changed = self.report.mode != JackMode::Empty;
-            self.report = JackReport {
-                voltages: self.report.voltages,
-                drives: self.report.drives,
-                tip_switch_voltage: self.report.tip_switch_voltage,
-                ..JackReport::EMPTY
-            };
-            self.expected_total = 0.0;
-            self.failed_solves = 0;
-            self.task = Task::PlugCheck;
-            self.due_at = now + self.config.empty_poll_interval;
-            return changed;
+    fn record_plug_check(&mut self, voltage: f32, now: u64) -> bool {
+        if !self.plugged(voltage) {
+            return self.empty(now);
         }
 
         match self.report.mode {
-            // Nothing conducted behind the plug: try again a little later.
-            JackMode::Open => {
-                self.start_solve(now + self.config.open_poll_interval);
-                false
-            }
             JackMode::Empty => {
                 self.report.mode = JackMode::Identifying;
                 self.expected_total = self.config.initial_total;
                 self.start_solve(now);
                 true
             }
-            _ => {
+            // Nothing conducted behind the plug: watch tip and sleeve for connecting.
+            mode => {
                 self.report.mode = JackMode::Open;
-                self.start_solve(now + self.config.open_poll_interval);
-                true
+                self.report.position = None;
+                self.start_two_terminal(false, true, now);
+                mode != JackMode::Open
             }
         }
+    }
+
+    /// The plug is gone: forget everything learned about what was behind it, and poll for
+    /// the next one.
+    fn empty(&mut self, now: u64) -> bool {
+        let changed = self.report.mode != JackMode::Empty;
+        self.report = JackReport {
+            voltages: self.report.voltages,
+            drives: self.report.drives,
+            tip_switch_voltage: self.report.tip_switch_voltage,
+            ..JackReport::EMPTY
+        };
+        self.expected_total = 0.0;
+        self.failed_solves = 0;
+        self.element = Element::UNKNOWN;
+        self.first_end_stop_total = f32::NAN;
+        self.task = Task::PlugCheck;
+        self.due_at = now + self.config.empty_poll_interval;
+        changed
     }
 
     fn start_solve(&mut self, due_at: u64) {
@@ -632,6 +761,13 @@ impl JackMonitor {
             // end, so the end-to-end resistance the track ends see changes as soon as the
             // pedal moves, and the jack is identified again.
             Some(Potentiometer::EndStop(candidates)) => {
+                if self.rheostat_behind_mono_plug(&resistances, candidates) {
+                    self.element.rheostat = true;
+                    self.report.mode = JackMode::Rheostat;
+                    self.start_two_terminal(true, false, now);
+                    return true;
+                }
+
                 let wiper = [
                     self.preferred_wiper,
                     self.remembered_wiper,
@@ -647,14 +783,187 @@ impl JackMonitor {
                 self.start_tracking(&resistances, wiper, now);
             }
 
-            None => {
-                self.report.mode = JackMode::Other;
-                self.report.position = None;
-                self.start_solve(now);
-            }
+            None => match tip_sleeve_element(&resistances) {
+                Some(ring_shorted) => {
+                    self.report.mode = if self.element.rheostat {
+                        JackMode::Rheostat
+                    } else {
+                        JackMode::Switch
+                    };
+                    self.start_two_terminal(ring_shorted, false, now);
+                }
+                None => {
+                    self.report.mode = JackMode::Other;
+                    self.report.position = None;
+                    self.start_solve(now);
+                }
+            },
         }
 
         true
+    }
+
+    /// Whether an end stop with ring and sleeve shorted is really a rheostat between tip and
+    /// sleeve behind a mono plug: the first such end stop since the plug went in is taken for
+    /// a potentiometer, and only a total that has changed since then gives the rheostat away.
+    fn rheostat_behind_mono_plug(
+        &mut self,
+        resistances: &ArmResistances,
+        candidates: [usize; 2],
+    ) -> bool {
+        if !(candidates.contains(&RING) && candidates.contains(&SLEEVE)) {
+            return false;
+        }
+
+        let first = self.first_end_stop_total;
+        if !first.is_finite() {
+            self.first_end_stop_total = resistances.total;
+            return false;
+        }
+
+        (resistances.total - first).abs() > self.config.end_stop_change_fraction * first
+    }
+
+    fn start_two_terminal(&mut self, ring_shorted: bool, open: bool, now: u64) {
+        self.task = Task::TwoTerminal(TwoTerminal {
+            ring_shorted,
+            open,
+            next: ElementRead::Tip,
+            next_plug_check_at: now + self.config.empty_poll_interval,
+            next_ring_check_at: now + self.config.ring_check_interval,
+            next_solve_at: now + self.config.open_solve_interval,
+            sleeve_voltage: f32::NAN,
+            ring_mismatch: false,
+        });
+        self.due_at = now;
+    }
+
+    fn record_two_terminal(&mut self, voltage: f32, now: u64) -> bool {
+        let Task::TwoTerminal(mut element) = self.task else {
+            return false;
+        };
+        let Some(rails) = self.rails else {
+            return false;
+        };
+        self.due_at = now;
+        let mut changed = false;
+
+        match element.next {
+            ElementRead::PlugCheck => {
+                if !self.plugged(voltage) {
+                    return self.empty(now);
+                }
+            }
+
+            ElementRead::Ring => {
+                let sleeve_drop = (element.sleeve_voltage - rails.low[SLEEVE]).abs();
+                let tolerance = self.config.wiper_range_sigmas * self.config.solver.voltage_noise
+                    + self.config.ring_check_fraction * sleeve_drop;
+                let still_shorted = (voltage - element.sleeve_voltage).abs() <= tolerance;
+                let mismatch =
+                    element.ring_shorted && element.sleeve_voltage.is_finite() && !still_shorted;
+                if mismatch && element.ring_mismatch {
+                    self.lose_track(now);
+                    return true;
+                }
+                element.ring_mismatch = mismatch;
+            }
+
+            ElementRead::Tip => {
+                let (resistance, sleeve_voltage) = self.tip_sleeve_resistance(voltage, &rails);
+                element.sleeve_voltage = sleeve_voltage;
+
+                if element.open {
+                    // Something connects tip and sleeve now: find out what.
+                    if resistance.is_finite() {
+                        self.report.mode = JackMode::Identifying;
+                        self.expected_total = self.config.initial_total;
+                        self.start_solve(now);
+                        return true;
+                    }
+                } else {
+                    let position = self.element_position(resistance);
+                    self.report.position = position;
+                    self.report.mode = if self.element.rheostat {
+                        JackMode::Rheostat
+                    } else {
+                        JackMode::Switch
+                    };
+                    self.report.resistances = element_resistances(element.ring_shorted, resistance);
+                    changed = true;
+                }
+            }
+        }
+
+        if element.open && now >= element.next_solve_at {
+            self.start_solve(now);
+            return changed;
+        }
+
+        element.next = if now >= element.next_plug_check_at {
+            element.next_plug_check_at = now + self.config.empty_poll_interval;
+            ElementRead::PlugCheck
+        } else if element.ring_mismatch && element.next == ElementRead::Tip {
+            // Straight after the fresh tip reading.
+            ElementRead::Ring
+        } else if element.ring_shorted && now >= element.next_ring_check_at {
+            element.next_ring_check_at = now + self.config.ring_check_interval;
+            ElementRead::Ring
+        } else {
+            ElementRead::Tip
+        };
+        self.task = Task::TwoTerminal(element);
+
+        changed
+    }
+
+    /// Resistance between tip and sleeve while the tip is driven high and the sleeve low, from
+    /// the tip's reading alone, and the voltage the sleeve's tap is at meanwhile. Both pulls
+    /// carry the same current, so the sleeve's drop follows from the tip's.
+    fn tip_sleeve_resistance(&self, tip_voltage: f32, rails: &Rails) -> (f32, f32) {
+        let pull_up = self.config.pull_up_resistances[TIP];
+        let pull_down = self.config.pull_down_resistances[SLEEVE];
+        let current = (rails.high[TIP] - tip_voltage) / pull_up;
+        let current_noise = self.config.solver.voltage_noise / pull_up;
+
+        if current <= self.config.element_open_sigmas * current_noise {
+            return (f32::INFINITY, rails.low[SLEEVE]);
+        }
+
+        let sleeve_voltage = rails.low[SLEEVE] + current * pull_down;
+        let resistance = (tip_voltage - sleeve_voltage).max(0.0) / current;
+        (resistance, sleeve_voltage)
+    }
+
+    /// The position a tip-sleeve element's `resistance` reads as: a switch is 1 closed and 0
+    /// open, a rheostat its resistance against its full scale. Readings between closed and
+    /// open keep the last position until enough of them in a row make it a rheostat.
+    fn element_position(&mut self, resistance: f32) -> Option<f32> {
+        let closed = resistance <= self.config.closed_resistance;
+        let between = resistance.is_finite() && !closed;
+
+        self.element.between_readings = if between {
+            self.element.between_readings + 1
+        } else {
+            0
+        };
+        if self.element.between_readings >= self.config.rheostat_readings {
+            self.element.rheostat = true;
+        }
+
+        if self.element.rheostat {
+            if !resistance.is_finite() {
+                return Some(1.0);
+            }
+            self.element.full_scale = self.element.full_scale.max(full_scale(resistance));
+            return Some((resistance / self.element.full_scale).clamp(0.0, 1.0));
+        }
+
+        if between {
+            return self.report.position;
+        }
+
+        Some(if closed { 1.0 } else { 0.0 })
     }
 
     fn start_tracking(&mut self, resistances: &ArmResistances, wiper: usize, now: u64) {
@@ -798,6 +1107,50 @@ impl JackMonitor {
         self.report.mode = JackMode::Identifying;
         self.start_solve(now);
     }
+}
+
+/// The tip-sleeve element a solved network holds, if that is all it holds: `Some(true)` behind
+/// a mono plug (ring shorted to the sleeve, whatever the tip does), `Some(false)` behind a
+/// stereo plug with the ring unconnected.
+fn tip_sleeve_element(resistances: &ArmResistances) -> Option<bool> {
+    let [tip, ring, sleeve] = resistances.relative;
+    let at_star_point = |relative: f32| relative <= ArmResistances::END_STOP_RELATIVE;
+
+    if at_star_point(ring) && at_star_point(sleeve) {
+        Some(true)
+    } else if ring.is_infinite() && !(tip.is_infinite() && sleeve.is_infinite()) {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// The arm resistances a tip-sleeve element of `resistance` kΩ shows as, for the report.
+fn element_resistances(ring_shorted: bool, resistance: f32) -> ArmResistances {
+    let open = !resistance.is_finite();
+    let shorted = resistance == 0.0;
+    let relative = match (ring_shorted, open, shorted) {
+        (true, true, _) => [f32::INFINITY, 0.0, 0.0],
+        (true, false, true) => [0.0, 0.0, 0.0],
+        (true, false, false) => [1.0, 0.0, 0.0],
+        (false, true, _) => [f32::INFINITY; ARM_COUNT],
+        (false, false, true) => [0.0, f32::INFINITY, 0.0],
+        (false, false, false) => [f32::NAN, f32::INFINITY, f32::NAN],
+    };
+
+    ArmResistances {
+        relative,
+        total: if open { f32::NAN } else { resistance },
+    }
+}
+
+/// Full scale of a rheostat measuring `resistance` kΩ: the smallest standard value it could
+/// be within its tolerance.
+fn full_scale(resistance: f32) -> f32 {
+    RHEOSTAT_VALUES
+        .into_iter()
+        .find(|&value| value * RHEOSTAT_TOLERANCE >= resistance)
+        .unwrap_or(resistance)
 }
 
 /// Order the taps of a pair are read in: the two driven ones first, and the floating one

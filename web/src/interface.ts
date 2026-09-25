@@ -12,10 +12,11 @@ export type ArmPull = "up" | "down" | "floating";
 
 /**
  * What the firmware makes of a jack: `identifying` runs full solves (just plugged in, or tracking
- * lost the pedal), `tracking` follows a potentiometer's wiper, `other` is any other
- * network (switch pedals, mono cables) and `open` a plug with nothing conducting behind it.
+ * lost the pedal), `tracking` follows a potentiometer's wiper, `switch` and `rheostat` follow
+ * what connects tip and sleeve (sustain pedals, two-wire expression pedals, pedals on a mono
+ * cable), `other` is any other network and `open` a plug with nothing conducting behind it.
  */
-export type JackMode = "empty" | "identifying" | "tracking" | "other" | "open";
+export type JackMode = "empty" | "identifying" | "tracking" | "switch" | "rheostat" | "other" | "open";
 
 /** Contact a potentiometer's wiper is on, deciding the one ambiguous end stop (ring and sleeve shorted). */
 export type WiperContact = "auto" | "tip" | "ring" | "sleeve";

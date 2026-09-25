@@ -151,6 +151,48 @@ PCB - held to 3% from the start, tracking dropped such a pedal at its first end-
 then on the first reading is the reference, refined by every agreeing one and held to 3%. A freshly plugged network is settled for as if it were 100 kΩ until its first solve;
 after three rejected solves in a row, for as long as allowed (400 ms per pair).
 
+### Switches and rheostats
+
+Two-wire pedals (sustain switches, rheostat expression pedals) connect tip and sleeve. Behind a mono (TS) plug the plug's
+sleeve also shorts the jack's ring to its sleeve; behind a stereo (TRS) plug the ring stays
+unconnected:
+
+| Pedal | Mono plug (tip, ring, sleeve) | Stereo plug |
+|---|---|---|
+| Switch released | tip open, ring and sleeve shorted | nothing conducts |
+| Switch pressed | all shorted | tip and sleeve shorted, ring open |
+| Rheostat | tip carries it, ring and sleeve shorted | tip and sleeve carry it, ring open |
+
+Both kinds are followed like a potentiometer's wiper, with one reading: tip driven high, sleeve
+low, and the resistance between them read off the tip's pull drop (both pulls carry the same
+current). A switch reads 1 closed (≤ 0.2 kΩ) and 0 open; three readings in a row between the two
+make it a rheostat instead (one reading of a switch caught mid-bounce does not), which reads its
+resistance against the smallest standard pedal value (1, 2.5, 5, 10, 25 ... 1000 kΩ) it could be
+within 25%. The range setting trims either. A plug check every 50 ms notices the plug coming out,
+and behind a mono plug a ring check every 100 ms confirms the ring is still shorted to the sleeve
+(a fresh tip reading has to confirm a mismatch, since the switch may have just changed). The
+sleeve voltage it compares against is inferred from the tip, assuming both pull paths equal; on
+the PCB they differ by a few ohms, which at the full current of a closed switch is a few
+millivolts, so the check allows 1% of the sleeve's drop on top of 6σ of noise. With the noise
+alone it dropped pressed switches and near-zero rheostats again and again - re-identifying them
+while they moved, as potentiometers and rheostats in turn.
+
+A potentiometer pedal on a mono cable is no rheostat: most pedals' own jacks short their ring
+terminal to the sleeve when a mono plug goes in, which puts the two track halves in parallel -
+x(1 - x) of the track at travel x, 0 at both ends and a quarter of the track in the middle. That
+rises and falls again, so no reading can tell the position; such pedals need a stereo cable.
+
+A released stereo switch reads like a plug with nothing behind it (Open), so Open follows tip and
+sleeve the same way: every reading looks for them connecting (6σ of current noise, ~800 kΩ, so
+measured noise never trips it), then the jack is identified; a full solve every second catches
+networks without tip and sleeve. A mono cable with nothing at its end reads as a released switch.
+
+A rheostat behind a mono plug is the same network as a ring-wiper potentiometer resting on its
+heel end stop (ring and sleeve shorted, the tip carrying the track) until the pedal moves: a
+potentiometer then leaves the stop and turns into three arms, while the rheostat's total
+resistance changes. So that end stop is tracked as a potentiometer first, and turns into a
+rheostat once a later end stop's total differs from the first one's by more than 20%.
+
 ### Range and output
 
 The web interface sets a range per jack (`minimum`/`maximum` of the wiper position, with

@@ -33,6 +33,8 @@ const modeLabels: Record<JackMode, string> = {
   empty: "Empty",
   identifying: "Identifying",
   tracking: "Tracking",
+  switch: "Switch",
+  rheostat: "Rheostat",
   other: "Other pedal",
   open: "Nothing connected",
 };

@@ -43,6 +43,8 @@ struct SimulatedJack {
     plugged: bool,
     /// What is behind the plug; `None` for a cable with nothing at its other end.
     network: Option<[f32; ARM_COUNT]>,
+    /// Actual resistance of every contact's pull path, in kΩ - the monitor assumes 1 kΩ.
+    pull_resistances: [f32; ARM_COUNT],
     noise: f32,
     random_state: u32,
 }
@@ -52,6 +54,7 @@ impl SimulatedJack {
         Self {
             plugged: false,
             network: None,
+            pull_resistances: [1.0; ARM_COUNT],
             noise: 0.0,
             random_state: 12345,
         }
@@ -95,7 +98,9 @@ impl SimulatedJack {
 
         match (self.plugged, self.network) {
             (true, Some(arms)) => {
-                let network = StarNetwork::new(arms).with_rails(0.0, HIGH_RAIL);
+                let network = StarNetwork::new(arms)
+                    .with_rails(0.0, HIGH_RAIL)
+                    .with_pull_resistances(self.pull_resistances);
                 let voltage = network.tap_voltages(roles)[reading.contact];
                 if voltage.is_nan() {
                     FLOATING_TAP
@@ -411,23 +416,191 @@ fn identifies_a_rewired_pedal_again() {
     assert_close(harness.position(), 0.25, 1e-3);
 }
 
-/// A mono sustain pedal: the plug's sleeve shorts the ring to it, and the pedal's switch
-/// connects the tip to the sleeve while pressed.
+/// Resistance between tip and sleeve of a two-wire pedal behind a mono (TS) plug, whose sleeve
+/// shorts the jack's ring to its sleeve.
+fn mono(tip_sleeve: f32) -> [f32; ARM_COUNT] {
+    [tip_sleeve, 0.0, 0.0]
+}
+
+/// The same behind a stereo (TRS) plug, with the ring left unconnected.
+fn stereo(tip_sleeve: f32) -> [f32; ARM_COUNT] {
+    [tip_sleeve, f32::INFINITY, 0.0]
+}
+
+/// A mono sustain pedal: released it leaves the tip open, pressed it shorts it to the sleeve.
+/// A change shows within 20 ms, even when the plug and ring checks come due in between.
 #[test]
-fn reports_a_switch_pedal_as_another_network_in_both_states() {
+fn follows_a_switch_behind_a_mono_plug_with_single_readings() {
     let mut harness = Harness::new();
-    let released = [f32::INFINITY, 0.0, 0.0];
-    let pressed = [0.0, 0.0, 0.0];
+    harness.jack.plug(Some(mono(f32::INFINITY)));
+    harness.run_until(JackMode::Switch, 200);
+    harness.run_for(20);
+    assert_close(harness.position(), 0.0, 0.0);
+    harness.reset_counters();
 
-    harness.jack.plug(Some(released));
-    harness.run_until(JackMode::Other, 200);
-    assert!(harness.monitor.report().resistances.relative[TIP].is_infinite());
+    for _ in 0..10 {
+        harness.jack.network = Some(mono(0.0));
+        harness.run_for(20);
+        assert_close(harness.position(), 1.0, 0.0);
 
-    harness.jack.network = Some(pressed);
-    harness.run_for(100);
-    assert_eq!(harness.mode(), JackMode::Other);
-    assert_eq!(harness.monitor.report().resistances.relative[TIP], 0.0);
+        harness.jack.network = Some(mono(f32::INFINITY));
+        harness.run_for(20);
+        assert_close(harness.position(), 0.0, 0.0);
+    }
+
+    assert_eq!(harness.mode_changes, 0);
+    assert_eq!(harness.mode(), JackMode::Switch);
+
+    harness.jack.plugged = false;
+    let delay = harness.run_until(JackMode::Empty, 200);
+    assert!(delay <= 60, "empty after {delay} ms");
+}
+
+/// A stereo sustain pedal released reads like a plug with nothing behind it; pressing it has
+/// to be noticed straight away all the same.
+#[test]
+fn notices_a_stereo_switch_pressed_behind_a_plug_that_looked_open() {
+    let mut harness = Harness::new();
+    harness.jack.plug(Some(stereo(f32::INFINITY)));
+    harness.run_until(JackMode::Open, 200);
     assert_eq!(harness.monitor.report().position, None);
+
+    harness.jack.network = Some(stereo(0.0));
+    let delay = harness.run_until(JackMode::Switch, 100);
+    assert!(delay <= 60, "switch after {delay} ms");
+    harness.run_for(20);
+    assert_close(harness.position(), 1.0, 0.0);
+    harness.reset_counters();
+
+    for _ in 0..10 {
+        harness.jack.network = Some(stereo(f32::INFINITY));
+        harness.run_for(20);
+        assert_close(harness.position(), 0.0, 0.0);
+
+        harness.jack.network = Some(stereo(0.0));
+        harness.run_for(20);
+        assert_close(harness.position(), 1.0, 0.0);
+    }
+    assert_eq!(harness.mode_changes, 0);
+}
+
+/// On the PCB, a pressed switch behind a mono plug was dropped: the ring check computes the
+/// sleeve's voltage from the tip's pull drop, and the two pull paths differ by a few ohms
+/// (0.1% resistors, switch on-resistance) - a few millivolts at the full current. Standing in
+/// for that: a sleeve pull 4 Ω above the tip's.
+#[test]
+fn keeps_following_a_shorted_switch_despite_mismatched_pulls() {
+    let mut harness = Harness::new();
+    harness.jack.pull_resistances = [1.0, 1.0, 1.004];
+    harness.jack.plug(Some(mono(0.0)));
+    harness.run_until(JackMode::Switch, 200);
+    harness.reset_counters();
+
+    harness.run_for(2000);
+    assert_eq!(harness.mode_changes, 0);
+    assert_close(harness.position(), 1.0, 0.0);
+}
+
+/// Every reading of an open stereo plug looks for tip and sleeve connecting, so noise must not
+/// pass for a pressed switch; and a switch must not flicker.
+#[test]
+fn keeps_switches_steady_through_measured_noise() {
+    let mut harness = Harness::new();
+    harness.jack.noise = NOISE;
+    harness.jack.plug(Some(stereo(f32::INFINITY)));
+    harness.run_until(JackMode::Open, 300);
+    harness.reset_counters();
+    harness.run_for(10_000);
+    assert_eq!(harness.mode_changes, 0);
+
+    harness.jack.plugged = false;
+    harness.run_until(JackMode::Empty, 200);
+    harness.jack.plug(Some(mono(f32::INFINITY)));
+    harness.run_until(JackMode::Switch, 300);
+    harness.reset_counters();
+    for pressed in [false, true, false, true] {
+        harness.jack.network = Some(mono(if pressed { 0.0 } else { f32::INFINITY }));
+        harness.run_for(20);
+        for _ in 0..200 {
+            harness.run_for(10);
+            assert_close(harness.position(), if pressed { 1.0 } else { 0.0 }, 0.0);
+        }
+    }
+    assert_eq!(harness.mode_changes, 0);
+}
+
+/// A 25 kΩ rheostat behind a stereo plug, swept up and back down: read against its standard
+/// full scale once it has shown it.
+#[test]
+fn follows_a_rheostat_behind_a_stereo_plug() {
+    let mut harness = Harness::new();
+    harness.jack.plug(Some(stereo(5.0)));
+    harness.run_until(JackMode::Rheostat, 200);
+
+    for step in 0..=20 {
+        harness.jack.network = Some(stereo(5.0 + step as f32));
+        harness.run_for(10);
+    }
+    assert_close(harness.position(), 1.0, 1e-3);
+
+    harness.jack.network = Some(stereo(12.5));
+    harness.run_for(20);
+    assert_eq!(harness.mode(), JackMode::Rheostat);
+    assert_close(harness.position(), 0.5, 1e-3);
+}
+
+/// Behind a mono plug a rheostat reads like a ring-wiper potentiometer resting on its heel
+/// end stop, until it moves: only its total resistance changes with it.
+#[test]
+fn tells_a_rheostat_behind_a_mono_plug_from_a_potentiometer_once_it_moves() {
+    let mut harness = Harness::new();
+    harness.jack.plug(Some(mono(5.0)));
+    harness.run_until(JackMode::Tracking, 200);
+
+    for step in 0..=20 {
+        harness.jack.network = Some(mono(5.0 + step as f32));
+        harness.run_for(20);
+    }
+    assert_eq!(harness.mode(), JackMode::Rheostat);
+    assert_close(harness.position(), 1.0, 1e-3);
+
+    harness.jack.network = Some(mono(12.5));
+    harness.run_for(20);
+    assert_close(harness.position(), 0.5, 1e-3);
+}
+
+/// The potentiometer that same end stop could also be: it stays one all the way off the stop.
+#[test]
+fn keeps_a_ring_wiper_potentiometer_leaving_its_heel_end_stop_a_potentiometer() {
+    let mut harness = Harness::new();
+    harness.jack.plug(Some(potentiometer(RING, 0.0, 10.0)));
+    harness.run_until(JackMode::Tracking, 200);
+    harness.reset_counters();
+
+    for step in 0..=50 {
+        let position = step as f32 / 50.0;
+        harness.jack.network = Some(potentiometer(RING, position, 10.0));
+        harness.run_for(20);
+        assert_eq!(harness.mode(), JackMode::Tracking, "at {position}");
+        assert_close(harness.position(), position, 1e-3);
+    }
+    assert_eq!(harness.mode_changes, 0);
+}
+
+/// A rheostat plugged in at its zero end reads as a closed switch, until it moves.
+#[test]
+fn turns_a_closed_switch_into_a_rheostat_once_it_moves() {
+    let mut harness = Harness::new();
+    harness.jack.plug(Some(mono(0.0)));
+    harness.run_until(JackMode::Switch, 200);
+
+    for step in 1..=20 {
+        harness.jack.network = Some(mono(step as f32 * 0.5));
+        harness.run_for(10);
+    }
+
+    assert_eq!(harness.mode(), JackMode::Rheostat);
+    assert_close(harness.position(), 1.0, 1e-3);
 }
 
 #[test]
