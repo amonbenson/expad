@@ -35,7 +35,6 @@ export interface JackStatus {
 }
 
 export interface Status {
-  uptimeSeconds: number;
   jacks: JackStatus[];
 }
 
@@ -48,6 +47,13 @@ export interface JackSettings {
   minimum: number;
   maximum: number;
   wiper: WiperContact;
+  /**
+   * Bend of the response curve in -1..1 against a pedal's nonlinear track: 0 is linear, positive
+   * values make the value rise early in the travel and negative ones late (see `driveCurve`).
+   */
+  drive: number;
+  /** Accent color of the jack as `#RRGGBB`, shown by its LED and throughout the interface. */
+  color: string;
 }
 
 export interface Settings {
@@ -56,3 +62,34 @@ export interface Settings {
 }
 
 export type Update = { status: Status } | { settings: Settings };
+
+/** How far the drive curve bends at full drive, mirroring `MAX_DRIVE_BEND` in src/web/interface.rs. */
+const MAX_DRIVE_BEND = 0.9;
+
+/**
+ * Mirrors `drive_curve` in src/web/interface.rs: bends `travel` in 0..1 by `drive` in -1..1,
+ * keeping both ends in place and moving half travel to `(1 + bend) / 2`.
+ */
+export function driveCurve(travel: number, drive: number): number {
+  const bend = Math.min(Math.max(drive, -1), 1) * MAX_DRIVE_BEND;
+  const clamped = Math.min(Math.max(travel, 0), 1);
+
+  return ((1 + bend) * clamped) / (1 - bend + 2 * bend * clamped);
+}
+
+/**
+ * Mirrors `JackSettings::value` in src/web/interface.rs up to the drive curve: where a wiper
+ * `position` is in the pedal's travel, the jack's range stretched to 0..1 and inverted if it is.
+ */
+export function pedalTravel(position: number, jackSettings: JackSettings): number {
+  const range = jackSettings.maximum - jackSettings.minimum;
+  const stretched = range > 0 ? (position - jackSettings.minimum) / range : position;
+  const value = Math.min(Math.max(stretched, 0), 1);
+
+  return jackSettings.inverted ? 1 - value : value;
+}
+
+/** Mirrors `JackSettings::value` in src/web/interface.rs: the expression value sent for a wiper `position`. */
+export function expressionValue(position: number, jackSettings: JackSettings): number {
+  return driveCurve(pedalTravel(position, jackSettings), jackSettings.drive);
+}

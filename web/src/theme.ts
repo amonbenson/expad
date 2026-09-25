@@ -1,12 +1,22 @@
 // PrimeVue theme of the interface, built on the flat Nora preset (2px radii, no shadows, no
-// transitions) with a blue-gray surface ramp. The per-jack accents live in main.css, which
-// re-points the design tokens of the controls inside a strip at its `--jack-color`.
+// transitions) with a blue-gray surface ramp. The per-jack accents come from the device's
+// settings; main.css re-points the design tokens of the controls inside a strip at its `--jack-color`.
 
 import { definePreset, mix, palette, shade, tint } from "@primeuix/themes";
 import Nora from "@primeuix/themes/nora";
 
-/** Accent color of each jack, from the lightest to the deepest. */
-export const JACK_COLORS = ["#FF7E7E", "#FFA259", "#FFCB56", "#FFEDB9"];
+/** Accent of everything not belonging to one jack, the second jack's default color. */
+const PRIMARY_COLOR = "#FFA259";
+
+/**
+ * Signal colors, also available as `--p-indicator-<name>`: red for a high rail, blue for a low
+ * one, green for anything live. The firmware's LEDs show the same green (`ACTIVE_LED_COLOR`).
+ */
+export const INDICATOR_COLORS = {
+  red: "#FB2C36",
+  green: "#00C950",
+  blue: "#2B7FFF",
+};
 
 /** The two ends of the blue-gray ramp: shade 100 and shade 900. */
 const SURFACE_LIGHT = "#E8EDF2";
@@ -30,13 +40,17 @@ const SURFACE = {
 
 export const EXPAD_PRESET = definePreset(Nora, {
   semantic: {
-    primary: palette(JACK_COLORS[1]),
+    primary: palette(PRIMARY_COLOR),
     surface: SURFACE,
     // Remove borders from form fields
     formField: {
       borderColor: "transparent",
       hoverBorderColor: "transparent",
     },
+  },
+  // Custom tokens, emitted as `--p-indicator-red` and so on
+  extend: {
+    indicator: INDICATOR_COLORS,
   },
   components: {
     toggleswitch: {

@@ -58,4 +58,6 @@ body {
   --p-slider-handle-content-background: var(--p-primary-color);
   --p-slider-handle-content-hover-background: var(--p-primary-hover-color);
   --p-slider-handle-focus-ring-color: var(--p-focus-ring-color);
+  --p-knob-value-background: var(--p-primary-color);
+  --p-knob-focus-ring-color: var(--p-focus-ring-color);
 }

@@ -2,7 +2,6 @@
 import Wifi from "@primeicons/vue/wifi";
 import { useMediaQuery } from "@vueuse/core";
 import Slider from "primevue/slider";
-import Tag from "primevue/tag";
 import { computed, ref } from "vue";
 
 import JackStrip from "@/components/JackStrip.vue";
@@ -14,12 +13,13 @@ const { connection, status, settings } = useInterface();
 const selectedJack = ref(0);
 const topologyCollapsed = ref(!useMediaQuery("(min-width: 64rem)").value);
 
-const connectionTag = computed(
+const connected = computed(() => connection.value === "OPEN");
+const connectionLabel = computed(
   () =>
     ({
-      OPEN: { severity: "secondary", value: "Connected" },
-      CONNECTING: { severity: "warn", value: "Connecting" },
-      CLOSED: { severity: "danger", value: "Disconnected" },
+      OPEN: "Connected",
+      CONNECTING: "Connecting",
+      CLOSED: "Disconnected",
     })[connection.value],
 );
 </script>
@@ -34,15 +34,13 @@ const connectionTag = computed(
         />
         Expression Adapter
       </h1>
-      <div class="flex items-center gap-3">
-        <span
-          v-if="status"
-          class="text-sm text-muted-color"
-        >
-          Uptime {{ status.uptimeSeconds }} s
-        </span>
-        <Tag v-bind="connectionTag" />
-      </div>
+      <span
+        role="status"
+        class="size-3 rounded-full"
+        :class="connected ? 'bg-(--p-indicator-green)' : 'bg-surface-500'"
+        :title="connectionLabel"
+        :aria-label="connectionLabel"
+      />
     </header>
 
     <div
@@ -83,6 +81,7 @@ const connectionTag = computed(
       <TopologyPanel
         v-model:collapsed="topologyCollapsed"
         :jack="selectedJack"
+        :color="settings.jacks[selectedJack]?.color"
         :status="status?.jacks[selectedJack]"
       />
     </div>

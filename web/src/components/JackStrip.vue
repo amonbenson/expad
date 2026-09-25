@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import InputNumber from "primevue/inputnumber";
+import Knob from "primevue/knob";
 import Select from "primevue/select";
 import Slider from "primevue/slider";
 import ToggleSwitch from "primevue/toggleswitch";
 import { computed, useId } from "vue";
 
+import DriveCurve from "@/components/DriveCurve.vue";
 import type { JackMode, JackSettings, JackStatus, WiperContact } from "@/interface";
-import { JACK_COLORS } from "@/theme";
+import { pedalTravel } from "@/interface";
 
 const { jack, status = undefined, selected } = defineProps<{
   jack: number;
@@ -40,10 +42,23 @@ const modeLabels: Record<JackMode, string> = {
 };
 
 const id = useId();
-const color = computed(() => JACK_COLORS[jack]);
+const color = computed(() => settings.value.color);
 const mode = computed(() => status?.mode ?? "empty");
 const valuePercent = computed(() => Math.round((status?.value ?? 0) * 100));
 const position = computed(() => status?.position ?? null);
+
+/** The drive curve's bend in percent, as the knob edits it. */
+const drivePercent = computed<number>({
+  get: () => Math.round(settings.value.drive * 100),
+  set: (percent) => {
+    settings.value.drive = percent / 100;
+  },
+});
+
+/** Where the pedal is in its travel, the drive curve's input; `null` without a position. */
+const travel = computed(() =>
+  position.value === null ? null : pedalTravel(position.value, settings.value),
+);
 
 /** The pedal's range in percent of the wiper's travel, as the range slider edits it. */
 const rangePercent = computed<number[]>({
@@ -191,6 +206,32 @@ function setMaximum(): void {
               :disabled="position === null"
               fluid
               @click="setMaximum"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <span
+            :id="`${id}-drive`"
+            class="text-sm text-muted-color"
+          >
+            Drive
+          </span>
+          <div class="flex items-center justify-between gap-2">
+            <Knob
+              v-model="drivePercent"
+              :aria-labelledby="`${id}-drive`"
+              :min="-100"
+              :max="100"
+              :size="64"
+              value-template="{value} %"
+              title="Bends the response: positive rises early in the travel, negative late. Double-click to reset."
+              @dblclick="drivePercent = 0"
+            />
+            <DriveCurve
+              :drive="settings.drive"
+              :travel="travel"
+              class="size-12"
             />
           </div>
         </div>

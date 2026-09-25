@@ -35,33 +35,20 @@ const ADC_UPDATE_RATE: u32 = 819;
 /// the solver applies is derived from it.
 const ADC_VOLTAGE_NOISE: f32 = 0.0005;
 
-/// Colors the jacks are shown in, matching `JACK_COLORS` in web/src/theme.ts.
-const JACK_COLORS: [RGB8; JACK_COUNT] = [
-    RGB8 {
-        r: 0xFF,
-        g: 0x7E,
-        b: 0x7E,
-    },
-    RGB8 {
-        r: 0xFF,
-        g: 0xA2,
-        b: 0x59,
-    },
-    RGB8 {
-        r: 0xFF,
-        g: 0xCB,
-        b: 0x56,
-    },
-    RGB8 {
-        r: 0xFF,
-        g: 0xED,
-        b: 0xB9,
-    },
-];
+/// Color a jack's LED turns while its pedal moves or its switch is pressed, matching the
+/// green of `INDICATOR_COLORS` in web/src/theme.ts.
+const ACTIVE_LED_COLOR: RGB8 = RGB8 {
+    r: 0x00,
+    g: 0xC9,
+    b: 0x50,
+};
 
-/// Lower end of the brightness a connected jack's LED is scaled across, so a pedal at rest
-/// still reads as connected rather than as an unplugged jack.
-const CONNECTED_LED_FLOOR: f32 = 0.1;
+/// How long a jack's LED stays green after its pedal last moved far enough to send a new
+/// control change. Bridges the gaps between the steps of a slowly moving pedal.
+const MOVEMENT_INDICATION: Duration = Duration::from_millis(250);
+
+/// Expression value from which a switch counts as pressed.
+const SWITCH_PRESSED_VALUE: f32 = 0.5;
 
 /// How often the web interface is sent a new status. Positions update far more often than
 /// a browser can show, so this only bounds the WebSocket traffic.
@@ -162,20 +149,28 @@ fn apply_wiper_settings<const S: usize, const A: usize, const J: usize>(
     }
 }
 
-/// Color the jack's LED shows: off while nothing usable is plugged in, otherwise the
-/// jack's own color brightened with the pedal's expression value.
-fn jack_color(jack: usize, value: Option<f32>) -> RGB8 {
-    let Some(value) = value else {
+/// Color the jack's LED shows: off while nothing usable is plugged in, green while the pedal
+/// moves (it `last_moved` within [`MOVEMENT_INDICATION`] of `now`) or its switch is pressed,
+/// otherwise the jack's own color.
+fn jack_color(
+    report: &JackReport,
+    settings: &JackSettings,
+    last_moved: Option<Instant>,
+    now: Instant,
+) -> RGB8 {
+    let Some(position) = report.position else {
         return RGB8::default();
     };
 
-    let intensity = CONNECTED_LED_FLOOR + (1.0 - CONNECTED_LED_FLOOR) * value.clamp(0.0, 1.0);
-    let color = JACK_COLORS[jack];
+    let active = match report.mode {
+        JackMode::Switch => settings.value(position) >= SWITCH_PRESSED_VALUE,
+        _ => last_moved.is_some_and(|moved| now - moved < MOVEMENT_INDICATION),
+    };
 
-    RGB8 {
-        r: (color.r as f32 * intensity) as u8,
-        g: (color.g as f32 * intensity) as u8,
-        b: (color.b as f32 * intensity) as u8,
+    if active {
+        ACTIVE_LED_COLOR
+    } else {
+        settings.color.into()
     }
 }
 
@@ -258,6 +253,7 @@ async fn main(spawner: Spawner) {
         leds.set_brightness(settings.led_brightness);
 
         let mut sent = [None::<SentControlChange>; JACK_COUNT];
+        let mut last_moved = [None::<Instant>; JACK_COUNT];
         let mut modes = [JackMode::Empty; JACK_COUNT];
         let mut status_due = Instant::now();
         let mut leds_due = Instant::now();
@@ -304,7 +300,6 @@ async fn main(spawner: Spawner) {
                 let value = report
                     .position
                     .map(|position| jack_settings.value(position));
-                leds.set_color(jack, jack_color(jack, value));
 
                 let Some(value) = value else {
                     sent[jack] = None;
@@ -313,6 +308,11 @@ async fn main(spawner: Spawner) {
 
                 let control = control_value(value);
                 if worth_sending(sent[jack], value, control) {
+                    // The first control change after plugging in or a settings change only
+                    // tells the host where the pedal is, it did not move.
+                    if sent[jack].is_some() {
+                        last_moved[jack] = Some(Instant::now());
+                    }
                     sent[jack] = Some(SentControlChange { value, control });
                     let update = MidiUpdate {
                         channel: jack_settings.midi_channel,
@@ -330,7 +330,6 @@ async fn main(spawner: Spawner) {
             if now >= status_due {
                 status_due = now + STATUS_INTERVAL;
                 INTERFACE.status.sender().send(Status {
-                    uptime_seconds: now.as_secs(),
                     jacks: core::array::from_fn(|jack| {
                         jack_status(scanner.report(jack), &settings.jacks[jack])
                     }),
@@ -339,6 +338,15 @@ async fn main(spawner: Spawner) {
 
             if now >= leds_due {
                 leds_due = now + LED_INTERVAL;
+                for (jack, jack_last_moved) in last_moved.iter().enumerate() {
+                    let color = jack_color(
+                        scanner.report(jack),
+                        &settings.jacks[jack],
+                        *jack_last_moved,
+                        now,
+                    );
+                    leds.set_color(jack, color);
+                }
                 leds.update().await;
             }
 

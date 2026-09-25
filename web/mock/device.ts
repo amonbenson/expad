@@ -4,7 +4,8 @@
 
 import { WebSocketServer } from "ws";
 
-import type { JackSettings, JackStatus, Settings, Update } from "../src/interface.ts";
+import type { JackStatus, Settings, Update } from "../src/interface.ts";
+import { expressionValue } from "../src/interface.ts";
 
 const PORT = 8765;
 const JACK_COUNT = 4;
@@ -17,15 +18,20 @@ const TOTAL_RESISTANCE = 10;
 const PULL_RESISTANCE = 1;
 const HIGH_RAIL_VOLTAGE = 2.5;
 
+/** Mirrors `DEFAULT_JACK_COLORS` in src/web/interface.rs. */
+const DEFAULT_JACK_COLORS = ["#FF7E7E", "#FFA259", "#FFCB56", "#FFEDB9"];
+
 let settings: Settings = {
   ledBrightness: 127,
-  jacks: Array.from({ length: JACK_COUNT }, () => ({
+  jacks: Array.from({ length: JACK_COUNT }, (_, jack) => ({
     midiChannel: 0,
     midiController: 11,
     inverted: false,
     minimum: 0,
     maximum: 1,
     wiper: "auto",
+    drive: 0,
+    color: DEFAULT_JACK_COLORS[jack],
   })),
 };
 
@@ -53,15 +59,6 @@ function armVoltages(relative: [number, number, number]): [number, number, numbe
   const centerVoltage = pulledDownVoltage + current * pulledDownResistance;
 
   return [centerVoltage, pulledUpVoltage, pulledDownVoltage];
-}
-
-/** Mirrors `JackSettings::value` in src/web/interface.rs: the jack's range stretched to 0..1, then inverted. */
-function expressionValue(position: number, jackSettings: JackSettings): number {
-  const range = jackSettings.maximum - jackSettings.minimum;
-  const stretched = range > 0 ? (position - jackSettings.minimum) / range : position;
-  const value = Math.min(Math.max(stretched, 0), 1);
-
-  return jackSettings.inverted ? 1 - value : value;
 }
 
 /** Mirrors `dummy_jack_status` in src/bin/web_interface.rs: a sweep per jack, the last one unplugged. */
@@ -108,7 +105,6 @@ setInterval(() => {
   const uptimeMs = Date.now() - startedAt;
   broadcast({
     status: {
-      uptimeSeconds: Math.floor(uptimeMs / 1000),
       jacks: Array.from({ length: JACK_COUNT }, (_, jack) => jackStatus(uptimeMs, jack)),
     },
   });

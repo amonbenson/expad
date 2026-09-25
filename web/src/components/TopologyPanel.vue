@@ -5,14 +5,16 @@ import { computed } from "vue";
 
 import ResistorCircuit, { type CircuitArm } from "@/components/ResistorCircuit.vue";
 import type { JackStatus } from "@/interface";
-import { JACK_COLORS } from "@/theme";
 
 const ARM_COUNT = 3;
 
-const { jack, status = undefined } = defineProps<{ jack: number; status?: JackStatus }>();
+const { jack, color = undefined, status = undefined } = defineProps<{
+  jack: number;
+  /** Accent color of the jack, from its settings. */
+  color?: string;
+  status?: JackStatus;
+}>();
 const collapsed = defineModel<boolean>("collapsed", { required: true });
-
-const color = computed(() => JACK_COLORS[jack]);
 
 const circuitArms = computed<CircuitArm[]>(() =>
   Array.from({ length: ARM_COUNT }, (_, arm) => ({

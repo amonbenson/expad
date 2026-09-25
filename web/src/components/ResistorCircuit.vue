@@ -15,6 +15,8 @@ export interface CircuitArm {
 <script setup lang="ts">
 import { computed } from "vue";
 
+import { INDICATOR_COLORS } from "@/theme";
+
 const GRID = 12;
 const STROKE = 2;
 const JUNCTION_RADIUS = STROKE * 2;
@@ -27,13 +29,8 @@ const DELTA_X = GRID * 7;
 const DELTA_Y = GRID * 6;
 
 const WIRE_COLOR = "#888";
-const HIGH_RAIL_COLOR = "oklch(63.7% 0.237 25.331)";
-const LOW_RAIL_COLOR = "oklch(62.3% 0.214 259.815)";
-const ARM_COLORS = [
-  "oklch(69.6% 0.17 162.48)",
-  "oklch(71.5% 0.143 215.221)",
-  "oklch(65.6% 0.241 354.308)",
-];
+const HIGH_RAIL_COLOR = INDICATOR_COLORS.red;
+const LOW_RAIL_COLOR = INDICATOR_COLORS.blue;
 
 /** Fractions along an arm, between the center junction and its tap, that the resistor body spans. */
 const RESISTOR_BODY_START = 0.33;
@@ -48,6 +45,10 @@ const DELTA_ARMS = [
     labelAlign: "start",
     labelOffsetX: 16,
     labelOffsetY: 0,
+    contact: "Tip",
+    contactAlign: "middle",
+    contactOffsetX: 0,
+    contactOffsetY: -LABEL_GAP * 1.5,
   },
   {
     tapX: SPACING + DELTA_X + DELTA_X,
@@ -55,6 +56,10 @@ const DELTA_ARMS = [
     labelAlign: "start",
     labelOffsetX: 12,
     labelOffsetY: -16,
+    contact: "Ring",
+    contactAlign: "middle",
+    contactOffsetX: 0,
+    contactOffsetY: LABEL_GAP * 1.5,
   },
   {
     tapX: SPACING,
@@ -62,6 +67,10 @@ const DELTA_ARMS = [
     labelAlign: "end",
     labelOffsetX: -12,
     labelOffsetY: -16,
+    contact: "Sleeve",
+    contactAlign: "end",
+    contactOffsetX: -LABEL_GAP,
+    contactOffsetY: 0,
   },
 ];
 
@@ -72,6 +81,8 @@ const TAP_WIRE_EX = DELTA_ARMS[1].tapX + SPACING * 5;
 const GND_X = TAP_WIRE_EX - SPACING * 2;
 const VCC_X = TAP_WIRE_EX - SPACING * 3;
 
+/** Room left of the circuit for the sleeve's contact label. */
+const LEFT_MARGIN = SPACING;
 const WIDTH = SPACING + DELTA_X * 2 + SPACING * 8;
 const HEIGHT = SPACING + DELTA_X + DELTA_Y + SPACING * 5;
 
@@ -103,7 +114,6 @@ const armViews = computed(() =>
       ...arm,
       ...geometry,
       name: `R${index + 1}`,
-      color: ARM_COLORS[index],
       wireY: TAP_WIRE_YS[index],
       voltageRatio: voltageRatios.value[index],
       isolated: arm.resistance === null,
@@ -126,8 +136,8 @@ function formatVoltage(volts: number | null): string {
 
 <template>
   <svg
-    :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
-    :style="{ maxWidth: `${WIDTH}px` }"
+    :viewBox="`${-LEFT_MARGIN} 0 ${LEFT_MARGIN + WIDTH} ${HEIGHT}`"
+    :style="{ maxWidth: `${LEFT_MARGIN + WIDTH}px` }"
     class="h-auto w-full"
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
@@ -276,14 +286,18 @@ function formatVoltage(volts: number | null): string {
         fill="currentColor"
         stroke="none"
       />
-      <circle
-        :cx="arm.tapX"
-        :cy="arm.tapY"
-        :r="JUNCTION_RADIUS * 2"
-        fill="none"
-        :stroke="arm.color"
-        :stroke-width="STROKE"
-      />
+      <text
+        :x="arm.tapX + arm.contactOffsetX"
+        :y="arm.tapY + arm.contactOffsetY"
+        :text-anchor="arm.contactAlign"
+        dominant-baseline="middle"
+        :font-size="FONT_SIZE"
+        font-weight="600"
+        stroke="none"
+        fill="currentColor"
+      >
+        {{ arm.contact }}
+      </text>
     </template>
 
     <!-- Delta center junction -->

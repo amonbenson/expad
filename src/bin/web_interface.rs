@@ -105,7 +105,6 @@ async fn main(spawner: Spawner) {
         loop {
             let uptime = Instant::now();
             INTERFACE.status.sender().send(Status {
-                uptime_seconds: uptime.as_secs(),
                 jacks: core::array::from_fn(|jack| dummy_jack_status(uptime.as_millis(), jack)),
             });
             ticker.next().await;
