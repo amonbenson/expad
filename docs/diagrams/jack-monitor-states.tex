@@ -101,7 +101,7 @@
 
   \draw[subgroup=follow] (18.1, 3.5) rectangle (27.3, 9.5);
   \node[subgroupTitle=follow] (twoWire) at (18.25, 9.4) {2-WIRE: TIP--SLEEVE ELEMENT};
-  \node[info, anchor=west] at ([xshift=4pt]twoWire.east) {\hi{T} \lo{S}, only T read; plug checked every 50\,ms};
+  \node[info, anchor=west] at ([xshift=4pt]twoWire.east) {\hi{T} \lo{S}, stereo \lo{R} too; only T read};
 
   % ---------------------------------------------------------------- plug detection
   \node[circle, fill=ink, minimum size=7pt, inner sep=0pt] (start) at (0.95, 12.35) {};
@@ -118,7 +118,7 @@
   \node[lbl, anchor=north] at (1.15, 9.85) {no plug\\[-1pt]TN $\leq$ \textthreequarters};
 
   \node[state=detect, text width=3.4cm, minimum height=1.5cm] (plugcheck) at (3.4, 4.6)
-    {\st{PLUG CHECK}\\ \sd{\lo{T} \hi{TN}, read TN}\\ \sd{is a plug in at all?}};
+    {\st{CONFIRM PLUG}\\ \sd{\lo{T} \hi{TN}, read TN}\\ \sd{is a plug in at all?}};
   \draw[unplugged] (plugcheck.north) -- (empty.south)
     node[lbl, pos=0.75, right, text=unplug] {TN $\leq$ \textthreequarters{} rail:\\[-1pt]unplugged};
 
@@ -180,12 +180,12 @@
 
   \draw[trans] (split) -- (switch.west) node[lbl, pos=0.45, above] {only tip and\\[-1pt]sleeve conduct};
   \draw[trans] (16.0, 6.2) -| (rheostat.south)
-    node[lbl, pos=0.3, above] {end stop, total changed $>$\,20\,\% since the plug (mono rheostat)};
+    node[lbl, pos=0.3, above] {end stop, total changed $>$\,20\,\% since the pedal's first (mono rheostat)};
   \draw[trans] (switch.east) -- (rheostat.west)
     node[lbl, midway, above] {3 readings\\[-1pt]in a row}
     node[lbl, midway, below] {between\\[-1pt]closed, open};
   \draw[trans] (plugcheck.east |- 0, 4.4) -- (open.west)
-    node[lbl, pos=0.35, above] {TN $>$ \textthreequarters{} rail: a plug, but nothing behind it};
+    node[lbl, pos=0.35, above] {TN $>$ \textthreequarters{} rail: a plug, but nothing behind it;\\[-1pt]forget the pedal (it may be swapped at the cable's end)};
 
   % ---------------------------------------------------------------- return corridors
   % Re-identify: along the top into the identification entry.
@@ -193,9 +193,9 @@
   \node[lbl, anchor=east, text=ident] at ($(wiper.north |- 0, 13.97)+(-0.12, 0)$)
     {lost track: an end's drop vanished or shifted, or the wiper left the ends};
   \draw[reident] (open.east) -- (27.95, 4.4) -- (27.95, 14.35) -- (wiper.north |- 0, 14.35);
-  \node[lbl, text=ident, anchor=south] at (24.9, 4.4) {tip conducts, or 1\,s passed: solve};
-  \draw[reident] (27.3, 8.85) -- (27.95, 8.85);
-  \node[lbl, text=ident, anchor=east] at (27.25, 8.85) {mono: ring $\neq$ sleeve (checked every 100\,ms)};
+  \node[lbl, text=ident, anchor=south] at (24.9, 4.4) {tip or ring conducts, or 1\,s passed: solve};
+  \draw[reident] (27.3, 8.7) -- (27.95, 8.7);
+  \node[lbl, text=ident, anchor=east] at (27.25, 8.7) {ring changed (every 100\,ms): mono ring $\neq$ sleeve,\\[-1pt]stereo ring (\lo{}) carries current};
   \node[lbl, text=ident, anchor=south] at (11.0, 14.35) {re-identify: start a new solve};
 
   % Unplugged: along the bottom into EMPTY.

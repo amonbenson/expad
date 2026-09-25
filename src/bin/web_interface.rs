@@ -61,7 +61,7 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     let value = 1.0 - (2.0 * phase as f32 / SWEEP_PERIOD_MILLISECONDS as f32 - 1.0).abs();
 
     // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2, with the wiper `value`
-    // of the way from arm 2's (the sleeve's) end, as `ArmResistances::wiper_position` reads it.
+    // of the way from arm 2's (the sleeve's) end, as `ArmResistances::position_with_wiper` reads it.
     let resistances = ArmResistances {
         relative: [0.0, 1.0 - value, value],
         total: DUMMY_TOTAL_RESISTANCE,

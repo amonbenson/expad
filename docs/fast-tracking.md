@@ -169,8 +169,13 @@ current). A switch reads 1 closed (≤ 0.2 kΩ) and 0 open; three readings in a 
 make it a rheostat instead (one reading of a switch caught mid-bounce does not), which reads its
 resistance against the smallest standard pedal value (1, 2.5, 5, 10, 25 ... 1000 kΩ) it could be
 within 25%. The range setting trims either. A plug check every 50 ms notices the plug coming out,
-and behind a mono plug a ring check every 100 ms confirms the ring is still shorted to the sleeve
-(a fresh tip reading has to confirm a mismatch, since the switch may have just changed). The
+and a ring check every 100 ms confirms the ring is still wired as identified - behind a mono plug
+still shorted to the sleeve, behind a stereo one still isolated, which is why a stereo plug's
+ring is pulled down with the sleeve: isolated, it reads its rail exactly, and any current means
+something connected it (a fresh tip reading has to confirm a mismatch, since the switch may have
+just changed). Without that, a stereo cable left in the jack and plugged into a potentiometer
+pedal stayed a rheostat: sliding in, the plug connects tip and sleeve through part of the track
+before the ring, which reads as a switch turning into a rheostat. The
 sleeve voltage it compares against is inferred from the tip, assuming both pull paths equal; on
 the PCB they differ by a few ohms, which at the full current of a closed switch is a few
 millivolts, so the check allows 1% of the sleeve's drop on top of 6σ of noise. With the noise
@@ -185,7 +190,9 @@ rises and falls again, so no reading can tell the position; such pedals need a s
 A released stereo switch reads like a plug with nothing behind it (Open), so Open follows tip and
 sleeve the same way: every reading looks for them connecting (6σ of current noise, ~800 kΩ, so
 measured noise never trips it), then the jack is identified; a full solve every second catches
-networks without tip and sleeve. A mono cable with nothing at its end reads as a released switch.
+networks without tip and sleeve. Finding the plug open also forgets what was learned about the
+pedal (a rheostat, a first end stop), since a cable left in the jack may get the next pedal at its
+other end. A mono cable with nothing at its end reads as a released switch.
 
 A rheostat behind a mono plug is the same network as a ring-wiper potentiometer resting on its
 heel end stop (ring and sleeve shorted, the tip carrying the track) until the pedal moves: a

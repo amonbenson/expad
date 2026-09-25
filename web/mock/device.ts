@@ -87,14 +87,14 @@ function switchStatus(uptimeMs: number): JackStatus {
     position,
     value: expressionValue(position, settings.jacks[SWITCH_JACK]),
     resistances: { relative, total: pressed ? resistance : null },
-    // The ring keeps what it read while the pedal was identified.
+    // The isolated ring is pulled down with the sleeve and carries no current.
     voltages: [
       HIGH_RAIL_VOLTAGE - current * PULL_RESISTANCE,
-      1,
+      0,
       current * PULL_RESISTANCE,
       HIGH_RAIL_VOLTAGE,
     ],
-    pulls: ["up", "floating", "down", "floating"],
+    pulls: ["up", "down", "down", "floating"],
   };
 }
 
@@ -114,8 +114,8 @@ function rheostatStatus(resistance: number): JackStatus {
     position,
     value: expressionValue(position, settings.jacks[STORY_JACK]),
     resistances: { relative: [1, null, 0], total: resistance },
-    voltages: [HIGH_RAIL_VOLTAGE - current * PULL_RESISTANCE, 1, current * PULL_RESISTANCE, HIGH_RAIL_VOLTAGE],
-    pulls: ["up", "floating", "down", "floating"],
+    voltages: [HIGH_RAIL_VOLTAGE - current * PULL_RESISTANCE, 0, current * PULL_RESISTANCE, HIGH_RAIL_VOLTAGE],
+    pulls: ["up", "down", "down", "floating"],
   };
 }
 
@@ -163,8 +163,8 @@ const STORY: { durationMs: number; status: (elapsed: number) => JackStatus }[] =
       position: null,
       value: 0,
       resistances: UNSOLVED,
-      voltages: [HIGH_RAIL_VOLTAGE, 1, 0, HIGH_RAIL_VOLTAGE],
-      pulls: ["up", "floating", "down", "floating"],
+      voltages: [HIGH_RAIL_VOLTAGE, 0, 0, HIGH_RAIL_VOLTAGE],
+      pulls: ["up", "down", "down", "floating"],
     }),
   },
   {

@@ -1,6 +1,11 @@
 /// Arms meeting at the star point of one jack.
 pub const ARM_COUNT: usize = 3;
 
+/// Arm of each contact of a TRS jack.
+pub const TIP: usize = 0;
+pub const RING: usize = 1;
+pub const SLEEVE: usize = 2;
+
 /// Solved resistance distribution of one star network.
 ///
 /// Each arm's value is encoded the same way its resistance naturally is: `0.0` means
@@ -18,6 +23,29 @@ pub struct ArmResistances {
     pub total: f32,
 }
 
+/// What a solved network is to a jack monitor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum Network {
+    /// No current between any two arms: nothing behind the plug conducts, or there is no plug.
+    Disconnected,
+
+    /// Exactly one arm sits at the star point - the wiper - and the other two carry the two
+    /// halves of the track.
+    Potentiometer { wiper: usize },
+
+    /// Two arms sit at the star point, the lower-resistance one first: a potentiometer's
+    /// wiper resting on one end of its track, so either of them could be the wiper.
+    EndStop { candidates: [usize; 2] },
+
+    /// A single element between tip and sleeve, a switch or a rheostat: with the ring shorted
+    /// to the sleeve behind a mono plug, isolated behind a stereo one.
+    TipSleeve { ring_shorted: bool },
+
+    /// Any other network, such as a dual footswitch.
+    Other,
+}
+
 impl ArmResistances {
     /// All three arms are isolated from each other ("nothing connected").
     pub const DISCONNECTED: Self = Self {
@@ -25,68 +53,41 @@ impl ArmResistances {
         total: f32::NAN,
     };
 
-    /// Largest relative resistance an arm can have and still pass as a potentiometer's
-    /// wiper, which sits at the star point and so contributes little more than its own
-    /// contact and lead resistance.
-    pub const DEFAULT_MAX_WIPER_RELATIVE: f32 = 0.1;
-
-    /// Largest relative resistance a track end can have and still count as shorted to the
-    /// star point by a wiper resting on it. Far below the wiper's own allowance: a pedal
-    /// whose travel ends 9% short of its track (a common mechanical stop) is a potentiometer
-    /// with a clear wiper, not an end stop.
-    pub const END_STOP_RELATIVE: f32 = 0.02;
-
     /// Absolute resistance of `arm` in kΩ, or `f32::NAN` when it is unresolved.
     pub fn absolute(&self, arm: usize) -> f32 {
         self.relative[arm] * self.total
     }
 
-    /// Position of the wiper in `0.0..=1.0`, if these arms form a usable potentiometer:
-    /// one arm shorted to the star point (the wiper) and the other two carrying the two
-    /// halves of the track. `None` for any other topology, including a disconnected or
-    /// only partially resolved one.
-    ///
-    /// The position is the share of the track between its start (see [`track_ends`]) and the
-    /// wiper - the same reading as driving the start low, the other end high and dividing the
-    /// wiper voltage along. With arm 2 as the sleeve, that is the TRS convention of both common
-    /// wirings (wiper on the tip or on the ring, sleeve grounded): the value rises as the
-    /// wiper leaves the sleeve end. Pedals wired the other way round are what the per-jack
-    /// `inverted` setting exists for.
-    ///
-    /// A wiper resting on a track end shorts it to the star point as well, which leaves two
-    /// candidates for the wiper; this takes the one closer to the star point. See
-    /// [`wiper_position_with_hint`](Self::wiper_position_with_hint).
-    pub fn wiper_position(&self, max_wiper_relative: f32) -> Option<f32> {
-        self.wiper_position_with_hint(max_wiper_relative, None)
+    /// Classifies the network. An arm within `max_wiper_relative` of the star point passes
+    /// as a wiper, a second one within `end_stop_relative` makes it an end stop, and two arms
+    /// within `end_stop_relative` on ring and sleeve are what a mono plug's sleeve does to
+    /// the ring.
+    pub fn network(&self, max_wiper_relative: f32, end_stop_relative: f32) -> Network {
+        if self.relative.iter().all(|relative| relative.is_infinite()) {
+            return Network::Disconnected;
+        }
+
+        if let Some(potentiometer) = self.potentiometer(max_wiper_relative, end_stop_relative) {
+            return potentiometer;
+        }
+
+        let [tip, ring, sleeve] = self.relative;
+        let at_star_point = |relative: f32| relative <= end_stop_relative;
+        if at_star_point(ring) && at_star_point(sleeve) {
+            Network::TipSleeve { ring_shorted: true }
+        } else if ring.is_infinite() && !(tip.is_infinite() && sleeve.is_infinite()) {
+            Network::TipSleeve {
+                ring_shorted: false,
+            }
+        } else {
+            Network::Other
+        }
     }
 
-    /// Like [`wiper_position`](Self::wiper_position), but at an end stop takes
-    /// `preferred_wiper` as the wiper whenever it is one of the two candidates.
-    ///
-    /// Only an end stop that shorts arms 1 and 2 (ring and sleeve) needs this: the two
-    /// readings put the wiper on opposite ends of the track there. At every other end stop
-    /// both candidates give the same position.
-    pub fn wiper_position_with_hint(
-        &self,
-        max_wiper_relative: f32,
-        preferred_wiper: Option<usize>,
-    ) -> Option<f32> {
-        let wiper = match self.potentiometer(max_wiper_relative)? {
-            Potentiometer::Wiper(wiper) => wiper,
-            Potentiometer::EndStop(candidates) => match preferred_wiper {
-                Some(preferred) if candidates.contains(&preferred) => preferred,
-                _ => candidates[0],
-            },
-        };
-
-        self.position_with_wiper(wiper)
-    }
-
-    /// How these arms read as a potentiometer: every arm resolved, the lowest one within
-    /// `max_wiper_relative` of the star point, and the highest one beyond it. The lowest is
-    /// the wiper, unless the middle one is within [`END_STOP_RELATIVE`](Self::END_STOP_RELATIVE)
-    /// as well - an end stop, where either of the two could be. `None` for any other topology.
-    pub fn potentiometer(&self, max_wiper_relative: f32) -> Option<Potentiometer> {
+    /// Every arm resolved, the lowest one within `max_wiper_relative` of the star point and
+    /// the highest one beyond it: a potentiometer, or one on its end stop if the middle arm
+    /// is within `end_stop_relative` as well.
+    fn potentiometer(&self, max_wiper_relative: f32, end_stop_relative: f32) -> Option<Network> {
         if !self.relative.iter().all(|relative| relative.is_finite()) {
             return None;
         }
@@ -99,15 +100,24 @@ impl ArmResistances {
             return None;
         }
 
-        if self.relative[middle] <= Self::END_STOP_RELATIVE {
-            Some(Potentiometer::EndStop([lowest, middle]))
+        Some(if self.relative[middle] <= end_stop_relative {
+            Network::EndStop {
+                candidates: [lowest, middle],
+            }
         } else {
-            Some(Potentiometer::Wiper(lowest))
-        }
+            Network::Potentiometer { wiper: lowest }
+        })
     }
 
-    /// Position of the wiper as the share of the track between its start (see
-    /// [`track_ends`]) and the wiper, if that track has any resistance at all.
+    /// Position of `wiper` in `0.0..=1.0`, as the share of the track between its start (see
+    /// [`track_ends`]) and the wiper - the same reading as driving the start low, the other
+    /// end high and dividing the wiper voltage along. `None` if that track has no resistance
+    /// or is unresolved.
+    ///
+    /// With the sleeve as the start, that is the TRS convention of both common wirings (wiper
+    /// on the tip or on the ring, sleeve grounded): the value rises as the wiper leaves the
+    /// sleeve end. Pedals wired the other way round are what the per-jack `inverted` setting
+    /// exists for.
     pub fn position_with_wiper(&self, wiper: usize) -> Option<f32> {
         let (start, end) = track_ends(wiper);
         let track_sum = self.relative[start] + self.relative[end];
@@ -120,21 +130,8 @@ impl ArmResistances {
     }
 }
 
-/// How a solved network reads as a potentiometer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum Potentiometer {
-    /// Exactly this arm sits at the star point: the wiper.
-    Wiper(usize),
-
-    /// Two arms sit at the star point, the lower-resistance one first: the wiper resting on
-    /// one end of the track. Either of them could be the wiper.
-    EndStop([usize; 2]),
-}
-
-/// Arm a pedal's track is grounded on in the TRS convention: the sleeve, with the arms in
-/// tip, ring, sleeve order.
-pub const GROUNDED_END: usize = 2;
+/// Arm a pedal's track is grounded on in the TRS convention.
+pub const GROUNDED_END: usize = SLEEVE;
 
 /// The two arms that are not `wiper`, as the track's start and end: [`GROUNDED_END`] first
 /// whenever it is one of them, so positions count up away from the sleeve, and otherwise the

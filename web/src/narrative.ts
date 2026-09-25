@@ -168,10 +168,15 @@ function describeTracking(status: JackStatus): NarrativeLine[] {
   ];
 }
 
+/** How the tip and sleeve are followed; a stereo plug's isolated ring is pulled down with the sleeve. */
+function describeFollowedDrives(mono: boolean): string {
+  return mono ? "the tip pulled up, the sleeve down" : "the tip pulled up, the sleeve and ring down";
+}
+
 function describePlugChecks(mono: boolean): Segment[] {
   return mono
     ? say`every ${`${PLUG_CHECK_INTERVAL_MS} ms`} the tip switch checks the plug is still in, and every ${`${RING_CHECK_INTERVAL_MS} ms`} the ring that it still matches the sleeve`
-    : say`every ${`${PLUG_CHECK_INTERVAL_MS} ms`} the tip switch checks the plug is still in`;
+    : say`every ${`${PLUG_CHECK_INTERVAL_MS} ms`} the tip switch checks the plug is still in, and every ${`${RING_CHECK_INTERVAL_MS} ms`} the ring that it still carries no current - a pedal plugged into a cable already in the jack connects its ring last`;
 }
 
 function describeSwitch(status: JackStatus): NarrativeLine[] {
@@ -186,7 +191,7 @@ function describeSwitch(status: JackStatus): NarrativeLine[] {
     {
       label: "Now",
       segments: [
-        ...say`Following a switch: the tip pulled up, the sleeve down, only the tip read. `,
+        `Following a switch: ${describeFollowedDrives(mono)}, only the tip read. `,
         ...(pressed
           ? say`It is closed: the tip dropped to ${tipVoltage}, where the two pulls split the rail, so its position is ${percent(1)}.`
           : say`It is open: no current flows, so the tip stays at the rail, ${tipVoltage}, and its position is ${percent(0)}.`),
@@ -223,7 +228,8 @@ function describeRheostat(status: JackStatus): NarrativeLine[] {
     {
       label: "Now",
       segments: [
-        ...say`Following a rheostat: the tip pulled up, the sleeve down, only the tip read. The tip sits ${volts(drop)} below the rail, the current through its pull-up, which puts ${kiloOhms(resistance)} between tip and sleeve`,
+        `Following a rheostat: ${describeFollowedDrives(mono)}, only the tip read. `,
+        ...say`The tip sits ${volts(drop)} below the rail, the current through its pull-up, which puts ${kiloOhms(resistance)} between tip and sleeve`,
         ...(fullScale === null ? say`.` : say` - ${percent(position)} of its ${kiloOhms(fullScale)} full scale.`),
       ],
     },
@@ -248,7 +254,7 @@ function describeOpen(status: JackStatus): NarrativeLine[] {
   return [
     {
       label: "Now",
-      segments: say`A plug is in - the tip switch reads ${volts(status.voltages[TIP_SWITCH])} - but nothing conducts: with the tip pulled up and the sleeve down, the tip stays at the rail, ${volts(status.voltages[TIP])}, as no current crosses its pull-up.`,
+      segments: say`A plug is in - the tip switch reads ${volts(status.voltages[TIP_SWITCH])} - but nothing conducts: with ${describeFollowedDrives(false)}, the tip stays at the rail, ${volts(status.voltages[TIP])}, as no current crosses its pull-up.`,
     },
     {
       label: "Why",
@@ -256,7 +262,7 @@ function describeOpen(status: JackStatus): NarrativeLine[] {
     },
     {
       label: "Next",
-      segments: say`Any drop of the tip below the rail means tip and sleeve connected, and the jack is identified again; a full solve every ${`${OPEN_SOLVE_INTERVAL_MS / 1000} s`} catches networks elsewhere. The tip switch still checks for the plug every ${`${PLUG_CHECK_INTERVAL_MS} ms`}.`,
+      segments: say`Any drop of the tip below the rail means tip and sleeve connected, and any current through the ring that the ring did, and the jack is identified again; a full solve every ${`${OPEN_SOLVE_INTERVAL_MS / 1000} s`} catches networks elsewhere. The tip switch still checks for the plug every ${`${PLUG_CHECK_INTERVAL_MS} ms`}.`,
     },
   ];
 }

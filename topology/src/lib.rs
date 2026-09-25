@@ -7,9 +7,11 @@
 //! This crate is the arithmetic half of the topology solver and knows nothing about ADCs
 //! or pull switches: [`SolveSequence`] hands out the pair to measure next,
 //! [`PairMeasurement::from_voltages`] turns the voltages that pair produced into a
-//! measurement, and the sequence resolves them into [`ArmResistances`]. The hardware half
-//! lives in `expad::topology::solver`, which drives the real pull switches and ADC chain; tests
-//! drive the same sequence from a simulated network instead.
+//! measurement, and the sequence resolves them into [`ArmResistances`], which
+//! [`ArmResistances::network`] classifies. [`JackMonitor`] is the state machine built on top:
+//! it watches one jack for plugs, identifies them with solves and follows what it found. The
+//! hardware half lives in `expad::topology::scanner`, which runs the monitors on the real pull
+//! switches and ADC chain; tests drive the same monitors from a simulated jack instead.
 //!
 //! All resistances are in kΩ and all currents in mA throughout the crate (kΩ × mA = V, so
 //! voltage formulas need no unit conversion).
@@ -32,8 +34,9 @@ mod sequence;
 pub use config::SolverConfig;
 pub use measurement::{ArmDrive, PairMeasurement, PairVoltages};
 pub use monitor::{
-    CONTACT_COUNT, Drive, JackMode, JackMonitor, JackReport, MonitorConfig, Reading, TIP,
-    TIP_SWITCH,
+    CONTACT_COUNT, Drive, JackMode, JackMonitor, JackReport, MonitorConfig, Reading, TIP_SWITCH,
 };
-pub use resistances::{ARM_COUNT, ArmResistances, GROUNDED_END, Potentiometer, track_ends};
+pub use resistances::{
+    ARM_COUNT, ArmResistances, GROUNDED_END, Network, RING, SLEEVE, TIP, track_ends,
+};
 pub use sequence::{PAIR_SEQUENCE, SolveError, SolveSequence, SolveStep};

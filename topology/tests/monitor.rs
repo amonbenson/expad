@@ -5,7 +5,8 @@
 mod star_network;
 
 use expad_topology::{
-    ARM_COUNT, Drive, JackMode, JackMonitor, MonitorConfig, Reading, SolverConfig, TIP, TIP_SWITCH,
+    ARM_COUNT, Drive, JackMode, JackMonitor, MonitorConfig, RING, Reading, SLEEVE, SolverConfig,
+    TIP, TIP_SWITCH,
 };
 use star_network::{Role, StarNetwork};
 
@@ -16,9 +17,6 @@ const FLOATING_TAP: f32 = 1.0;
 
 /// Time one reading takes on the board at 819 Hz, including the odd settling wait, in ms.
 const READING_TIME: u64 = 5;
-
-const RING: usize = 1;
-const SLEEVE: usize = 2;
 
 /// Standard deviation of the noise on every reading in the noisy tests, as measured.
 const NOISE: f32 = SolverConfig::DEFAULT_VOLTAGE_NOISE;
@@ -643,6 +641,36 @@ fn waits_on_an_open_cable_and_tracks_the_pedal_once_it_is_connected() {
     harness.run_until(JackMode::Tracking, 250);
     harness.run_for(20);
     assert_close(harness.position(), 0.2, 1e-3);
+}
+
+/// A stereo cable left in the jack and plugged into a pedal: sliding in, the plug connects tip
+/// and sleeve through part of the pedal before the ring, which reads like a rheostat. Once the
+/// ring connects, the pedal is identified again; and once it is unplugged at the far end, the
+/// next pedal is not taken for a rheostat because of it.
+#[test]
+fn identifies_a_pedal_plugged_into_a_cable_already_in_the_jack() {
+    let mut harness = Harness::new();
+    harness.jack.plug(None);
+    harness.run_until(JackMode::Open, 200);
+
+    for step in 0..20 {
+        harness.jack.network = Some(stereo(2.0 + step as f32 * 0.4));
+        harness.run_for(10);
+    }
+    assert_eq!(harness.mode(), JackMode::Rheostat);
+
+    harness.jack.network = Some(potentiometer(TIP, 0.3, 10.0));
+    let delay = harness.run_until(JackMode::Tracking, 500);
+    assert!(delay <= 250, "tracking after {delay} ms");
+    harness.run_for(20);
+    assert_close(harness.position(), 0.3, 1e-3);
+
+    harness.jack.network = None;
+    harness.run_until(JackMode::Open, 300);
+    harness.jack.network = Some(stereo(0.0));
+    harness.run_until(JackMode::Switch, 200);
+    harness.run_for(20);
+    assert_close(harness.position(), 1.0, 0.0);
 }
 
 #[test]

@@ -4,8 +4,8 @@
 mod star_network;
 
 use expad_topology::{
-    ARM_COUNT, ArmResistances, PairMeasurement, PairVoltages, SolveError, SolveSequence, SolveStep,
-    SolverConfig,
+    ARM_COUNT, ArmResistances, MonitorConfig, Network, PairMeasurement, PairVoltages, SolveError,
+    SolveSequence, SolveStep, SolverConfig,
 };
 use star_network::{Role, StarNetwork};
 
@@ -21,6 +21,20 @@ const INCONSISTENT_OFFSET: f32 = 0.05;
 
 /// Voltage offset of one standard deviation of the default noise floor.
 const NOISE_OFFSET: f32 = SolverConfig::DEFAULT_VOLTAGE_NOISE;
+
+/// How a jack monitor with the default configuration classifies `resistances`.
+fn network(resistances: &ArmResistances) -> Network {
+    let config = MonitorConfig::default();
+    resistances.network(config.max_wiper_relative, config.end_stop_relative)
+}
+
+/// Wiper position of `resistances` if they form a potentiometer with a clear wiper.
+fn wiper_position(resistances: &ArmResistances) -> Option<f32> {
+    match network(resistances) {
+        Network::Potentiometer { wiper } => resistances.position_with_wiper(wiper),
+        _ => None,
+    }
+}
 
 fn assert_close(actual: f32, expected: f32, tolerance: f32) {
     let difference = (actual - expected).abs();
@@ -291,8 +305,7 @@ fn rejects_two_measurements_that_disagree_about_the_total_resistance() {
 fn reads_a_potentiometers_wiper_position_from_its_two_track_halves() {
     let resistances = solve(&StarNetwork::new([0.0, 3.0, 7.0])).unwrap();
 
-    let position = resistances
-        .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
+    let position = wiper_position(&resistances)
         .expect("a shorted arm between two track halves is a potentiometer");
 
     assert_close(position, 0.7, TOLERANCE);
@@ -304,8 +317,7 @@ fn reads_a_potentiometers_wiper_position_from_its_two_track_halves() {
 fn resolves_a_high_value_potentiometer_whose_currents_are_barely_above_the_noise() {
     let resistances = solve(&StarNetwork::new([300.0, 0.0, 700.0])).unwrap();
 
-    let position = resistances
-        .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
+    let position = wiper_position(&resistances)
         .expect("a shorted arm between two track halves is a potentiometer");
 
     assert_close(position, 0.7, TOLERANCE);
@@ -322,8 +334,7 @@ fn keeps_the_position_accurate_when_the_currents_are_dominated_by_noise() {
     let resistances =
         solve_with_offsets(&network, [NOISE_OFFSET, -NOISE_OFFSET, NOISE_OFFSET]).unwrap();
 
-    let position = resistances
-        .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
+    let position = wiper_position(&resistances)
         .expect("a shorted arm between two track halves is a potentiometer");
 
     assert_close(position, 0.7, HIGH_RESISTANCE_TOLERANCE);
@@ -348,8 +359,7 @@ fn keeps_the_position_steady_when_the_wiper_contact_resistance_is_the_shared_arm
     ] {
         let resistances = solve_with_offsets(&network, offsets).unwrap();
 
-        let position = resistances
-            .wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE)
+        let position = wiper_position(&resistances)
             .expect("a near-shorted arm between two track halves is a potentiometer");
 
         assert_close(position, expected_position, quarter_midi_step);
@@ -357,15 +367,44 @@ fn keeps_the_position_steady_when_the_wiper_contact_resistance_is_the_shared_arm
 }
 
 #[test]
-fn reports_no_wiper_position_for_a_network_that_is_not_a_potentiometer() {
+fn classifies_a_network_with_no_arm_at_the_star_point_as_other() {
     let resistances = solve(&StarNetwork::new([10.0, 22.0, 47.0])).unwrap();
 
+    assert_eq!(network(&resistances), Network::Other);
+    assert_eq!(wiper_position(&resistances), None);
     assert_eq!(
-        resistances.wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE),
-        None
+        network(&ArmResistances::DISCONNECTED),
+        Network::Disconnected
     );
+}
+
+/// A wiper resting on the sleeve end shorts the sleeve to the star point as well, so either
+/// could be the wiper.
+#[test]
+fn classifies_a_wiper_resting_on_a_track_end_as_an_end_stop() {
+    let resistances = solve(&StarNetwork::new([10.0, 0.0, 0.0])).unwrap();
+
+    assert!(matches!(
+        network(&resistances),
+        Network::EndStop { candidates } if candidates.contains(&1) && candidates.contains(&2)
+    ));
+}
+
+/// A mono plug's sleeve shorts the ring to it, whatever sits between tip and sleeve; a stereo
+/// plug leaves the ring isolated.
+#[test]
+fn classifies_a_single_element_between_tip_and_sleeve() {
+    let closed_mono = solve(&StarNetwork::new([0.0, 0.0, 0.0])).unwrap();
+    let open_mono = solve(&StarNetwork::new([f32::INFINITY, 0.0, 0.0])).unwrap();
+    let stereo = solve(&StarNetwork::new([5.0, f32::INFINITY, 0.0])).unwrap();
+
+    for mono in [closed_mono, open_mono] {
+        assert_eq!(network(&mono), Network::TipSleeve { ring_shorted: true });
+    }
     assert_eq!(
-        ArmResistances::DISCONNECTED.wiper_position(ArmResistances::DEFAULT_MAX_WIPER_RELATIVE),
-        None
+        network(&stereo),
+        Network::TipSleeve {
+            ring_shorted: false
+        }
     );
 }
