@@ -73,7 +73,6 @@ web = [
   "dep:edge-nal",
   "dep:edge-nal-embassy",
   "dep:embassy-net",
-  "dep:embassy-sync",
   "dep:picoserve",
   "dep:serde",
   "dep:serde-json-core",
@@ -96,6 +95,7 @@ embassy-rp = { version = "0.10.0", features = [
   "critical-section-impl",
   "rp235xa",
   "binary-info",
+  "unstable-pac",
 ] }
 
 cortex-m = "0.7.8"
@@ -109,6 +109,7 @@ embassy-usb = { version = "0.6.0", default-features = false, features = [
   "defmt",
 ] }
 static_cell = "2.1.1"
+embassy-sync = { version = "0.8.0", features = ["defmt"] }
 usbd-midi = "0.5.1"
 
 cyw43 = { version = "0.7.0", features = ["defmt"], optional = true }
@@ -128,7 +129,6 @@ embassy-net = { version = "0.9.1", features = [
   "tcp",
   "udp",
 ], optional = true }
-embassy-sync = { version = "0.8.0", features = ["defmt"], optional = true }
 picoserve = { version = "0.20.0", features = [
   "defmt",
   "embassy",

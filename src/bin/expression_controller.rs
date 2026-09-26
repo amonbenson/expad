@@ -1,20 +1,22 @@
 #![no_std]
 #![no_main]
 
+use core::cell::RefCell;
+
 use defmt::{debug, info, unwrap, warn};
 use embassy_executor::Spawner;
-use embassy_futures::join::join3;
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIO0, PIO1, USB};
 use embassy_rp::{bind_interrupts, dma, pio, usb};
+use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::channel::Channel;
+use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant};
 use expad::board::{self, JACKS};
 use expad::hal::adc::AdcChainConfig;
 use expad::hal::led::RGB8;
 use expad::hal::usb::{
     CableNumber, Channel as MidiChannel, ControlFunction, FromClamped, Message, U7, UsbMidi,
-    UsbMidiConfig,
+    UsbMidiConfig, UsbMidiDevice,
 };
 use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
 use expad::topology::scanner::{JackScanner, SettleConfig};
@@ -69,10 +71,8 @@ const MIDI_MAX_VALUE: u8 = 127;
 const MIDI_HYSTERESIS: f32 = 0.6 / MIDI_MAX_VALUE as f32;
 
 /// Control changes waiting to be sent. The measurement loop must never block on USB, so it
-/// hands finished messages over and drops them if the host is not keeping up.
-const MIDI_QUEUE_DEPTH: usize = 8;
-static MIDI_UPDATES: Channel<CriticalSectionRawMutex, MidiUpdate, MIDI_QUEUE_DEPTH> =
-    Channel::new();
+/// only replaces each jack's newest one, whether or not a host is listening.
+static CONTROL_CHANGES: PendingControlChanges = PendingControlChanges::new();
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
@@ -94,10 +94,114 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
 
 /// A control change the measurement loop has decided to send.
 #[derive(Debug, Clone, Copy, defmt::Format)]
-struct MidiUpdate {
+struct ControlChange {
     channel: u8,
     controller: u8,
     value: u8,
+}
+
+impl ControlChange {
+    /// The MIDI message, unless the channel is out of range.
+    fn message(self) -> Option<Message> {
+        let channel = MidiChannel::try_from(self.channel).ok()?;
+        Some(Message::ControlChange(
+            channel,
+            ControlFunction(U7::from_clamped(self.controller)),
+            U7::from_clamped(self.value),
+        ))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PendingJack {
+    newest: Option<ControlChange>,
+    unsent: bool,
+}
+
+#[derive(Debug)]
+struct PendingState {
+    jacks: [PendingJack; JACK_COUNT],
+    /// Where the search for the next unsent control change starts, so that one busy jack
+    /// cannot hold back the others.
+    next_jack: usize,
+}
+
+/// The newest control change of every jack. A host only needs to know where each pedal is
+/// now, so a newer control change replaces one still waiting, and nothing piles up while no
+/// host is listening.
+struct PendingControlChanges {
+    state: Mutex<CriticalSectionRawMutex, RefCell<PendingState>>,
+    updated: Signal<CriticalSectionRawMutex, ()>,
+}
+
+impl PendingControlChanges {
+    const fn new() -> Self {
+        let empty = PendingJack {
+            newest: None,
+            unsent: false,
+        };
+        Self {
+            state: Mutex::new(RefCell::new(PendingState {
+                jacks: [empty; JACK_COUNT],
+                next_jack: 0,
+            })),
+            updated: Signal::new(),
+        }
+    }
+
+    /// Makes `change` the jack's newest control change, to be sent next.
+    fn publish(&self, jack: usize, change: ControlChange) {
+        self.state.lock(|state| {
+            state.borrow_mut().jacks[jack] = PendingJack {
+                newest: Some(change),
+                unsent: true,
+            };
+        });
+        self.updated.signal(());
+    }
+
+    /// Forgets the jack's control change once nothing usable is plugged in any more.
+    fn forget(&self, jack: usize) {
+        self.state.lock(|state| {
+            state.borrow_mut().jacks[jack] = PendingJack {
+                newest: None,
+                unsent: false,
+            };
+        });
+    }
+
+    /// Marks every jack's newest control change unsent again, so a newly connected host learns
+    /// where every pedal is.
+    fn resend_all(&self) {
+        self.state.lock(|state| {
+            for jack in &mut state.borrow_mut().jacks {
+                jack.unsent = jack.newest.is_some();
+            }
+        });
+        self.updated.signal(());
+    }
+
+    fn take_unsent(&self) -> Option<ControlChange> {
+        self.state.lock(|state| {
+            let mut state = state.borrow_mut();
+            let jack = (0..JACK_COUNT)
+                .map(|offset| (state.next_jack + offset) % JACK_COUNT)
+                .find(|&jack| state.jacks[jack].unsent)?;
+            state.jacks[jack].unsent = false;
+            state.next_jack = (jack + 1) % JACK_COUNT;
+            state.jacks[jack].newest
+        })
+    }
+
+    /// Waits for a control change that has not been sent yet and takes it.
+    async fn next_unsent(&self) -> ControlChange {
+        loop {
+            if let Some(change) = self.take_unsent() {
+                return change;
+            }
+            self.updated.wait().await;
+        }
+    }
 }
 
 /// What the last control change sent for a jack was, and the expression value it was
@@ -232,7 +336,9 @@ async fn main(spawner: Spawner) {
     );
 
     info!("Initializing USB MIDI");
-    let (mut midi, mut usb_device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());
+    let (midi, usb_device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());
+    spawner.spawn(unwrap!(run_usb(usb_device)));
+    spawner.spawn(unwrap!(send_control_changes(midi)));
 
     let monitor_config = MonitorConfig::new(
         SolverConfig::from_voltage_noise(ADC_VOLTAGE_NOISE),
@@ -253,147 +359,140 @@ async fn main(spawner: Spawner) {
     let mut settings_receiver = unwrap!(INTERFACE.settings.receiver());
     let mut settings = settings_receiver.get().await;
 
-    let detect = async {
-        apply_wiper_settings(&mut scanner, &settings);
-        leds.set_brightness(settings.led_brightness);
+    apply_wiper_settings(&mut scanner, &settings);
+    leds.set_brightness(settings.led_brightness);
 
-        let mut sent = [None::<SentControlChange>; JACK_COUNT];
-        let mut last_moved = [None::<Instant>; JACK_COUNT];
-        let mut modes = [JackMode::Empty; JACK_COUNT];
-        let mut status_due = Instant::now();
-        let mut leds_due = Instant::now();
-        let mut rate_window_started = Instant::now();
-        let mut position_updates = [0u32; JACK_COUNT];
+    let mut sent = [None::<SentControlChange>; JACK_COUNT];
+    let mut last_moved = [None::<Instant>; JACK_COUNT];
+    let mut modes = [JackMode::Empty; JACK_COUNT];
+    let mut status_due = Instant::now();
+    let mut leds_due = Instant::now();
+    let mut rate_window_started = Instant::now();
+    let mut position_updates = [0u32; JACK_COUNT];
 
-        loop {
-            if let Some(changed) = settings_receiver.try_changed() {
-                info!("Settings changed: {}", changed);
-                settings = changed;
-                apply_wiper_settings(&mut scanner, &settings);
-                leds.set_brightness(settings.led_brightness);
-                // Everything a control change is built from may have changed with them, so
-                // let every jack send again rather than work out which parts still match.
-                sent = [None; JACK_COUNT];
+    loop {
+        if let Some(changed) = settings_receiver.try_changed() {
+            info!("Settings changed: {}", changed);
+            settings = changed;
+            apply_wiper_settings(&mut scanner, &settings);
+            leds.set_brightness(settings.led_brightness);
+            // Everything a control change is built from may have changed with them, so
+            // let every jack send again rather than work out which parts still match.
+            sent = [None; JACK_COUNT];
+        }
+
+        let changed = match scanner.step().await {
+            Ok(changed) => changed,
+            Err(error) => {
+                warn!("Scanning the jacks failed: {}", error);
+                continue;
+            }
+        };
+
+        for jack in (0..JACK_COUNT).filter(|&jack| changed[jack]) {
+            let report = *scanner.report(jack);
+            if report.mode != modes[jack] {
+                info!(
+                    "Jack {}: {}, {}, tip switch {}V",
+                    jack, report.mode, report.resistances, report.tip_switch_voltage
+                );
+                modes[jack] = report.mode;
+            }
+            let followed = matches!(
+                report.mode,
+                JackMode::Tracking | JackMode::Switch | JackMode::Rheostat
+            );
+            if followed {
+                position_updates[jack] += 1;
             }
 
-            let changed = match scanner.step().await {
-                Ok(changed) => changed,
-                Err(error) => {
-                    warn!("Scanning the jacks failed: {}", error);
-                    continue;
-                }
+            let jack_settings = &settings.jacks[jack];
+            let value = report
+                .position
+                .map(|position| jack_settings.value(position));
+
+            let Some(value) = value else {
+                sent[jack] = None;
+                CONTROL_CHANGES.forget(jack);
+                continue;
             };
 
-            for jack in (0..JACK_COUNT).filter(|&jack| changed[jack]) {
-                let report = *scanner.report(jack);
-                if report.mode != modes[jack] {
-                    info!(
-                        "Jack {}: {}, {}, tip switch {}V",
-                        jack, report.mode, report.resistances, report.tip_switch_voltage
-                    );
-                    modes[jack] = report.mode;
+            let control = control_value(value);
+            if worth_sending(sent[jack], value, control) {
+                // The first control change after plugging in or a settings change only
+                // tells the host where the pedal is, it did not move.
+                if sent[jack].is_some() {
+                    last_moved[jack] = Some(Instant::now());
                 }
-                let followed = matches!(
-                    report.mode,
-                    JackMode::Tracking | JackMode::Switch | JackMode::Rheostat
-                );
-                if followed {
-                    position_updates[jack] += 1;
-                }
-
-                let jack_settings = &settings.jacks[jack];
-                let value = report
-                    .position
-                    .map(|position| jack_settings.value(position));
-
-                let Some(value) = value else {
-                    sent[jack] = None;
-                    continue;
+                sent[jack] = Some(SentControlChange { value, control });
+                let change = ControlChange {
+                    channel: jack_settings.midi_channel,
+                    controller: jack_settings.midi_controller,
+                    value: control,
                 };
-
-                let control = control_value(value);
-                if worth_sending(sent[jack], value, control) {
-                    // The first control change after plugging in or a settings change only
-                    // tells the host where the pedal is, it did not move.
-                    if sent[jack].is_some() {
-                        last_moved[jack] = Some(Instant::now());
-                    }
-                    sent[jack] = Some(SentControlChange { value, control });
-                    let update = MidiUpdate {
-                        channel: jack_settings.midi_channel,
-                        controller: jack_settings.midi_controller,
-                        value: control,
-                    };
-
-                    if MIDI_UPDATES.try_send(update).is_err() {
-                        debug!("Dropped {}, the MIDI queue is full", update);
-                    }
-                }
-            }
-
-            let now = Instant::now();
-            if now >= status_due {
-                status_due = now + STATUS_INTERVAL;
-                INTERFACE.status.sender().send(Status {
-                    jacks: core::array::from_fn(|jack| {
-                        jack_status(scanner.report(jack), &settings.jacks[jack])
-                    }),
-                });
-            }
-
-            if now >= leds_due {
-                leds_due = now + LED_INTERVAL;
-                for (jack, jack_last_moved) in last_moved.iter().enumerate() {
-                    let color = jack_color(
-                        scanner.report(jack),
-                        &settings.jacks[jack],
-                        *jack_last_moved,
-                        now,
-                    );
-                    leds.set_color(jack, color);
-                }
-                leds.update().await;
-            }
-
-            let window = now - rate_window_started;
-            if window >= RATE_REPORT_INTERVAL {
-                let window_millis = window.as_millis() as u32;
-                let rates = position_updates.map(|updates| updates * 1000 / window_millis);
-                info!("Position updates per second: {}", rates);
-                position_updates = [0; JACK_COUNT];
-                rate_window_started = now;
+                CONTROL_CHANGES.publish(jack, change);
             }
         }
-    };
 
-    let send_control_changes = async {
+        let now = Instant::now();
+        if now >= status_due {
+            status_due = now + STATUS_INTERVAL;
+            INTERFACE.status.sender().send(Status {
+                jacks: core::array::from_fn(|jack| {
+                    jack_status(scanner.report(jack), &settings.jacks[jack])
+                }),
+            });
+        }
+
+        if now >= leds_due {
+            leds_due = now + LED_INTERVAL;
+            for (jack, jack_last_moved) in last_moved.iter().enumerate() {
+                let color = jack_color(
+                    scanner.report(jack),
+                    &settings.jacks[jack],
+                    *jack_last_moved,
+                    now,
+                );
+                leds.set_color(jack, color);
+            }
+            leds.update().await;
+        }
+
+        let window = now - rate_window_started;
+        if window >= RATE_REPORT_INTERVAL {
+            let window_millis = window.as_millis() as u32;
+            let rates = position_updates.map(|updates| updates * 1000 / window_millis);
+            info!("Position updates per second: {}", rates);
+            position_updates = [0; JACK_COUNT];
+            rate_window_started = now;
+        }
+    }
+}
+
+#[embassy_executor::task]
+async fn run_usb(mut device: UsbMidiDevice) -> ! {
+    device.run().await
+}
+
+/// Sends every jack's newest control change while a host is connected, and tells a newly
+/// connected host where every pedal is.
+#[embassy_executor::task]
+async fn send_control_changes(mut midi: UsbMidi) -> ! {
+    loop {
+        midi.wait_connection().await;
+        CONTROL_CHANGES.resend_all();
+
         loop {
-            midi.wait_connection().await;
-            info!("USB MIDI host connected");
+            let change = CONTROL_CHANGES.next_unsent().await;
+            let Some(message) = change.message() else {
+                warn!("Ignoring {}, its MIDI channel is out of range", change);
+                continue;
+            };
 
-            // Whatever queued up while no host was listening describes a position the
-            // pedal has long moved on from.
-            while MIDI_UPDATES.try_receive().is_ok() {}
-
-            loop {
-                let update = MIDI_UPDATES.receive().await;
-                let Ok(channel) = MidiChannel::try_from(update.channel) else {
-                    warn!("Ignoring {}, its MIDI channel is out of range", update);
-                    continue;
-                };
-
-                let message = Message::ControlChange(
-                    channel,
-                    ControlFunction(U7::from_clamped(update.controller)),
-                    U7::from_clamped(update.value),
-                );
-                if let Err(error) = midi.send_message(CableNumber::Cable0, message).await {
-                    warn!("USB MIDI send failed: {}", error);
-                    break;
-                }
+            if let Err(error) = midi.send_message(CableNumber::Cable0, message).await {
+                debug!("{} not sent: {}", change, error);
+                break;
             }
         }
-    };
-
-    join3(usb_device.run(), send_control_changes, detect).await;
+    }
 }

@@ -1,3 +1,4 @@
+mod driver;
 mod midi;
 
 pub use embassy_usb::driver::EndpointError;

@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{Debug2Format, info, warn};
+use defmt::{Debug2Format, debug, info};
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_rp::bind_interrupts;
@@ -46,9 +46,8 @@ async fn main(_spawner: Spawner) {
     let loopback = async {
         loop {
             midi.wait_connection().await;
-            info!("USB MIDI connected");
             let error = echo_packets(&mut midi).await.unwrap_err();
-            warn!("USB MIDI disconnected: {}", error);
+            debug!("Stopped echoing: {}", error);
         }
     };
     join(device.run(), loopback).await;
