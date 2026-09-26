@@ -26,11 +26,14 @@ const HIGH_RAIL_VOLTAGE = 2.5;
 /** Mirrors `DEFAULT_JACK_COLORS` in src/web/interface.rs. */
 const DEFAULT_JACK_COLORS = ["#FF7E7E", "#FFA259", "#FFCB56", "#FFEDB9"];
 
+/** Mirrors `DEFAULT_JACK_CONTROLLERS` in src/web/interface.rs: expression, then modulation wheel. */
+const DEFAULT_JACK_CONTROLLERS = [11, 11, 1, 1];
+
 let settings: Settings = {
   ledBrightness: 127,
   jacks: Array.from({ length: JACK_COUNT }, (_, jack) => ({
     midiChannel: 0,
-    midiController: 11,
+    midiController: DEFAULT_JACK_CONTROLLERS[jack],
     inverted: false,
     minimum: 0,
     maximum: 1,

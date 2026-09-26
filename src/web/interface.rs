@@ -171,6 +171,21 @@ pub const DEFAULT_JACK_COLORS: [Color; JACK_COUNT] = [
     Color::new(0xFF, 0xED, 0xB9),
 ];
 
+/// MIDI CC 11 is the standard "Expression" controller.
+const EXPRESSION_CONTROLLER: u8 = 11;
+
+/// MIDI CC 1 is the standard "Modulation Wheel" controller.
+const MODULATION_WHEEL_CONTROLLER: u8 = 1;
+
+/// Default control change of each jack: expression on the first two, the modulation wheel on
+/// the last two.
+pub const DEFAULT_JACK_CONTROLLERS: [u8; JACK_COUNT] = [
+    EXPRESSION_CONTROLLER,
+    EXPRESSION_CONTROLLER,
+    MODULATION_WHEEL_CONTROLLER,
+    MODULATION_WHEEL_CONTROLLER,
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, defmt::Format)]
 #[serde(rename_all = "camelCase")]
 pub struct JackSettings {
@@ -192,12 +207,9 @@ pub struct JackSettings {
 }
 
 impl JackSettings {
-    /// MIDI CC 11 is the standard "Expression" controller.
-    const EXPRESSION_CONTROLLER: u8 = 11;
-
     pub const DEFAULT: Self = Self {
         midi_channel: 0,
-        midi_controller: Self::EXPRESSION_CONTROLLER,
+        midi_controller: DEFAULT_JACK_CONTROLLERS[0],
         inverted: false,
         minimum: 0.0,
         maximum: 1.0,
@@ -252,6 +264,7 @@ impl Settings {
         let mut jacks = [JackSettings::DEFAULT; JACK_COUNT];
         let mut jack = 0;
         while jack < JACK_COUNT {
+            jacks[jack].midi_controller = DEFAULT_JACK_CONTROLLERS[jack];
             jacks[jack].color = DEFAULT_JACK_COLORS[jack];
             jack += 1;
         }
