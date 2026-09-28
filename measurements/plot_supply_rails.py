@@ -1,0 +1,194 @@
+"""Plot the supply rail ripple from supply_rail_measurement.xlsx for the presentation slides.
+
+Each rail is one group, in the order the regulators chain them (Vext -> +5V and +3.3V -> +2.5V),
+with one bar per operating state, in order of increasing load. Only the 10 ms timebase is
+plotted: at 1 us the scope's own noise dominates every reading.
+
+Writes two figures next to this script, with identical axes so the slides can cut between them:
+
+- supply_rail_ripple.png: the measurements and the scope's noise floor.
+- supply_rail_ripple_midi.png: the same, plus the largest rail noise the 7-bit MIDI output tolerates.
+
+Usage (in measurements/): uv run plot_supply_rails.py   (dependencies in pyproject.toml)
+"""
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+from openpyxl import load_workbook
+
+HERE = Path(__file__).parent
+WORKBOOK = HERE / "supply_rail_measurement.xlsx"
+TIMEBASE = "10 ms"
+
+SETUPS = {  # worksheet name -> slide label, in order of increasing load
+    "no Microcontroller": "No MCU",
+    "Idle/Detecting": "Idle / detecting",
+    "Tracking Jack 1": "Tracking",
+    "Tracking Jack 1 + WiFi": "Tracking + WiFi",
+}
+RAILS = {  # worksheet net -> axis label, in regulator chain order
+    "Vext": "Vext\n(input)",
+    "+5V": "+5V\n(LDO)",
+    "+3.3V": "+3.3V\n(LDO)",
+    "+2.5V": "+2.5V\n(LDO after 3.3V)",
+}
+SETUP_COLORS = [
+    "#1baf7a",  # aqua
+    "#2a78d6",  # blue
+    "#4a3aa7",  # violet
+    "#eb6834",  # orange: WiFi, the one state that lifts the regulated rails, stands apart
+]  # cool hues for increasing load without WiFi; colorblind-safe between neighbouring bars
+
+# Scope noise floor: VRMS1 average of RigolDS2.png, probe tip on its own ground clip, AC coupled,
+# 20 MHz bandwidth limit, 10 ms/div, 1 mV/div.
+SCOPE_NOISE_FLOOR_RMS = 0.33952e-3
+
+# Largest rail noise the MIDI output tolerates. The ADC reference is the 2.5 V rail
+# (board::REFERENCE_VOLTAGE) and a MIDI control change carries 7 bits (MIDI_MAX_VALUE = 127), so a
+# full-scale reading splits into 2^7 steps. Gaussian noise stays within +-3 sigma 99.7 % of the time,
+# a peak-to-peak span of 6 sigma, and must fit inside one step to not move the sent value:
+#
+#   V_step    = V_ref / 2^7         = 2.5 V / 128 = 19.5 mV
+#   V_rms,max = V_step / 6          = V_ref / (6 * 2^7) = 3.26 mV
+REFERENCE_VOLTAGE = 2.5
+MIDI_BITS = 7
+PEAK_TO_PEAK_PER_RMS = 6
+MIDI_STEP_VOLTAGE = REFERENCE_VOLTAGE / 2**MIDI_BITS
+MIDI_TOLERABLE_NOISE_RMS = MIDI_STEP_VOLTAGE / PEAK_TO_PEAK_PER_RMS
+
+MILLIVOLTS = 1e3
+TEXT_COLOR = "#000000"
+MUTED_COLOR = "#52514e"
+LIMIT_COLOR = "#a4161a"  # deep red, kept apart from the orange WiFi bars
+Y_LIMIT = 3.8  # mV, shared by both figures so the slides line up
+
+plt.rcParams.update(
+    {
+        "font.size": 24,
+        "axes.labelsize": 28,
+        "xtick.labelsize": 26,
+        "ytick.labelsize": 24,
+        "legend.fontsize": 24,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.edgecolor": MUTED_COLOR,
+        "axes.linewidth": 1.5,
+        "axes.axisbelow": True,
+        "axes.grid": True,
+        "axes.grid.axis": "y",
+        "grid.color": "#e4e3df",
+        "grid.linewidth": 1.5,
+        "text.color": TEXT_COLOR,
+        "axes.labelcolor": TEXT_COLOR,
+        "xtick.color": TEXT_COLOR,
+        "ytick.color": TEXT_COLOR,
+    }
+)
+
+
+def load_ripple():
+    """Vrms averages in mV as a (rail, setup) array for the plotted timebase."""
+    sheet = load_workbook(WORKBOOK, data_only=True).active
+    rows = sheet.iter_rows(values_only=True)
+    header = next(rows)
+    setup_column, division_column, net_column = (
+        header.index(name) for name in ("Setup", "Division", "Net")
+    )
+    rms_column = header.index("Vrms Avg (mV)")
+
+    ripple = np.full((len(RAILS), len(SETUPS)), np.nan)
+    for row in rows:
+        if (
+            row[division_column] == TIMEBASE
+            and row[setup_column] in SETUPS
+            and row[net_column] in RAILS
+        ):
+            rail_index = list(RAILS).index(row[net_column])
+            setup_index = list(SETUPS).index(row[setup_column])
+            ripple[rail_index, setup_index] = row[rms_column]
+    if np.isnan(ripple).any():
+        raise ValueError(f"{WORKBOOK.name} is missing a {TIMEBASE} rail or setup")
+    return ripple
+
+
+def label_line(axes, text, line_level, text_position, color):
+    axes.annotate(
+        text,
+        xy=(text_position[0], line_level),
+        xytext=text_position,
+        fontsize=26,
+        fontweight="bold",
+        color=color,
+        ha="center",
+        va="bottom",
+        arrowprops=dict(arrowstyle="-|>", color=color, linewidth=2, mutation_scale=24),
+    )
+
+
+def plot_supply_rail_ripple(ripple):
+    figure, axes = plt.subplots(figsize=(13.33, 7.0))
+    group_positions = np.arange(len(RAILS))
+    bar_pitch = 0.2
+    for setup_index, (label, color) in enumerate(zip(SETUPS.values(), SETUP_COLORS)):
+        offsets = (setup_index - (len(SETUPS) - 1) / 2) * bar_pitch
+        axes.bar(
+            group_positions + offsets,
+            ripple[:, setup_index],
+            bar_pitch * 0.9,
+            color=color,
+            label=label,
+        )
+
+    noise_floor = SCOPE_NOISE_FLOOR_RMS * MILLIVOLTS
+    axes.axhline(noise_floor, color=TEXT_COLOR, linestyle="--", linewidth=3)
+    # Between the +3.3V and +2.5V groups, above their bars: the emptiest spot near the line.
+    label_line(
+        axes,
+        f"Oscilloscope noise floor\n{noise_floor:.2f} mV",
+        noise_floor,
+        (2.5, 1.25),
+        TEXT_COLOR,
+    )
+
+    midi_limit = MIDI_TOLERABLE_NOISE_RMS * MILLIVOLTS
+    axes.axhline(midi_limit, color=LIMIT_COLOR, linewidth=3.5)
+    axes.text(
+        len(RAILS) - 0.5,
+        midi_limit + 0.06,
+        f"Max. noise for 7-bit MIDI value: {midi_limit:.2f} mV",
+        fontsize=26,
+        fontweight="bold",
+        color=LIMIT_COLOR,
+        ha="right",
+        va="bottom",
+    )
+
+    axes.set_xticks(group_positions, RAILS.values())
+    axes.set_xlim(-0.5, len(RAILS) - 0.5)
+    axes.set_ylim(0, Y_LIMIT)
+    axes.set_ylabel("Ripple (mV rms)")
+    axes.tick_params(axis="x", length=0, pad=10)
+    figure.legend(
+        loc="upper center",
+        ncols=len(SETUPS),
+        frameon=False,
+        handlelength=1.2,
+        columnspacing=1.4,
+    )
+    figure.tight_layout(rect=(0, 0, 1, 0.92))
+    return figure
+
+
+def main():
+    ripple = load_ripple()
+    name = "supply_rail_ripple.png"
+    figure = plot_supply_rail_ripple(ripple)
+    figure.savefig(HERE / name, dpi=200, facecolor="white")
+    plt.close(figure)
+    print(f"wrote {name}")
+
+
+if __name__ == "__main__":
+    main()

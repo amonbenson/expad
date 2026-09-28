@@ -31,6 +31,7 @@ These files are also the extensibility hooks: the types and functions named here
 - web/: frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript; eslint.config.ts formats it through `@stylistic`, sorts imports and orders Tailwind classes) built into a single gzipped index.html. src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket, src/theme.ts defines the flat Nora-based preset, the blue-gray surface ramp and the red/green/blue `INDICATOR_COLORS` (also `--p-indicator-*`), while jack colors come from the device's settings, src/App.vue lays the jacks out as a mixing desk, and src/components/ renders it (JackStrip.vue per jack with its MIDI, range, drive (DriveCurve.vue previews the curve) and wiper settings, TopologyPanel.vue with ResistorCircuit.vue drawing the selected jack's whole circuit: the solved star, the tip switch, the shared pulls and every pull switch, and JackNarrative.vue explaining it in words through `describeJack` in src/narrative.ts: what the jack does now, why, and what it waits for). mock/device.ts is the firmware stand-in (two pedals, a sustain pedal and a scripted plug-in story through every mode) and vite.config.ts configures the gzip build and dev proxy.
 - docs/: design notes too long for this file - fast-tracking.md holds the ADC measurements, the pull resistor analysis, the plug-detect/tracking design and how switches and rheostats behind mono and stereo plugs are told apart; diagrams/jack-monitor-states.tex is the TikZ state diagram of `JackMonitor` (tools and build commands in diagrams/README.md), with its PDF, SVG and PNG exports alongside.
 - presentations/: the project's milestone presentations, as PowerPoint sources with their PDF exports.
+- measurements/: bench measurement workbooks and the uv-managed Python scripts (pyproject.toml, uv.lock) that plot them for the slides - plot_supply_rails.py draws the supply rail ripple against the scope noise floor and the 7-bit MIDI noise limit; raw_data/ (scope screenshots and CSVs) is git-ignored.
 - firmware/cyw43/: vendored CYW43439 firmware blobs (Infineon permissive binary license) embedded by the wifi HAL; .gitattributes marks these `*.bin` files binary so line endings are never converted.
 - build.rs: copies linker settings into the build output, forwards `EXPAD_*` variables from the environment or `.env` to the crate, and with `web` validates `EXPAD_WIFI_PASSWORD` and runs `npm ci`/`npm run build` in web/, writing to `OUT_DIR/web`.
 - .env.example: template for the untracked `.env` (WiFi password, PrimeUI license key, dev proxy target).
@@ -52,6 +53,9 @@ npm run dev:mock     # dev server + mock device: develop the UI with live dummy 
 npm run dev          # dev server against real hardware, proxies /ws to EXPAD_DEVICE_ADDRESS (default 192.168.4.1)
 npm run type-check
 npm run lint          # formats and fixes: ESLint carries the @stylistic rules, so it is the formatter
+
+cd measurements
+uv run plot_supply_rails.py   # creates .venv from uv.lock on first run, writes the PNGs next to the script
 ```
 
 Formatting is a tool's job in both halves of the repository: run `cargo fmt` for Rust and
