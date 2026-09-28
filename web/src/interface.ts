@@ -52,7 +52,7 @@ export interface JackSettings {
    * values make the value rise early in the travel and negative ones late (see `driveCurve`).
    */
   drive: number;
-  /** Accent color of the jack as `#RRGGBB`, shown by its LED and throughout the interface. */
+  /** Accent color of the jack as `#RRGGBB`, shown throughout the interface. */
   color: string;
 }
 

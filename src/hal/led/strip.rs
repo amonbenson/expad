@@ -56,6 +56,7 @@ fn scale_color(color: RGB8, brightness: u8) -> RGB8 {
     )
 }
 
+/// Rounds up, so that a dim color stays lit at any brightness above `0`.
 fn scale_channel(value: u8, brightness: u8) -> u8 {
-    (value as u16 * brightness as u16 / u8::MAX as u16) as u8
+    (value as u16 * brightness as u16).div_ceil(u8::MAX as u16) as u8
 }

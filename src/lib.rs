@@ -9,6 +9,7 @@ pub mod board;
 // still awaiting callers.
 #[allow(dead_code)]
 pub mod hal;
+pub mod indicator;
 #[allow(dead_code)]
 pub mod topology;
 #[cfg(feature = "web")]

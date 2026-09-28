@@ -59,6 +59,7 @@ fn limit_color(color: RGB8) -> RGB8 {
     )
 }
 
+/// Rounds up, so that a dim channel still lights instead of vanishing under the limit.
 fn limit_channel(value: u8) -> u8 {
-    (value as u16 * MAX_CHANNEL_VALUE as u16 / u8::MAX as u16) as u8
+    (value as u16 * MAX_CHANNEL_VALUE as u16).div_ceil(u8::MAX as u16) as u8
 }

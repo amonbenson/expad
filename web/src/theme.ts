@@ -10,7 +10,7 @@ const PRIMARY_COLOR = "#FFA259";
 
 /**
  * Signal colors, also available as `--p-indicator-<name>`: red for a high rail, blue for a low
- * one, green for anything live. The firmware's LEDs show the same green (`ACTIVE_LED_COLOR`).
+ * one, green for anything live.
  */
 export const INDICATOR_COLORS = {
   red: "#FB2C36",

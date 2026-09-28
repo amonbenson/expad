@@ -5,8 +5,6 @@ use embassy_sync::watch::Watch;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::hal::led::RGB8;
-
 use crate::topology::{ArmResistances, CONTACT_COUNT, Drive, JackMode};
 
 pub use crate::board::JACK_COUNT;
@@ -92,7 +90,7 @@ impl WiperContact {
     }
 }
 
-/// A jack's accent color, shown by its LED and in the web interface. Sent as `"#RRGGBB"`.
+/// A jack's accent color in the web interface. Sent as `"#RRGGBB"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, defmt::Format)]
 pub struct Color {
     pub red: u8,
@@ -125,12 +123,6 @@ impl Color {
             hex[2 + 2 * index] = DIGITS[(channel & 0x0F) as usize];
         }
         hex
-    }
-}
-
-impl From<Color> for RGB8 {
-    fn from(color: Color) -> Self {
-        RGB8::new(color.red, color.green, color.blue)
     }
 }
 

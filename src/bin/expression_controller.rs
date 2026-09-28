@@ -13,7 +13,6 @@ use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant};
 use expad::board::{self, JACKS};
 use expad::hal::adc::AdcChainConfig;
-use expad::hal::led::RGB8;
 use expad::hal::usb::{
     CableNumber, Channel as MidiChannel, ControlFunction, FromClamped, Message, U7, UsbMidi,
     UsbMidiConfig, UsbMidiDevice,
@@ -21,6 +20,7 @@ use expad::hal::usb::{
 use expad::hal::wifi::AccessPointPeripherals;
 #[cfg(not(feature = "no-wifi"))]
 use expad::hal::wifi::{AccessPointConfig, start_access_point};
+use expad::indicator::JackIndicators;
 use expad::topology::scanner::{JackScanner, SettleConfig};
 use expad::topology::{JackMode, JackReport, MonitorConfig, SolverConfig};
 #[cfg(not(feature = "no-wifi"))]
@@ -39,26 +39,11 @@ const ADC_UPDATE_RATE: u32 = 819;
 /// the solver applies is derived from it.
 const ADC_VOLTAGE_NOISE: f32 = 0.0005;
 
-/// Color a jack's LED turns while its pedal moves or its switch is pressed, matching the
-/// green of `INDICATOR_COLORS` in web/src/theme.ts.
-const ACTIVE_LED_COLOR: RGB8 = RGB8 {
-    r: 0x00,
-    g: 0xC9,
-    b: 0x50,
-};
-
-/// How long a jack's LED stays green after its pedal last moved far enough to send a new
-/// control change. Bridges the gaps between the steps of a slowly moving pedal.
-const MOVEMENT_INDICATION: Duration = Duration::from_millis(250);
-
-/// Expression value from which a switch counts as pressed.
-const SWITCH_PRESSED_VALUE: f32 = 0.5;
-
 /// How often the web interface is sent a new status. Positions update far more often than
 /// a browser can show, so this only bounds the WebSocket traffic.
 const STATUS_INTERVAL: Duration = Duration::from_millis(33);
 
-/// How often the LED strip is rewritten with the latest positions.
+/// How often the LEDs are rewritten with every jack's latest state.
 const LED_INTERVAL: Duration = Duration::from_millis(20);
 
 /// How often the number of position updates each jack received is logged.
@@ -260,31 +245,6 @@ fn apply_wiper_settings<const S: usize, const A: usize, const J: usize>(
     }
 }
 
-/// Color the jack's LED shows: off while nothing usable is plugged in, green while the pedal
-/// moves (it `last_moved` within [`MOVEMENT_INDICATION`] of `now`) or its switch is pressed,
-/// otherwise the jack's own color.
-fn jack_color(
-    report: &JackReport,
-    settings: &JackSettings,
-    last_moved: Option<Instant>,
-    now: Instant,
-) -> RGB8 {
-    let Some(position) = report.position else {
-        return RGB8::default();
-    };
-
-    let active = match report.mode {
-        JackMode::Switch => settings.value(position) >= SWITCH_PRESSED_VALUE,
-        _ => last_moved.is_some_and(|moved| now - moved < MOVEMENT_INDICATION),
-    };
-
-    if active {
-        ACTIVE_LED_COLOR
-    } else {
-        settings.color.into()
-    }
-}
-
 /// Opens the WiFi access point and serves the web interface on it.
 #[cfg(not(feature = "no-wifi"))]
 async fn start_web_interface(spawner: Spawner, radio: AccessPointPeripherals<DMA_CH0>) {
@@ -352,12 +312,12 @@ async fn main(spawner: Spawner) {
     info!("ADC full scale: {}V", adcs.full_scale_voltage());
 
     info!("Initializing LED strip");
-    let mut leds = board::leds(
+    let mut indicators = JackIndicators::new(board::leds(
         peripherals.PIO0,
         Irqs,
         peripherals.DMA_CH1,
         peripherals.PIN_6,
-    );
+    ));
 
     info!("Initializing USB MIDI");
     let (midi, usb_device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());
@@ -384,10 +344,9 @@ async fn main(spawner: Spawner) {
     let mut settings = settings_receiver.get().await;
 
     apply_wiper_settings(&mut scanner, &settings);
-    leds.set_brightness(settings.led_brightness);
+    indicators.set_brightness(settings.led_brightness);
 
     let mut sent = [None::<SentControlChange>; JACK_COUNT];
-    let mut last_moved = [None::<Instant>; JACK_COUNT];
     let mut modes = [JackMode::Empty; JACK_COUNT];
     let mut status_due = Instant::now();
     let mut leds_due = Instant::now();
@@ -399,7 +358,7 @@ async fn main(spawner: Spawner) {
             info!("Settings changed: {}", changed);
             settings = changed;
             apply_wiper_settings(&mut scanner, &settings);
-            leds.set_brightness(settings.led_brightness);
+            indicators.set_brightness(settings.led_brightness);
             // Everything a control change is built from may have changed with them, so
             // let every jack send again rather than work out which parts still match.
             sent = [None; JACK_COUNT];
@@ -413,6 +372,7 @@ async fn main(spawner: Spawner) {
             }
         };
 
+        let now = Instant::now();
         for jack in (0..JACK_COUNT).filter(|&jack| changed[jack]) {
             let report = *scanner.report(jack);
             if report.mode != modes[jack] {
@@ -435,30 +395,26 @@ async fn main(spawner: Spawner) {
                 .position
                 .map(|position| jack_settings.value(position));
 
-            let Some(value) = value else {
+            if let Some(value) = value {
+                let control = control_value(value);
+                if worth_sending(sent[jack], value, control) {
+                    sent[jack] = Some(SentControlChange { value, control });
+                    let change = ControlChange {
+                        channel: jack_settings.midi_channel,
+                        controller: jack_settings.midi_controller,
+                        value: control,
+                    };
+                    CONTROL_CHANGES.publish(jack, change);
+                }
+            } else {
                 sent[jack] = None;
                 CONTROL_CHANGES.forget(jack);
-                continue;
-            };
-
-            let control = control_value(value);
-            if worth_sending(sent[jack], value, control) {
-                // The first control change after plugging in or a settings change only
-                // tells the host where the pedal is, it did not move.
-                if sent[jack].is_some() {
-                    last_moved[jack] = Some(Instant::now());
-                }
-                sent[jack] = Some(SentControlChange { value, control });
-                let change = ControlChange {
-                    channel: jack_settings.midi_channel,
-                    controller: jack_settings.midi_controller,
-                    value: control,
-                };
-                CONTROL_CHANGES.publish(jack, change);
             }
+
+            let sent_value = sent[jack].map(|sent| sent.value);
+            indicators.show(jack, report.mode, sent_value, now);
         }
 
-        let now = Instant::now();
         if now >= status_due {
             status_due = now + STATUS_INTERVAL;
             INTERFACE.status.sender().send(Status {
@@ -470,16 +426,7 @@ async fn main(spawner: Spawner) {
 
         if now >= leds_due {
             leds_due = now + LED_INTERVAL;
-            for (jack, jack_last_moved) in last_moved.iter().enumerate() {
-                let color = jack_color(
-                    scanner.report(jack),
-                    &settings.jacks[jack],
-                    *jack_last_moved,
-                    now,
-                );
-                leds.set_color(jack, color);
-            }
-            leds.update().await;
+            indicators.update(now).await;
         }
 
         let window = now - rate_window_started;

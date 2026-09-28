@@ -11,9 +11,11 @@ jacks and changing the settings live.
 The PCB is the KiCad project in [hardware/](hardware/). Each jack's tip, ring and sleeve (plus the
 tip's switch contact, for plug detection) can be switched to a shared 1 kΩ pull-up to the 2.5 V
 reference or a 1 kΩ pull-down, and is read back by one of two AD7718 24-bit ADCs. The four
-WS2812B LEDs below the jacks light up in each jack's color while a pedal is plugged in, and turn
-green while it moves or its switch is pressed; they run off a linear regulator, so the firmware caps
-them at ~20% brightness.
+WS2812B LEDs below the jacks glow a dim white while a plug is in but no known pedal is behind it.
+A recognised pedal is announced for a second in its own color - purple for an expression pedal,
+lime for a footswitch, yellow for a rheostat - after which the LED shows the value it sends, from
+dark red at 0 through red, orange and yellow to white at 127. They run off a linear regulator, so
+the firmware caps them at ~20% brightness.
 
 ## Supported pedals
 
