@@ -292,46 +292,169 @@ next to the two ADCs, after the jumper.
 
 ## Scope settings
 
-1. Probe on `10X`, channel set to `10X`. Take a first look in **DC coupling** at 1 V/div to confirm
-   the rail is at its nominal voltage. Write that down: it is a result in its own right.
-2. Switch the channel to **AC coupling**. The trace jumps to the middle of the screen.
-3. Turn **bandwidth limit on** (20 MHz).
-4. Turn Volts/div down step by step until the wobble is a few squares tall. You will probably end at
-   1, 2 or 5 mV/div. If the trace is a flat line at the most sensitive setting, that is your answer,
-   and your noise floor from Part 3 step 4 is the number you report as the upper bound.
-5. Set acquisition to **High Resolution** if your scope has it.
-6. Timebase: take two captures per rail.
-   - **10 ms/div**, to see mains-related ripple at 50 Hz and 100 Hz. A 100 Hz component here points
-     at the wall adapter's rectifier feeding through.
-   - **1 us/div**, to see switching-frequency content. Note that all three rails are linear
-     regulators (ADP7142), so there is no switching converter on this board, but the **Pico module
-     has its own onboard buck converter** on VSYS, and the WS2812B LEDs draw in bursts, so
-     high-frequency content can still appear.
-7. Trigger: `Auto` mode is fine here, since you are looking at noise rather than a specific event.
-   For the 10 ms/div capture you can trigger on the channel itself at 0 V to stabilise the 50 Hz
-   component.
-8. Use `Measure` to read **peak-to-peak** and **RMS**. Report both: peak-to-peak captures the worst
-   excursion, RMS is the one that compares against datasheet noise figures.
+Written for the Rigol MSO5104 with a PVP2350 probe. Menu names are given by function; if a label
+differs slightly on your firmware, the function is what to look for.
+
+### The DC value comes first, and not from the scope
+
+Read each rail's DC voltage with a **multimeter**, not the scope. An 8-bit scope's DC gain accuracy
+is a few percent, so a scope reading of "2.493 V" really means somewhere in 2.42 to 2.57 V. The
+multimeter number is the one to put on a slide.
+
+The board cannot check this itself: `AIN10` is tied to the same +2.5 V that is the ADC reference, so
+it reads full scale by construction whatever the rail is actually doing.
+
+### Three settings decide whether this measurement works at all
+
+1. **Probe ratio 1X**, if your probe has a 1X position on its slider. Set the channel's probe ratio
+   to 1X to match.
+   In 10X the probe divides by ten before the scope, so the scope's own input noise appears **ten
+   times larger** referred to the probe tip, and the most sensitive setting you can reach at the tip
+   is 10 x 500 uV/div = 5 mV/div. You cannot resolve LDO ripple through that. 1X costs bandwidth
+   (roughly 35 MHz), which does not matter for ripple.
+   *If the probe is 10X only:* you are stuck with a floor of a few mV RMS. Say so explicitly in the
+   presentation and report the rails as "at or below the measurement floor", which is a legitimate
+   result. Steps 2 and 3 still help.
+2. **Bandwidth limit 20 MHz.** Channel menu > `BW Limit` > `20M`. Noise grows with the square root of
+   bandwidth, so going from 100 MHz to 20 MHz is about a 2.2x improvement.
+3. **Acquisition mode `High Res`.** `Acquire` > `Mode` > `High Res`. This oversamples and averages
+   adjacent samples, buying extra effective bits. Large effect at the slow timebases used here.
+   Set `Acquire` > `Mem Depth` to a fixed high value (10M) rather than `Auto`, so there is plenty of
+   oversampling for High Res to work with.
+
+After all three, re-measure the floor. It should land well under 1 mV RMS. If it does not, something
+else is wrong; do not proceed to the rails.
+
+### AC coupling is what makes "RMS" mean "ripple"
+
+Channel menu > `Coupling` > `AC`.
+
+This matters more than it sounds. `Vrms` on the scope is the RMS of whatever is on screen,
+**including DC**. On a DC-coupled 2.5 V rail, `Vrms` reads about 2.5 V and tells you nothing. AC
+coupling removes the DC in the analog front end before the ADC, so `Vrms` becomes the ripple RMS,
+and it also lets you turn the vertical scale right down into the ripple without the trace flying off
+screen.
+
+### Adding the measurements
+
+`Measure` > add from the `Vertical` category:
+
+- **`Vpp`** (peak to peak)
+- **`Vrms`** (with AC coupling on, this is the ripple RMS)
+
+Then turn **`Statistic` on**. The scope then shows `Cur`, `Avg`, `Max`, `Min`, `Dev` and `Count` for
+each measurement, accumulated over many acquisitions.
+
+**Report the `Avg` column for `Vrms`, and the `Max` column for `Vpp`.** Press `Reset Stat` at the
+start of each condition, then wait.
+
+The `Cur` column jitters from acquisition to acquisition, because each acquisition is a finite
+sample of random noise. That is expected and is exactly what the statistics are there to absorb:
+`Cur` is never the number you report.
+
+How long to wait is not a fixed time, it is a question of how many acquisitions went in. Watch two
+columns:
+
+- **`Count`** is the real progress indicator. Deep memory makes acquisitions slow, often only a
+  couple per second at 10 ms/div with 10M points, so a wall-clock minute may only be a hundred
+  acquisitions.
+- **`Dev`** is the spread between acquisitions. The uncertainty on `Avg` falls as `Dev` divided by
+  the square root of `Count`.
+
+**Stop when `Avg` has stopped moving in the digit you intend to report**, and write down `Count`
+next to the result. `Count` matters most for `Vpp`: peak to peak is a maximum over everything seen,
+so it keeps creeping up the longer you watch, and a `Vpp` quoted without its acquisition count is
+not comparable to anyone else's.
+
+Why both statistics matter:
+
+- **`Vrms` is the reproducible number.** It is stable, it converges as more acquisitions accumulate,
+  and it is what regulator datasheets quote. This is your headline figure.
+- **`Vpp` is the worst-case number, and it is not reproducible.** Peak to peak is max minus min over
+  the record, so on a noisy trace it grows with record length and with the number of acquisitions.
+  Two people measuring the same rail get different `Vpp`. Quote it as a worst case, alongside the
+  record length and acquisition count, never on its own.
+
+### Timebase: take two captures per rail
+
+- **10 ms/div** (100 ms of screen) with `High Res`. This is the low-frequency ripple capture: 50 Hz
+  and 100 Hz mains content, and the roughly 100 ms WiFi beacon period. `High Res` is right here.
+- **1 us/div** with `Acquire` > `Mode` > `Normal` and the 20 MHz limit still on. This is the
+  broadband capture. Use `Normal`, not `High Res`: High Res is a filter, so it would under-report
+  fast noise.
+
+Report which acquisition mode produced which number. All three regulators are linear (ADP7142), so
+there is no switching converter of the board's own, but the **Pico module has its own onboard buck**
+on VSYS and the WS2812B LEDs draw in bursts, so high-frequency content can still appear.
+
+Trigger: `Auto` mode is fine, since you are looking at noise rather than a specific event. For the
+10 ms/div capture you can trigger on the channel itself near 0 V to stabilise a repeating component.
+
+### The in-situ noise floor: the control test that decides everything
+
+The bench noise floor from Part 3 is measured with the probe on its own clip, away from the board.
+That is not the floor that applies at the measurement.
+
+**Do this at the board, with the board powered and WiFi running:** touch the probe tip to the **same
+ground pad its ground clip is attached to**, without changing anything else, and record `Vpp` and
+`Vrms`.
+
+The probe is now measuring zero volts through the real loop in the real electromagnetic environment.
+Whatever it reads is pickup, not rail ripple.
+
+- If the in-situ floor is close to what you measured on a rail, **you measured the loop, not the
+  board.** Shrink the loop: probe across the regulator's output capacitor (1.9 mm between the rail
+  pad and the ground pad) instead of test-point-to-header-pin, or fit a ground spring.
+- If the in-situ floor is small and the rails are not, the rail figures are real.
+
+**Run this once per condition** (idle, LEDs on, WiFi active), because pickup changes with what the
+board is doing. It is the single most informative measurement in M7a: without it, a rail number is
+just a number with no error bar.
+
+A cross-check that costs nothing: the four rails sit in a cascade, `VEXT` into U1 (3.3 V) into U3
+(2.5 V), and `VEXT` into U2 (5 V). Every LDO has substantial power supply rejection, so a
+disturbance on `VEXT` cannot reach the 3.3 V rail at full amplitude, and certainly not the 2.5 V
+rail behind two regulators. **If all four rails report the same ripple, the measurement is dominated
+by something common to all four, which means pickup.** Real rail ripple must shrink as you move down
+the cascade.
 
 ## Conditions to capture
 
 Repeat the set for each state, because this is the comparison that makes the slide interesting:
 
+- Board powered, Pico removed: the quiet baseline, just the regulators and the two ADCs.
 - Idle: firmware running, no pedal plugged in.
-- All four LEDs on at full allowed brightness.
+- All four LEDs on at full allowed brightness. Worth a supply-current reading too, since the 200 mA
+  rating of the 5 V regulator is the actual design constraint.
 - WiFi access point up with a browser connected and the interface streaming.
 - A pedal plugged in and being swept.
+
+For each condition record six numbers per rail: `Vrms` average and `Vpp` maximum for the rail, and
+the same two for the in-situ floor, plus the acquisition mode and timebase. A rail figure without
+its floor is not reportable.
+
+Note that supply current below about 10 mA will read as `0.00 A` on the DP932E, which is its display
+resolution, not a measurement of zero. Expect a few mA with the Pico removed (two AD7718s plus the
+regulators' quiescent current); use a multimeter in series if the exact figure matters.
 
 ## What to look out for
 
 - **Attenuation mismatch.** If the rail reads 0.25 V instead of 2.5 V, the scope thinks the probe is
   1X. Fix the channel setting.
-- **You are probably measuring your scope.** At 1 mV/div most bench scopes have 0.5 to 1 mV of their
-  own noise. This is not a failure: it means you can honestly state "rail noise is at or below
-  X mV peak-to-peak, which is our measurement floor". Compare against the floor you wrote down.
-- **Consider switching the probe to 1X for this measurement only.** It gives ten times the
-  sensitivity, at the cost of bandwidth you do not need for ripple. Remember to change the channel
-  setting to 1X too, and back again afterwards.
+- **You are probably measuring your scope.** This is not a failure: it means you can honestly state
+  "rail noise is at or below X, which is our measurement floor". Compare every rail figure against
+  the in-situ floor for the same condition.
+- **A rail reading below your floor proves contamination.** If a rail measures smaller than the
+  floor alone, the "measurement" is entirely noise, since a real signal on top of noise cannot come
+  out smaller than the noise by itself. Treat that as a settings problem, not a quiet rail.
+- **Subtracting the floor.** Noise powers add, so for RMS values the ripple is
+  `sqrt(measured^2 - floor^2)`. A rail at 500 uV against a 350 uV floor is really about 357 uV of
+  ripple, not 500. This only works for RMS, never for peak to peak, and it becomes unreliable when
+  the two are close: **if a rail reads less than about 1.4 times the floor, report it as "at or
+  below the measurement floor" rather than subtracting.** With a low-noise LDO like the ADP7142 that
+  is a likely and perfectly respectable outcome for the quiet conditions.
+- **Remember to put the probe back to 10X** afterwards, both the slider and the channel setting, or
+  every later measurement in this guide will read ten times too small.
 - **AC coupling has a low corner** (a few Hz). Very slow drift will not show. That is what M10
   (warm-up drift, measured with the board's own ADC) is for.
 - **Do not touch the probe tip with your fingers** while at millivolt sensitivity; you become an

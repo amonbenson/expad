@@ -18,12 +18,14 @@ use expad::hal::usb::{
     CableNumber, Channel as MidiChannel, ControlFunction, FromClamped, Message, U7, UsbMidi,
     UsbMidiConfig, UsbMidiDevice,
 };
-use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
+use expad::hal::wifi::AccessPointPeripherals;
+#[cfg(not(feature = "no-wifi"))]
+use expad::hal::wifi::{AccessPointConfig, start_access_point};
 use expad::topology::scanner::{JackScanner, SettleConfig};
 use expad::topology::{JackMode, JackReport, MonitorConfig, SolverConfig};
-use expad::web::{
-    ArmPull, INTERFACE, JACK_COUNT, JackSettings, JackStatus, Settings, Status, spawn_web_server,
-};
+#[cfg(not(feature = "no-wifi"))]
+use expad::web::spawn_web_server;
+use expad::web::{ArmPull, INTERFACE, JACK_COUNT, JackSettings, JackStatus, Settings, Status};
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -283,21 +285,43 @@ fn jack_color(
     }
 }
 
+/// Opens the WiFi access point and serves the web interface on it.
+#[cfg(not(feature = "no-wifi"))]
+async fn start_web_interface(spawner: Spawner, radio: AccessPointPeripherals<DMA_CH0>) {
+    info!("Starting WiFi access point");
+    let stack = start_access_point(spawner, radio, Irqs, AccessPointConfig::default()).await;
+    spawn_web_server(spawner, stack);
+}
+
+/// Holds the CYW43439 in reset instead of starting it, so the radio draws no power during
+/// electrical tests. The web interface's settings then stay at their defaults.
+#[cfg(feature = "no-wifi")]
+async fn start_web_interface(_spawner: Spawner, radio: AccessPointPeripherals<DMA_CH0>) {
+    use embassy_rp::gpio::{Level, Output};
+    use static_cell::StaticCell;
+
+    info!("WiFi disabled at build time, holding the radio powered down");
+    // The pin returns to an input as soon as its Output is dropped, so it has to outlive main.
+    static RADIO_POWER: StaticCell<Output<'static>> = StaticCell::new();
+    RADIO_POWER.init(Output::new(radio.power, Level::Low));
+}
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let peripherals = embassy_rp::init(Default::default());
 
-    info!("Starting WiFi access point");
-    let access_point = AccessPointPeripherals {
-        pio: peripherals.PIO1,
-        dma: peripherals.DMA_CH0,
-        power: peripherals.PIN_23,
-        data: peripherals.PIN_24,
-        chip_select: peripherals.PIN_25,
-        clock: peripherals.PIN_29,
-    };
-    let stack = start_access_point(spawner, access_point, Irqs, AccessPointConfig::default()).await;
-    spawn_web_server(spawner, stack);
+    start_web_interface(
+        spawner,
+        AccessPointPeripherals {
+            pio: peripherals.PIO1,
+            dma: peripherals.DMA_CH0,
+            power: peripherals.PIN_23,
+            data: peripherals.PIN_24,
+            chip_select: peripherals.PIN_25,
+            clock: peripherals.PIN_29,
+        },
+    )
+    .await;
 
     info!("Initializing pull switches");
     let mut switches = board::pull_switches(

@@ -17,7 +17,7 @@ These files are also the extensibility hooks: the types and functions named here
   - `potentiometer.rs`: pulls the first jack's sleeve low and ring high, measures the tip (wiper) against them, prints voltage and position, and mirrors it by splitting brightness across the two nearest LEDs.
   - `midi_loopback.rs`: echoes every USB MIDI packet back to the host.
   - `web_interface.rs`: serves the web interface over WiFi with dummy status data, logging every settings change.
-  - `expression_controller.rs`: the full firmware - runs a `JackScanner` over every jack, maps each position through the jack's range, inversion and drive settings, sends it as a MIDI control change, lights the jack's LED in its color (green while the pedal moves or a switch is pressed) and publishes the status to the web interface (~30 Hz); logs position updates per second every 5 s.
+  - `expression_controller.rs`: the full firmware - runs a `JackScanner` over every jack, maps each position through the jack's range, inversion and drive settings, sends it as a MIDI control change, lights the jack's LED in its color (green while the pedal moves or a switch is pressed) and publishes the status to the web interface (~30 Hz); logs position updates per second every 5 s. The `no-wifi` feature holds the radio powered down and skips the web server, leaving the settings at their defaults.
 - src/hal/mod.rs: hardware abstraction layer, re-exporting:
   - adc/: AD7718 chain driver, register abstractions, measurement flow; mod.rs exposes `AdcChainConfig` for new channels, modes and SPI timing (`with_spi_frequency`, `with_chip_select_guard`; 4 MHz and 10 µs by default), skips rewriting the control register while the channel stays the same, `start_conversion`/`finish_conversion` and `measure_parallel` (one channel per chip, all chips converting at once), `set_update_rate` (keeps the old calibration) and `measure_continuous` (one channel, back-to-back results).
   - buf/: pull switches — pull_switch.rs (`PullSwitchChain`: one 74HC595 per jack driving two TMUX1511s, `TriState` per tap and its bit encoding, chip 0 nearest the MCU), shift_register.rs (SPI shift-register wrapper; outputs stay disabled until the first write, then latch atomically).
@@ -41,6 +41,7 @@ These files are also the extensibility hooks: the types and functions named here
 ```bash
 cargo build --bin capture   # or: cargo build (builds the lib + every bin)
 cargo build --no-default-features   # skip the `web` feature (no Node.js needed)
+cargo run --bin expression_controller --features no-wifi   # WiFi radio held powered down, for electrical tests
 cargo fmt
 cargo clippy --all-features
 cargo test -p expad-topology --target x86_64-pc-windows-msvc   # host triple: the firmware's own target cannot run tests

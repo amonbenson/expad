@@ -64,6 +64,11 @@ required-features = ["web"]
 
 [features]
 default = ["web"]
+# Holds the Pico 2 W's WiFi radio powered down and skips the web server, so the radio draws
+# nothing during electrical tests: `cargo run --bin expression_controller --features no-wifi`.
+# Only expression_controller honors it. `--all-features` turns it on, so a clippy run with it
+# does not lint the access point's startup.
+no-wifi = []
 # Pico 2 W WiFi access point plus the web interface server. Building it runs `npm` in web/.
 web = [
   "expad-topology/serde",
