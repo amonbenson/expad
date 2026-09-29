@@ -115,7 +115,9 @@ TIMING_CAPTURES = {
         ],
     ),
 }
-NARROW_PHASE = 0.15  # share of the plotted time below which a phase's label turns vertical
+NARROW_PHASE = (
+    0.15  # share of the plotted time below which a phase's label turns vertical
+)
 
 MILLIVOLTS = 1e3
 MILLISECONDS = 1e3
@@ -321,7 +323,12 @@ def save(figure, name):
 
 def main():
     save(plot_supply_rail_ripple(load_ripple()), "supply_rail_ripple.png")
-    for name, (capture, time_range, tip_switch_event, phases) in TIMING_CAPTURES.items():
+    for name, (
+        capture,
+        time_range,
+        tip_switch_event,
+        phases,
+    ) in TIMING_CAPTURES.items():
         save(plot_jack_timing(capture, time_range, tip_switch_event, phases), name)
 
 

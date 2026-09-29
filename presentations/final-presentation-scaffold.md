@@ -416,10 +416,10 @@ itself, in a few seconds, repeatably. Everything later rests on this.
 **Notes.** Mention that this test is a permanent part of the repository, not a one-off, and that
 it is the first thing run after any change to the switch driver or the wiring table.
 
-## 4.3 Signal chain quality: supply, SPI, and settling
+## 4.3 Signal chain quality: supply and SPI
 
-**Content.** Three scope captures on one slide, each with the number that matters and each with
-its test point named:
+**Content.** Two scope captures on one slide, each with the number that matters and each with its
+test point named:
 
 - **Rails (TP12 +5V, TP13 +3.3VA, TP14 +2.5V, TP15 VEXT).** AC-coupled ripple and noise at idle
   and with the LEDs and WiFi active. Note that these test points are on the regulator side of the
@@ -434,21 +434,12 @@ its test point named:
   ringing. Pair it with the firmware-side result already in hand: at 4 MHz with a 10 us guard,
   zero outlying codes in 300 readings, where the breadboard needed 50 us. **[V]**
   `docs/fast-tracking.md`.
-- **Tap settling (probe a jack contact directly).** Capture one contact across a switch change
-  and compare against what the firmware waits. The firmware's model is
-  `2 x (network_kOhm + 10 kOhm) x 10 nF`, clamped to between 1 ms and 400 ms. **[V]**
-  `SettleConfig` defaults plus the override in `src/bin/expression_controller.rs:347`.
-  **This is worth measuring precisely because two time constants leaves about 13.5 % of the step
-  uncorrected**, and the argument that it is nevertheless enough is that the ADC's sinc-cubed
-  filter averages over three conversion periods afterwards. That argument should be checked, not
-  asserted. If the capture shows the residual matters, that is a finding worth presenting.
 
 **Takeaway.** The analog and digital plumbing is quiet enough and fast enough that the
 remaining error is the ADC's own noise, not the board's.
 
-**Notes.** The settling capture is the most valuable of the three, because it validates a
-firmware timing model against physics, and because it is the one where the answer is not already
-known.
+**Notes.** Tap settling (M8) is left out of the talk and goes into the report. If someone asks
+whether the firmware waits long enough after switching, answer with the backup slide on it.
 
 ## 4.4 ADC noise versus speed: why everything runs at 819 Hz
 
@@ -799,6 +790,11 @@ Prepare these but do not present them:
 - The full ADC characterisation table.
 - The mono-cable parallel-track-halves analysis with the x(1-x) curve plotted.
 - The host test suite (50 tests), for "how do you know the solver is right?". **[V]**
+- Tap settling, for "does the firmware wait long enough after switching?". The plug-in capture
+  `RigolDS1.csv` (in `measurements/raw_data.zip`) shows the floating ring of a ~9.4 kOhm pedal
+  charging with a time constant of 190.6 us after the tip-sleeve pair's latch, against
+  (9.4 + 10 kOhm) x 10 nF = 194 us predicted; the 1 ms minimum wait is 5.2 time constants. **[V]**
+  The full series with known resistors is in the report (M8).
 - Bill of materials and cost. **[TODO]** `hardware/ExpressionController.xlsx` exists and was not
   opened for this scaffold; check whether it already has costs.
 
@@ -864,12 +860,6 @@ test points. Expect deliberately slowed edges: every line has a 47 Ohm series re
 Feeds 4.3, and closes two more milestone-1 items. Optional extra, cheap because the board supports
 it: open JP1, JP2 or JP3 to measure each rail's current separately. **[V]**
 
-**M8. Tap settling capture.** One jack contact captured across a switch change, measured against
-the firmware's `2 x (network + 10 kOhm) x 10 nF` model, floor 1 ms. **[V]** The specific question
-worth answering: two time constants leaves about 13.5 % of the step, and the justification is that
-the sinc-cubed filter averages three conversion periods afterwards. Confirm or refute that. Feeds
-4.3, and it is the one measurement here that validates a firmware timing model against physics.
-
 ## Nice to have
 
 **M9. Crosstalk between jacks.** Four pedals plugged in; sweep one, record the other three. Note
@@ -887,6 +877,30 @@ reference. Feeds 4.8.
 **M11. Long cable.** Repeat recognition and tracking with a long instrument cable, since tap
 capacitance sets the settle delay and cable capacitance adds to the 10 nF the model assumes.
 **[V]** Feeds 4.8 if it shows anything, backup if not.
+
+## Deferred to the report
+
+**M8. Tap settling capture.** Not part of the talk; it goes into the report. It validates the
+firmware's settle model, `2 x (network + 10 kOhm) x 10 nF` clamped to 1-400 ms and assuming
+100 kOhm until a solve has measured the network, against the measured curve. **[V]**
+`SettleConfig`, `MonitorConfig::initial_total`.
+
+- **First attempt, not usable.** `settling_4k7.csv`, `settling_47k.csv` and `settling_220k.csv`
+  (4.7, 47 and 220 kOhm between ring and tip and between tip and sleeve, wiper on the tip) were
+  triggered on the ring rising through 1 V, which caught the plug sliding in rather than a switch
+  change: the ring sits at the 1.25 V plug-check divider for 0.64-0.78 ms whatever the resistor,
+  and SR_LAT stays low throughout, since an empty jack keeps its drives. **[V]** in
+  `measurements/raw_data.zip`.
+- **Redo.** CH1 on SR_LAT (TP2), trigger rising at 1.65 V, single; CH2 on J2.R; the other jacks
+  empty, so the first latch is jack 1's. Plug in within 30 s of the previous unplug, so the rails
+  are fresh and that latch is the tip-ring pair. 5 ms/div with the trigger at 10 %, at least 500k
+  points. The step to fit is the tip-sleeve pair's latch 15-19 ms later, where the floating ring
+  charges through R.
+- **Prediction to test.** Time constant about (11 kOhm + R) x 10 nF: 156 us, 590 us and 2.3 ms.
+  While identifying, the firmware waits 2.2 ms and reads the floating ring last, about 10.5 ms
+  after the latch, so 220 kOhm is the case that tests the model: about 1 % of the step, some
+  27 mV against 0.5 mV of noise, would still be missing. At 220 kOhm the 10X probe's 10 MOhm pulls
+  the floating ring about 2 % low; correct for it.
 
 ## What is deliberately not measured, and why
 
