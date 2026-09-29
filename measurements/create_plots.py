@@ -1,15 +1,17 @@
-"""Plot the supply rail ripple from supply_rail_measurement.xlsx for the presentation slides.
+"""Plot the bench measurements for the presentation slides.
 
-Each rail is one group, in the order the regulators chain them (Vext -> +5V and +3.3V -> +2.5V),
-with one bar per operating state, in order of increasing load. Only the 10 ms timebase is
-plotted: at 1 us the scope's own noise dominates every reading.
+Supply rail ripple, from supply_rail_measurement.xlsx: each rail is one group, in the order the
+regulators chain them (Vext -> +5V and +3.3V -> +2.5V), with one bar per operating state, in order
+of increasing load. Only the 10 ms timebase is plotted: at 1 us the scope's own noise dominates
+every reading. Writes supply_rail_ripple.png: the measurements, the scope's noise floor and the
+largest rail noise the 7-bit MIDI output tolerates.
 
-Writes two figures next to this script, with identical axes so the slides can cut between them:
+Plug-in timing (M4), from the scope captures in raw_data/ (extracted from raw_data.zip): jack 1's
+tip switch and ring from the moment the tip switch opens, with the monitor's phases marked.
+Writes plugin_timing_rail_refresh.png (rails older than 30 s, measured again before the solve)
+and plugin_timing_fresh_rails.png (rails less than 30 s old).
 
-- supply_rail_ripple.png: the measurements and the scope's noise floor.
-- supply_rail_ripple_midi.png: the same, plus the largest rail noise the 7-bit MIDI output tolerates.
-
-Usage (in measurements/): uv run plot_supply_rails.py   (dependencies in pyproject.toml)
+Usage (in measurements/): uv run create_plots.py   (dependencies in pyproject.toml)
 """
 
 from pathlib import Path
@@ -58,10 +60,49 @@ PEAK_TO_PEAK_PER_RMS = 6
 MIDI_STEP_VOLTAGE = REFERENCE_VOLTAGE / 2**MIDI_BITS
 MIDI_TOLERABLE_NOISE_RMS = MIDI_STEP_VOLTAGE / PEAK_TO_PEAK_PER_RMS
 
+RAW_DATA = HERE / "raw_data"
+
+# Plug-in captures: CH1 on J2.TN (tip switch), CH2 on J2.R (ring), 10X probes, triggered when the
+# tip switch rises through 1.9 V. Each phase is (start in ms, label); the starts are the ring's
+# latch edges in the capture. Tracking keeps the last pair's drives, so its start cannot be seen:
+# it is the last latch plus one pair's length (14.6 ms), drawn dashed.
+PLUGIN_CAPTURES = {
+    "plugin_timing_rail_refresh.png": (
+        "plugin_w_rail_meas.csv",
+        (-20, 340),
+        [
+            (-20, "Empty"),
+            (0, "Waiting for\nplug check"),
+            (49.4, "Rails:\nall arms high"),
+            (156.3, "Rails:\nall arms low"),
+            (263.2, "Pair tip-ring"),
+            (277.9, "Pair tip-sleeve"),
+            (292.7, "Pair ring-sleeve"),
+            (307.3, "Tracking"),
+        ],
+    ),
+    "plugin_timing_fresh_rails.png": (
+        "plugin5.csv",
+        (-20, 130),
+        [
+            (-20, "Empty"),
+            (0, "Waiting for\nplug check"),
+            (35.5, "Pair tip-ring"),
+            (54.3, "Pair tip-sleeve"),
+            (68.9, "Pair ring-sleeve"),
+            (83.5, "Tracking"),
+        ],
+    ),
+}
+NARROW_PHASE = 0.15  # share of the plotted time below which a phase's label turns vertical
+
 MILLIVOLTS = 1e3
+MILLISECONDS = 1e3
 TEXT_COLOR = "#000000"
 MUTED_COLOR = "#52514e"
 LIMIT_COLOR = "#a4161a"  # deep red, kept apart from the orange WiFi bars
+RING_COLOR = "#2a78d6"  # the trace the phases show on
+TIP_SWITCH_COLOR = MUTED_COLOR  # context: only the plug-in edge matters
 Y_LIMIT = 3.8  # mV, shared by both figures so the slides line up
 
 plt.rcParams.update(
@@ -181,13 +222,87 @@ def plot_supply_rail_ripple(ripple):
     return figure
 
 
-def main():
-    ripple = load_ripple()
-    name = "supply_rail_ripple.png"
-    figure = plot_supply_rail_ripple(ripple)
+def load_capture(name):
+    """Time in ms, then CH1 and CH2 in V. The CSV rounds its time column, so the time is rebuilt
+    from the evenly spaced samples between its first and last entry."""
+    data = np.loadtxt(RAW_DATA / name, delimiter=",", skiprows=1)
+    time = np.linspace(data[0, 0], data[-1, 0], len(data)) * MILLISECONDS
+    return time, data[:, 1], data[:, 2]
+
+
+def plot_plugin_timing(capture, time_range, phases):
+    time, tip_switch, ring = load_capture(capture)
+    shown = (time >= time_range[0]) & (time <= time_range[1])
+
+    figure, (label_axes, tip_switch_axes, ring_axes) = plt.subplots(
+        3, 1, sharex=True, figsize=(13.33, 7.5), height_ratios=(1.4, 2, 2)
+    )
+    traces = (
+        (tip_switch_axes, tip_switch, TIP_SWITCH_COLOR, "Tip switch (V)"),
+        (ring_axes, ring, RING_COLOR, "Ring (V)"),
+    )
+    for axes, voltage, color, label in traces:
+        # The pull-up rail every contact is driven high to (board::REFERENCE_VOLTAGE).
+        axes.axhline(REFERENCE_VOLTAGE, color=MUTED_COLOR, linestyle=":", linewidth=2)
+        axes.text(
+            time_range[1],
+            REFERENCE_VOLTAGE,
+            f"+{REFERENCE_VOLTAGE} V supply",
+            fontsize=18,
+            color=MUTED_COLOR,
+            ha="right",
+            va="bottom",
+            bbox=dict(facecolor="white", edgecolor="none", pad=1),
+            zorder=3,  # over the phase lines that cross it
+        )
+        axes.plot(time[shown], voltage[shown], color=color, linewidth=2)
+        axes.set_ylim(-0.2, 3.1)
+        axes.set_yticks([0, 1, 2])
+        axes.set_ylabel(label, fontsize=22)
+    label_axes.axis("off")
+
+    starts = [start for start, _ in phases]
+    ends = starts[1:] + [time_range[1]]
+    plotted_time = time_range[1] - time_range[0]
+    for index, ((start, label), end) in enumerate(zip(phases, ends)):
+        if index > 0:
+            inferred = index == len(phases) - 1
+            for axes in (label_axes, tip_switch_axes, ring_axes):
+                axes.axvline(
+                    start,
+                    color=TEXT_COLOR,
+                    linewidth=1.5,
+                    linestyle="--" if inferred else "-",
+                )
+        narrow = (end - start) / plotted_time < NARROW_PHASE
+        label_axes.text(
+            (start + end) / 2,
+            0.05,
+            label,
+            transform=label_axes.get_xaxis_transform(),
+            rotation=90 if narrow else 0,
+            fontsize=20,
+            ha="center",
+            va="bottom",
+        )
+
+    ring_axes.set_xlim(time_range)
+    ring_axes.set_xlabel("Time after the tip switch opens (ms)")
+    figure.align_ylabels((tip_switch_axes, ring_axes))
+    figure.tight_layout(h_pad=0.4)
+    return figure
+
+
+def save(figure, name):
     figure.savefig(HERE / name, dpi=200, facecolor="white")
     plt.close(figure)
     print(f"wrote {name}")
+
+
+def main():
+    save(plot_supply_rail_ripple(load_ripple()), "supply_rail_ripple.png")
+    for name, (capture, time_range, phases) in PLUGIN_CAPTURES.items():
+        save(plot_plugin_timing(capture, time_range, phases), name)
 
 
 if __name__ == "__main__":

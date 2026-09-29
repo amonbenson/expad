@@ -52,7 +52,7 @@ npm run type-check
 npm run lint         # ESLint with @stylistic is the formatter: it fixes in place
 
 cd measurements
-uv run plot_supply_rails.py   # bench plots for the slides (outside the firmware)
+uv run create_plots.py        # bench plots for the slides (outside the firmware)
 ```
 
 - Setup: copy .env.example to `.env` and set `EXPAD_WIFI_PASSWORD` (8-63 printable ASCII; the
