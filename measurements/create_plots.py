@@ -6,10 +6,11 @@ of increasing load. Only the 10 ms timebase is plotted: at 1 us the scope's own 
 every reading. Writes supply_rail_ripple.png: the measurements, the scope's noise floor and the
 largest rail noise the 7-bit MIDI output tolerates.
 
-Plug-in timing (M4), from the scope captures in raw_data/ (extracted from raw_data.zip): jack 1's
-tip switch and ring from the moment the tip switch opens, with the monitor's phases marked.
-Writes plugin_timing_rail_refresh.png (rails older than 30 s, measured again before the solve)
-and plugin_timing_fresh_rails.png (rails less than 30 s old).
+Plug-in and unplug timing (M4), from the scope captures in raw_data/ (extracted from
+raw_data.zip): jack 1's tip switch and ring around the moment the tip switch opens or closes, with
+the monitor's phases marked. Writes plugin_timing_rail_refresh.png (rails older than 30 s, measured
+again before the solve), plugin_timing_fresh_rails.png (rails less than 30 s old) and
+unplug_timing.png.
 
 Usage (in measurements/): uv run create_plots.py   (dependencies in pyproject.toml)
 """
@@ -62,35 +63,55 @@ MIDI_TOLERABLE_NOISE_RMS = MIDI_STEP_VOLTAGE / PEAK_TO_PEAK_PER_RMS
 
 RAW_DATA = HERE / "raw_data"
 
-# Plug-in captures: CH1 on J2.TN (tip switch), CH2 on J2.R (ring), 10X probes, triggered when the
-# tip switch rises through 1.9 V. Each phase is (start in ms, label); the starts are the ring's
-# latch edges in the capture. Tracking keeps the last pair's drives, so its start cannot be seen:
-# it is the last latch plus one pair's length (14.6 ms), drawn dashed.
-PLUGIN_CAPTURES = {
+# Plug-in and unplug captures: CH1 on J2.TN (tip switch), CH2 on J2.R (ring), 10X probes,
+# triggered when the tip switch rises, through 1.9 V as the plug opens it or 0.6 V as the plug
+# leaves and it closes. Each capture is (CSV, plotted time range in ms, what the tip switch does at
+# 0 ms, phases); each phase is (start in ms, label, inferred). Measured starts are latch edges on the
+# ring or tip switch. Inferred ones, drawn dashed, change no drive the two probes can see and are
+# one pair's length after the previous latch: Tracking keeps the last pair's drives (14.6 ms), and
+# without a plug the tip-sleeve pair only swaps the ring from driven low to floating, both at 0 V
+# (13.4 ms, settling for the known pedal).
+TIMING_CAPTURES = {
     "plugin_timing_rail_refresh.png": (
         "plugin_w_rail_meas.csv",
         (-20, 340),
+        "opens",
         [
-            (-20, "Empty"),
-            (0, "Waiting for\nplug check"),
-            (49.4, "Rails:\nall arms high"),
-            (156.3, "Rails:\nall arms low"),
-            (263.2, "Pair tip-ring"),
-            (277.9, "Pair tip-sleeve"),
-            (292.7, "Pair ring-sleeve"),
-            (307.3, "Tracking"),
+            (-20, "Empty", False),
+            (0, "Waiting for\nplug check", False),
+            (49.4, "Rails:\nall arms high", False),
+            (156.3, "Rails:\nall arms low", False),
+            (263.2, "Pair tip-ring", False),
+            (277.9, "Pair tip-sleeve", False),
+            (292.7, "Pair ring-sleeve", False),
+            (307.3, "Tracking", True),
         ],
     ),
     "plugin_timing_fresh_rails.png": (
         "plugin5.csv",
         (-20, 130),
+        "opens",
         [
-            (-20, "Empty"),
-            (0, "Waiting for\nplug check"),
-            (35.5, "Pair tip-ring"),
-            (54.3, "Pair tip-sleeve"),
-            (68.9, "Pair ring-sleeve"),
-            (83.5, "Tracking"),
+            (-20, "Empty", False),
+            (0, "Waiting for\nplug check", False),
+            (35.5, "Pair tip-ring", False),
+            (54.3, "Pair tip-sleeve", False),
+            (68.9, "Pair ring-sleeve", False),
+            (83.5, "Tracking", True),
+        ],
+    ),
+    "unplug_timing.png": (
+        "unplug1.csv",
+        (-20, 320),
+        "closes",
+        [
+            (-20, "Tracking", False),
+            (1.8, "Rails:\nall arms high", False),
+            (108.8, "Rails:\nall arms low", False),
+            (215.8, "Pair tip-ring", False),
+            (229.2, "Pair tip-sleeve", True),
+            (242.6, "Pair ring-sleeve", False),
+            (255.9, "Plug check:\nempty", False),
         ],
     ),
 }
@@ -230,7 +251,7 @@ def load_capture(name):
     return time, data[:, 1], data[:, 2]
 
 
-def plot_plugin_timing(capture, time_range, phases):
+def plot_jack_timing(capture, time_range, tip_switch_event, phases):
     time, tip_switch, ring = load_capture(capture)
     shown = (time >= time_range[0]) & (time <= time_range[1])
 
@@ -261,12 +282,11 @@ def plot_plugin_timing(capture, time_range, phases):
         axes.set_ylabel(label, fontsize=22)
     label_axes.axis("off")
 
-    starts = [start for start, _ in phases]
+    starts = [start for start, _, _ in phases]
     ends = starts[1:] + [time_range[1]]
     plotted_time = time_range[1] - time_range[0]
-    for index, ((start, label), end) in enumerate(zip(phases, ends)):
+    for index, ((start, label, inferred), end) in enumerate(zip(phases, ends)):
         if index > 0:
-            inferred = index == len(phases) - 1
             for axes in (label_axes, tip_switch_axes, ring_axes):
                 axes.axvline(
                     start,
@@ -287,7 +307,7 @@ def plot_plugin_timing(capture, time_range, phases):
         )
 
     ring_axes.set_xlim(time_range)
-    ring_axes.set_xlabel("Time after the tip switch opens (ms)")
+    ring_axes.set_xlabel(f"Time after the tip switch {tip_switch_event} (ms)")
     figure.align_ylabels((tip_switch_axes, ring_axes))
     figure.tight_layout(h_pad=0.4)
     return figure
@@ -301,8 +321,8 @@ def save(figure, name):
 
 def main():
     save(plot_supply_rail_ripple(load_ripple()), "supply_rail_ripple.png")
-    for name, (capture, time_range, phases) in PLUGIN_CAPTURES.items():
-        save(plot_plugin_timing(capture, time_range, phases), name)
+    for name, (capture, time_range, tip_switch_event, phases) in TIMING_CAPTURES.items():
+        save(plot_jack_timing(capture, time_range, tip_switch_event, phases), name)
 
 
 if __name__ == "__main__":
