@@ -1,141 +1,338 @@
-# Project Overview
+# AGENTS.md
 
-expad is a Rust firmware project for an RP2350 target. On the expression controller PCB (hardware/, KiCad) it switches every jack contact to shared pull-up/pull-down resistors through shift-register-driven analog switches, reads the contacts back through an ADC chain, and identifies what is plugged into each jack with a small topology solver, then follows it with single readings - a potentiometer pedal's wiper, or a switch's or rheostat's tip - sent as MIDI control changes over USB. On the Pico 2 W it can also open a WiFi access point serving a live web interface (Vue app in web/) that shows device status and edits settings in real time. The workspace's second crate, topology/, holds the solver's arithmetic without any hardware dependency, so it can be unit tested on the host.
+expad is Rust firmware for an RP2350 (Raspberry Pi Pico 2 W) on the expression controller PCB
+(KiCad, hardware/). It switches every jack contact to shared pull-up/pull-down resistors, reads
+the contacts through two AD7718 ADCs, identifies what is plugged into each jack with a small
+topology solver, then follows it with single readings and sends the position as a MIDI control
+change over USB. A WiFi access point serves a live web interface (Vue app in web/) for status and
+settings.
 
-## Repository Structure
+Start at the index, then read only the section it points to.
 
-These files are also the extensibility hooks: the types and functions named here are where new behavior goes.
+## 0. Index
 
-- .vscode/: build, run, and debug tasks plus launch configuration; with Embed.toml, the main extension point for flashing and debugging. settings.json turns on format-on-save (rustfmt for Rust, the ESLint extension for web/) and extensions.json recommends the extensions that provide it.
-- src/lib.rs: `#![no_std]` library crate (`expad`), re-exporting `board`, `hal`, `topology`, and (with the `web` feature) `web` to every binary.
-- src/board.rs: the PCB's wiring and the only place that knows it - pins, chip counts, `REFERENCE_VOLTAGE`, pull and ADC filter values, `Contact` (tip, ring, sleeve, tip switch) and the `JACKS` table of `JackWiring` (switch chip, ADC chip, ADC channel per contact, LED; `config()` gives the scanner's `JackConfig`), in the case's order J5 to J2, since the PCB is mounted upside down. `pull_switches`, `adcs` and `leds` construct the drivers on the board's pins.
-- src/bin/: one flashable application per file, each with its own `#[embassy_executor::main]` — see "Adding a new application".
-  - `adc_characterization.rs`: with a pot pedal in jack 1 driven like a tracked one, compares SPI settings (clock, chip select guard) at 819 Hz by reading time, noise and outlying codes, then measures reading time, noise, resolution, mains hum and offsets at every filter rate, and whether calibration survives a rate change; results in docs/fast-tracking.md.
-  - `capture.rs`: holds every jack's contacts in the `DRIVE` pattern (all floating, all low/high, or one high and one low to reproduce a solver pair on a pedal), reads each ADC input once, then continuously captures both ADCs at the controller's 819 Hz with bipolar coding, so the noise around 0 V is visible - the tool for measuring `ADC_VOLTAGE_NOISE`.
-  - `detect_pin_mapping.rs`: board self-test - checks each ADC's grounded (AIN6) and reference (AIN10) input, then pulls every contact of every jack up and down, verifying against `board::JACKS` that exactly the expected ADC input follows (the tip switch also follows the tip while no plug is inserted).
-  - `rainbow.rs`: cycles a rainbow pattern across a WS2812B strip.
-  - `potentiometer.rs`: pulls the first jack's sleeve low and ring high, measures the tip (wiper) against them, prints voltage and position, and mirrors it by splitting brightness across the two nearest LEDs.
-  - `midi_loopback.rs`: echoes every USB MIDI packet back to the host.
-  - `web_interface.rs`: serves the web interface over WiFi with dummy status data, logging every settings change.
-  - `expression_controller.rs`: the full firmware - runs a `JackScanner` over every jack, maps each position through the jack's range, inversion and drive settings, sends it as a MIDI control change, hands each jack's mode and sent value to `JackIndicators` and publishes the status to the web interface (~30 Hz); logs position updates per second every 5 s. The `no-wifi` feature holds the radio powered down and skips the web server, leaving the settings at their defaults.
-- src/hal/mod.rs: hardware abstraction layer, re-exporting:
-  - adc/: AD7718 chain driver, register abstractions, measurement flow; mod.rs exposes `AdcChainConfig` for new channels, modes and SPI timing (`with_spi_frequency`, `with_chip_select_guard`; 4 MHz and 10 µs by default), skips rewriting the control register while the channel stays the same, `start_conversion`/`finish_conversion` and `measure_parallel` (one channel per chip, all chips converting at once), `set_update_rate` (keeps the old calibration) and `measure_continuous` (one channel, back-to-back results).
-  - buf/: pull switches — pull_switch.rs (`PullSwitchChain`: one 74HC595 per jack driving two TMUX1511s, `TriState` per tap and its bit encoding, chip 0 nearest the MCU), shift_register.rs (SPI shift-register wrapper; outputs stay disabled until the first write, then latch atomically).
-  - led/: ws2812.rs defines `Ws2812Chain`, a PIO-backed WS2812B ("NeoPixel") driver generic over LED count that scales every frame to at most `MAX_CHANNEL_VALUE` (~4%), since the strip runs off the 5 V linear regulator; strip.rs defines `LedStrip`, the stateful per-LED color and global-brightness driver over it.
-  - usb/midi.rs: USB MIDI over `embassy-usb`'s MIDI class with `usbd-midi` packet and message types. Defines `UsbMidiConfig` and `UsbMidi` (`wait_connection` for a host that configured the device and is not suspending it, then `receive`, `send_packet`, `send_message`, which end with `EndpointError::Disabled` once it disconnects); `UsbMidi::new` also returns a `UsbMidiDevice` whose `run()` must be polled concurrently (e.g. in its own task). usb/driver.rs wraps embassy-rp's driver: clears a suspend latched before a bus reset (embassy-rp 0.10 bug that stalls enumeration) and paces a bus flooding events so it cannot starve the executor, logging every bus event.
-  - wifi/ (`web` only): access_point.rs drives the Pico 2 W CYW43439 on PIO1 plus the `embassy-net` stack — `start_access_point`, `AccessPointConfig` (SSID, password, channel, address), `AccessPointPeripherals`; dhcp.rs is its DHCP server (naming the device gateway and DNS server), dns.rs its captive-portal DNS server (`edge-captive`: every name resolves to the device).
-- src/indicator.rs: `JackIndicators` owns the `LedStrip`, lights each jack's LED (`JackWiring::led`) and decides its color from its `JackMode` and sent value: off when empty, dim white for an unknown plug, a recognised pedal's color (purple expression, lime footswitch, yellow rheostat) for 1 s once per plug-in, then the value from dark red through red, orange and yellow to white.
-- src/topology/scanner.rs: the hardware half - `JackScanner` runs one `JackMonitor` per jack on `PullSwitchChain` and `AdcChain`: every `step` takes one reading per ADC at once, for the jack on it due longest, applying its drives (kept applied while the ADC's other jack is read) and waiting `SettleConfig::delay` - `time_constants` x (the monitor's settle resistance + `tap_series_resistance`) x `tap_capacitance` - only when they change. `JackConfig` is one jack's entry in the board table. mod.rs re-exports the topology crate's types.
-- topology/: the `expad-topology` crate, the solver's hardware-independent arithmetic. `SolveSequence` hands out the pairs of `PAIR_SEQUENCE` (arm 0 high against arms 1 and 2, then 1 against 2 only when needed) and resolves them in resolve.rs from the floating taps' voltage ratios, scaled by the SNR-weighted total the loop currents imply - `PairMeasurement::from_voltages` reduces one pair's tap voltages, `SolverConfig` expresses every tolerance in standard deviations of the ADC noise, and `ArmResistances::network` classifies a solved network as a `Network` (disconnected, potentiometer, end stop or near a track end with two wiper candidates, tip-sleeve element behind a mono or stereo plug, other); `position_with_wiper` counts from the track's start, the sleeve (`GROUNDED_END`) when it is a track end, as `track_ends` defines. monitor.rs holds `JackMonitor`, the per-jack state machine handing out one `Reading` at a time; its private `State` enum is the diagram's states and the reported `JackMode` is derived from it: rails, empty (plug check through the tip switch: tip low, tip switch high, 1.25 V without a plug, 2.5 V with one), solve, confirm plug (after a solve found no current), then follow - one `Follower` driving two arms and reading one contact, either a potentiometer (track ends driven, wiper read, end taps' pull drops checked every 25 ms) or a tip-sleeve element (`Element` open, switch or rheostat; tip high, sleeve low, tip read, plug check every 50 ms, ring check every 100 ms: behind a mono plug still shorted to the sleeve, behind a stereo one driven low and still carrying no current; open plugs solved every 1 s); `Pedal` holds what is learned about the pedal until the plug comes out or turns out open. tests/ drives the solver from `StarNetwork`, a model of the real circuit, and the monitor from a simulated jack over simulated time, so both are covered on the host.
-- src/web/ (`web` feature): interface.rs defines the protocol types (`Status`, `JackStatus` with the jack's mode, raw position and every contact's voltage and pull (tip switch included), `ArmPull`, `Settings`, `JackSettings` with the range `minimum`/`maximum`, `inverted`, the `drive` curve (`drive_curve`), the end-stop `WiperContact` and the jack's `Color` (`#RRGGBB`, `DEFAULT_JACK_COLORS`), applied by `JackSettings::value`) and the global `INTERFACE` state; server.rs defines `spawn_web_server` and the `picoserve` HTTP routes serving the embedded UI at `/` and a WebSocket at `/ws`, redirecting every other path to the UI (`CaptivePortal`), so phones and computers open it as the network's sign-in page.
-- web/: frontend (Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript; eslint.config.ts formats it through `@stylistic`, sorts imports and orders Tailwind classes) built into a single gzipped index.html. src/interface.ts mirrors the Rust protocol types, src/composables/useInterface.ts owns the WebSocket, src/theme.ts defines the flat Nora-based preset, the blue-gray surface ramp and the red/green/blue `INDICATOR_COLORS` (also `--p-indicator-*`), while jack colors come from the device's settings, src/App.vue lays the jacks out as a mixing desk, and src/components/ renders it (JackStrip.vue per jack with its MIDI, range, drive (DriveCurve.vue previews the curve) and wiper settings, TopologyPanel.vue with ResistorCircuit.vue drawing the selected jack's whole circuit: the solved star, the tip switch, the shared pulls and every pull switch, and JackNarrative.vue explaining it in words through `describeJack` in src/narrative.ts: what the jack does now, why, and what it waits for). mock/device.ts is the firmware stand-in (two pedals, a sustain pedal and a scripted plug-in story through every mode) and vite.config.ts configures the gzip build and dev proxy.
-- docs/: design notes too long for this file - fast-tracking.md holds the ADC measurements, the pull resistor analysis, the plug-detect/tracking design and how switches and rheostats behind mono and stereo plugs are told apart; diagrams/jack-monitor-states.tex is the TikZ state diagram of `JackMonitor` (tools and build commands in diagrams/README.md), with its PDF, SVG and PNG exports alongside.
-- presentations/: the project's milestone presentations, as PowerPoint sources with their PDF exports.
-- measurements/: bench measurement workbooks and the uv-managed Python scripts (pyproject.toml, uv.lock) that plot them for the slides - plot_supply_rails.py draws the supply rail ripple against the scope noise floor and the 7-bit MIDI noise limit; raw_data/ (scope screenshots and CSVs) is git-ignored.
-- firmware/cyw43/: vendored CYW43439 firmware blobs (Infineon permissive binary license) embedded by the wifi HAL; .gitattributes marks these `*.bin` files binary so line endings are never converted.
-- build.rs: copies linker settings into the build output, forwards `EXPAD_*` variables from the environment or `.env` to the crate, and with `web` validates `EXPAD_WIFI_PASSWORD` and runs `npm ci`/`npm run build` in web/, writing to `OUT_DIR/web`.
-- .env.example: template for the untracked `.env` (WiFi password, PrimeUI license key, dev proxy target).
-- Cargo.toml: manifest and embedded dependencies — the workspace (expad plus topology/), the `expad` lib target, one `[[bin]]` per file in src/bin/, and the default `web` feature gating the networking dependencies and `expad-topology/serde`.
-- Embed.toml, memory.x, rp235x_riscv.x: board and linker configuration for the RP2350.
+| Looking for | Go to |
+|---|---|
+| Build, flash, test, lint, format commands | [1. Commands](#1-commands) |
+| How the crates and layers depend on each other | [2. Architecture](#2-architecture) |
+| Pins, chips, jack order, board constants (`JACKS`, `REFERENCE_VOLTAGE`, `ADC_UPDATE_RATE`, ...) | [3.1 board](#31-board-srcboardrs) |
+| AD7718 driver, registers, SPI timing | [3.2 hal::adc](#32-hal-srchal) |
+| Pull switches (74HC595 + TMUX1511), `TriState` | [3.2 hal::buf](#32-hal-srchal) |
+| LED strip, brightness cap | [3.2 hal::led](#32-hal-srchal), [4. Concepts](#4-concepts) |
+| USB MIDI, WiFi access point, DHCP/DNS captive portal | [3.2 hal::usb / hal::wifi](#32-hal-srchal) |
+| Solver arithmetic, `Network` classification, positions | [3.3 expad-topology](#33-expad-topology-topology) |
+| `JackMonitor` states, `JackMode`, plug detection, following | [3.3 monitor](#33-expad-topology-topology), docs/fast-tracking.md |
+| Scheduling readings on the hardware, settling | [3.4 scanner](#34-scanner-srctopologyscannerrs) |
+| LED colors per jack | [3.5 indicator](#35-indicator-srcindicatorrs) |
+| Web protocol (`Status`, `Settings`), server, WebSocket | [3.6 web](#36-web-srcweb-web-feature) |
+| Flashable programs | [3.7 binaries](#37-binaries-srcbin) |
+| Frontend (Vue) | [3.8 web/ frontend](#38-web-frontend-web) |
+| Units, index conventions, the three drive enums | [4. Concepts](#4-concepts) |
+| Adding a binary, the web interface, a protocol field, a board change | [5. Recipes](#5-recipes) |
+| Naming, formatting, style | [6. Conventions](#6-conventions) |
+| What to test and how | [7. Testing](#7-testing) |
+| Secrets, licenses, hardware guardrails | [8. Guardrails](#8-guardrails) |
 
-## Build & Development Commands
+## 1. Commands
 
 ```bash
-cargo build --bin capture   # or: cargo build (builds the lib + every bin)
-cargo build --no-default-features   # skip the `web` feature (no Node.js needed)
-cargo run --bin expression_controller --features no-wifi   # WiFi radio held powered down, for electrical tests
+cargo build                                  # lib + every bin (the default `web` feature runs npm in web/)
+cargo build --no-default-features            # skip `web`: no Node.js needed
+cargo run --bin expression_controller        # flash over probe-rs and stream the defmt log (Ctrl-C to stop)
+cargo run --bin expression_controller --features no-wifi   # radio held powered down, for electrical tests
+cargo run --bin detect_pin_mapping           # board self-test, jacks unplugged
+cargo test -p expad-topology --target x86_64-pc-windows-msvc   # host tests; use your host triple
 cargo fmt
-cargo clippy --all-features
-cargo test -p expad-topology --target x86_64-pc-windows-msvc   # host triple: the firmware's own target cannot run tests
+cargo clippy --all-features                  # also run plain `cargo clippy`: --all-features enables no-wifi
 
 cd web
-npm run dev:mock     # dev server + mock device: develop the UI with live dummy data, no hardware needed
-npm run dev          # dev server against real hardware, proxies /ws to EXPAD_DEVICE_ADDRESS (default 192.168.4.1)
+npm run dev:mock     # UI against the mock device, no hardware
+npm run dev          # UI against a device at EXPAD_DEVICE_ADDRESS (default 192.168.4.1), proxying /ws
 npm run type-check
-npm run lint          # formats and fixes: ESLint carries the @stylistic rules, so it is the formatter
+npm run lint         # ESLint with @stylistic is the formatter: it fixes in place
 
 cd measurements
-uv run plot_supply_rails.py   # creates .venv from uv.lock on first run, writes the PNGs next to the script
+uv run plot_supply_rails.py   # bench plots for the slides (outside the firmware)
 ```
 
-Formatting is a tool's job in both halves of the repository: run `cargo fmt` for Rust and
-`npm run lint` in web/ instead of hand-editing code to satisfy the formatter or the linter. Only
-what neither can fix automatically, such as a missing return type, is worth fixing by hand.
+- Setup: copy .env.example to `.env` and set `EXPAD_WIFI_PASSWORD` (8-63 printable ASCII; the
+  `web` build fails without it), optionally `VITE_PRIMEUI_LICENSE`. Node.js per `engines` in
+  web/package.json.
+- Target `thumbv8m.main-none-eabihf` and the probe-rs runner (10 MHz SWD) are set in
+  .cargo/config.toml; dev builds use `opt-level = 1`, so flashing takes ~13 s.
+- VS Code: .vscode/tasks.json and launch.json share a `binName` dropdown of the binaries, so
+  build, run and debug target the same one; settings.json formats on save.
+- Formatting is a tool's job: run `cargo fmt` and `npm run lint`, never hand-format.
 
-The default `web` feature needs Node.js (`engines` in [web/package.json](web/package.json)); build.rs reruns `npm ci` whenever `web/package-lock.json` is newer than the installed packages. Before building, copy [.env.example](.env.example) to `.env` and set the WiFi password — required, the build fails without a valid 8-63 character WPA2 password — plus, optionally, the PrimeUI license key.
+## 2. Architecture
 
-Debug and flash from VS Code with [.vscode/launch.json](.vscode/launch.json) and [.vscode/tasks.json](.vscode/tasks.json); both prompt with a dropdown of `src/bin/*.rs` programs via a shared `binName` input, so building, running, and debugging target the same binary. `cargo run --bin <name>` uploads that firmware to the RP2350 and captures serial output until canceled with Ctrl-C. Dev builds use `opt-level = 1` and the probe runs at 10 MHz (.cargo/config.toml), which keeps flashing to ~13 s. `expression_controller` logs every jack's mode change (with the tip switch voltage: ~2.5 V plugged, ~1.25 V empty) and the position updates per second every 5 s.
+Two crates in one workspace:
 
-### Adding a new application
-
-1. Add `src/bin/<name>.rs` with `#![no_std]`, `#![no_main]`, and its own `#[embassy_executor::main]`, importing shared code via `expad::hal::...` / `expad::topology::...`.
-2. Add a matching `[[bin]]` entry to Cargo.toml (`name = "<name>"`, `path = "src/bin/<name>.rs"`, `test = false`, `doctest = false`).
-3. Append `"<name>"` to the `binName` input's `options` in both .vscode/tasks.json and .vscode/launch.json so it shows up in the picker.
-
-### Adding the web interface to an application
-
-See [src/bin/web_interface.rs](src/bin/web_interface.rs) for a complete example:
-
-1. Add `required-features = ["web"]` to the binary's `[[bin]]` entry.
-2. Bind `PIO1_IRQ_0 => pio::InterruptHandler<PIO1>` and `DMA_IRQ_0 => dma::InterruptHandler<DMA_CHx>` for the chosen DMA channel. All DMA channels share `DMA_IRQ_0`, so list every channel's handler there (e.g. `DMA_CH0` for WiFi, `DMA_CH1` for the LED strip, as in expression_controller.rs).
-3. `let stack = start_access_point(spawner, AccessPointPeripherals { .. }, Irqs, AccessPointConfig::default()).await;`, then `spawn_web_server(spawner, stack);`.
-4. Publish measurements with `INTERFACE.status.sender().send(status)`, take one `INTERFACE.settings.receiver()` at startup, and apply every `settings.changed().await`. Sending to `INTERFACE.settings` (e.g. values loaded from flash) updates every open interface.
-
-To extend the protocol, change [src/web/interface.rs](src/web/interface.rs) and [web/src/interface.ts](web/src/interface.ts) together.
-
-## Code Style & Conventions
-
-- Rust 2024 edition conventions; small, explicit modules, `cargo fmt` formatting (run it, never format by hand), code readable for embedded development.
-- Non-abbreviated, self-descriptive names; avoid single-letter ones outside very local contexts (e.g. loop indices).
-- Prefer self-documenting code over comments, splitting larger expressions into named variables to clarify intent. Prefer `Result`-based error handling and typed config structs over ad-hoc values, and keep hardware-facing logic close to its module, such as ADC or buffer handling.
-- In web/, write `<script setup lang="ts">` single-file components, import PrimeVue components individually (`primevue/<name>`) and icons from `@primeicons/vue/<name>`, style with Tailwind utilities (including `tailwindcss-primeui` color tokens), and prefer VueUse composables over hand-written browser glue. Color anything jack-specific through `--jack-color` and the `.jack-theme` design-token block in src/main.css instead of styling controls one by one. Leave layout, quoting, import order and Tailwind class order to `npm run lint`, which fixes them in place, and keep both it and `npm run type-check` clean.
-
-## Architecture Notes
-
-Shared drivers and logic live in the `expad` library crate, which every file under src/bin/ depends on:
+- `expad` (src/, `#![no_std]`, firmware target only): board wiring, drivers, the hardware half of
+  the solver, the web server and one binary per program.
+- `expad-topology` (topology/, `#![no_std]`, builds for the host too): the solver's arithmetic
+  and the per-jack state machine, with no hardware dependency, so it is unit tested on the host.
+  It holds no board constants; the firmware passes them in (`MonitorConfig::new`,
+  `SolverConfig::from_voltage_noise`).
 
 ```text
-expad (lib): board -> hal::{adc, buf, led, usb}, indicator, topology::scanner -> expad-topology (topology/)
+expad (lib): board -> hal::{adc, buf, led, usb, wifi}, indicator, topology::scanner -> expad-topology, web
 
-capture, detect_pin_mapping -> board -> PullSwitchChain -> ShiftRegisterChain, AdcChain
+capture, detect_pin_mapping, adc_characterization -> board -> PullSwitchChain, AdcChain
 rainbow                     -> board -> LedStrip -> Ws2812Chain
 potentiometer               -> board -> PullSwitchChain, AdcChain, LedStrip
 midi_loopback               -> UsbMidi (+ UsbMidiDevice run future)
-web_interface               -> start_access_point (cyw43 + embassy-net + DHCP tasks)
-                            -> spawn_web_server (picoserve tasks)
-                               <-> INTERFACE (status/settings watches) <-> browser (web/, WebSocket /ws)
-expression_controller       -> board, JackScanner -> JackMonitor x4, AdcChain, PullSwitchChain
-                            -> JackIndicators -> LedStrip, UsbMidi, start_access_point, spawn_web_server
-                               <-> INTERFACE (status/settings watches) <-> browser
+web_interface               -> start_access_point, spawn_web_server <-> INTERFACE <-> browser
+expression_controller       -> board, JackScanner -> JackMonitor x4, PullSwitchChain, AdcChain
+                            -> JackIndicators -> LedStrip; UsbMidi
+                            -> start_access_point, spawn_web_server <-> INTERFACE <-> browser (web/, WebSocket /ws)
 ```
 
-The web interface separates WiFi transport from server. `start_access_point` runs the CYW43439 as a WPA2-protected access point at 192.168.4.1/24 and spawns the WiFi, network, DHCP and DNS tasks; `spawn_web_server` takes any `embassy_net::Stack` and spawns `MAX_SESSIONS` picoserve tasks on port 80. Each WebSocket session sends `{"settings": ...}` on connect, then `{"status": ...}` or `{"settings": ...}` whenever the matching `embassy_sync::watch::Watch` in `INTERFACE` changes; every text message from the browser is a full `Settings` JSON object, broadcast to the firmware and all sessions. Non-finite floats (e.g. in `ArmResistances::DISCONNECTED`) serialize as `null`.
+Layering rules: only `board` knows the PCB; `hal` drivers know chips, not jacks; `expad-topology`
+knows neither; binaries wire them together. `lib.rs` allows dead code in `hal` and `topology`,
+which expose more register and driver surface than the binaries use.
 
-The board's 5 V rail is a 200 mA linear regulator shared by the LEDs and the Pico, so LED brightness is capped in `Ws2812Chain` and must never be raised past ~4%; `Settings::led_brightness` and `LedStrip` brightness scale within that cap.
+## 3. Modules
 
-## Testing Strategy
+### 3.1 board (src/board.rs)
 
-- topology/tests/ covers the solver's arithmetic against a simulated network and the jack monitor against a simulated jack (plugging, moving, end stops, switches and rheostats behind mono and stereo plugs, mismatched pulls, noise); run it with `cargo test -p expad-topology --target <host triple>` before merging, and extend it whenever the solving behavior changes. The `expad` crate itself only builds for the firmware target, so anything that needs a host test belongs in topology/.
-- Add unit tests for register encoding when its behavior changes.
-- For web interface changes, check the browser under `npm run dev:mock` (.claude/launch.json runs the mock device and Vite on port 5190 separately, since 5173 is reserved on the dev machine), then against a flashed `web_interface` device with `npm run dev`. Keep [web/mock/device.ts](web/mock/device.ts), which speaks the firmware's protocol, in sync with protocol changes.
-- Validate hardware behavior on-device with the existing debug/RTT setup in [.vscode/launch.json](.vscode/launch.json); after any change to the switch driver or `board::JACKS`, run `cargo run --bin detect_pin_mapping` with the jacks unplugged.
+The PCB's wiring and the only place that knows it.
 
-## Security & Compliance
+- Counts: `JACK_COUNT`, `SWITCH_CHIPS`, `ADC_CHIPS`, `LED_COUNT`; `ADC_CHANNEL_COUNT` (ten-channel
+  mode), `ADC_GROUND_CHANNEL`/`ADC_REFERENCE_CHANNEL` (self-test inputs).
+- Analog values: `REFERENCE_VOLTAGE` (2.5 V, also the pull-up rail), `PULL_RESISTANCE`,
+  `INPUT_FILTER_RESISTANCE`/`INPUT_FILTER_CAPACITANCE`, `ADC_UPDATE_RATE` (819 Hz) and
+  `ADC_VOLTAGE_NOISE` (measured at that rate; every solver tolerance derives from it).
+- `Contact` (tip, ring, sleeve, tip switch; discriminant = switch tap) and `JACKS`, one
+  `JackWiring` per jack (switch chip, ADC chip, ADC channel per contact, LED), in the case's order
+  J5 to J2, since the PCB is mounted upside down. `JackWiring::config` gives the scanner's
+  `JackConfig`.
+- Constructors on the board's pins: `pull_switches`, `adcs`, `leds`.
 
-- Keep secrets, credentials, and private board-specific values out of source control. The WiFi password and PrimeUI license key live in the untracked `.env`; both are compiled into the firmware image, and the license key is visible in the served page.
-- PrimeVue 5 and `@primeicons/vue` use the proprietary PrimeUI license (free Community License with a yearly key), not MIT.
-- Keep Cargo.lock, web/package-lock.json, and the existing LICENSE for redistributed code in place; update dependencies intentionally.
-- Review any pin, SPI, or register change carefully, since it affects hardware behavior.
+### 3.2 hal (src/hal/)
 
-## Agent Guardrails
+- adc/ (AD7718 chain on SPI0): `AdcChain` with `AdcChainConfig` builders (`with_channel_count`,
+  `with_range`, `with_coding`, `with_update_rate`, `with_spi_frequency`,
+  `with_chip_select_guard`, `with_reference_voltage`; 4 MHz, 10 µs by default). `init`
+  resets, checks IDs, writes registers and calibrates.
+  - Readings: `start_conversion`/`finish_conversion`, `measure_channel`, `measure_parallel` (one
+    channel per chip, all chips converting at once). The control register is only rewritten
+    when the channel changes.
+  - Continuous: `measure_continuous` (continuous conversion mode on one channel) vs.
+    `start_continuous_capture`/`wait_for_next_result` (cycles every channel with single
+    conversions).
+  - `set_update_rate` switches the filter and keeps the old calibration.
+  - registers/: one type per register over `RegisterValue<ADDRESS, WIDTH>` with bit/field helpers.
+- buf/ (pull switches on SPI1): `PullSwitchChain` (one 74HC595 per jack driving two TMUX1511s;
+  `TriState` per tap, `set_output` then `update`; chip 0 nearest the MCU) over
+  `ShiftRegisterChain` (outputs stay disabled until the first write, then latch atomically).
+- led/: `Ws2812Chain` (PIO WS2812B driver, scales every frame to at most `MAX_CHANNEL_VALUE`,
+  ~4%) and `LedStrip` (per-LED color and global brightness on top).
+- usb/: `UsbMidi` (embassy-usb MIDI class, usbd-midi packet types): `wait_connection`, `receive`,
+  `send_packet`, `send_message`; transfers end with `EndpointError::Disabled` once the host
+  disconnects. `UsbMidi::new` also returns the `UsbMidiDevice` whose `run()` must be polled
+  concurrently. driver.rs wraps embassy-rp's driver: clears a stale suspend before a bus reset
+  (embassy-rp 0.10 bug) and paces an event flood.
+- wifi/ (`web` feature): `start_access_point` (CYW43439 on PIO1, WPA2, `AccessPointConfig`,
+  `AccessPointPeripherals`) spawns the WiFi, network, DHCP (dhcp.rs, names the device gateway and
+  DNS server) and DNS (dns.rs, every name resolves to the device) tasks.
 
-- Do not change linker scripts, board targets, or pin assignments without verifying the hardware implications; derive wiring from the KiCad project in hardware/ (e.g. `kicad-cli sch export netlist`).
+### 3.3 expad-topology (topology/)
+
+All resistances in kΩ, currents in mA, voltages in V, times in ms.
+
+- sequence.rs: `SolveSequence` hands out the pairs of `PAIR_SEQUENCE` (arm 0 high against arms 1
+  and 2, then 1 against 2 only when needed) and resolves them; `SolveError`.
+- measurement.rs: `PairMeasurement::from_voltages` reduces one pair's three tap voltages
+  (`PairVoltages`, `ArmDrive`).
+- resolve.rs: arm resistances from the floating taps' voltage ratios, scaled by the SNR-weighted
+  total the loop currents imply.
+- config.rs: `SolverConfig`, every tolerance in standard deviations of the ADC noise.
+- resistances.rs: `ArmResistances` (relative share per arm + total; `0` shorted, `inf` isolated,
+  `NaN` unresolved), `ArmResistances::network` classifies a `Network` (disconnected,
+  potentiometer, end stop, near end, tip-sleeve element, other); `position_with_wiper` counts
+  from the track's start, the sleeve (`GROUNDED_END`) when it is a track end (`track_ends`).
+- monitor.rs: `JackMonitor`, the per-jack state machine handing out one `Reading` at a time and
+  reporting a `JackReport` (`JackMode`, position, resistances, voltages, drives).
+  - States: rails -> empty (plug check: tip low, tip switch high; ~1.25 V without a plug,
+    ~2.5 V with one) -> solve -> confirm plug (solve found no current) -> follow.
+  - Follow: a potentiometer (track ends driven, wiper read, end taps checked every 25 ms) or a
+    tip-sleeve `Element` (open, switch, rheostat: tip high, sleeve low, tip read; plug check
+    every 50 ms, ring check every 100 ms, open plugs solved every 1 s).
+  - `Pedal` remembers what was learned until the plug comes out or turns out open; the wiper
+    of the last potentiometer is remembered for the next ambiguous end stop.
+  - Design and measurements: docs/fast-tracking.md; state diagram: docs/diagrams/.
+- tests/: `star_network` models the real circuit (and holds the PCB's noise and pull values the
+  tests use); solve.rs drives the solver, monitor.rs a simulated jack over simulated time.
+
+### 3.4 scanner (src/topology/scanner.rs)
+
+`JackScanner` runs one `JackMonitor` per jack on `PullSwitchChain` and `AdcChain`: every `step`
+takes one reading per ADC at once, for its jack due longest, applies that jack's drives (kept
+while the ADC's other jack is read) and waits `SettleConfig::delay` (`time_constants` x
+(settle resistance + filter resistance) x filter capacitance) only when they change.
+`JackConfig` is one jack's entry from the board table. src/topology/mod.rs re-exports the
+topology crate's types.
+
+### 3.5 indicator (src/indicator.rs)
+
+`JackIndicators` owns the `LedStrip` and colors each jack's LED from its `JackMode` and sent value:
+off when empty, dim white for an unknown plug, a recognised pedal's color for 1 s once per
+plug-in (purple expression, lime footswitch, yellow rheostat), then the value from dark red
+through red, orange and yellow to white.
+
+### 3.6 web (src/web/, `web` feature)
+
+- interface.rs: protocol types. `Status` (per jack `JackStatus`: mode, raw position, value,
+  resistances, every contact's voltage and `ArmPull`), `Settings` (`led_brightness`, per jack
+  `JackSettings`: MIDI channel and controller, `minimum`/`maximum`, `inverted`, `drive`
+  (`drive_curve`), `WiperContact`, `Color` as `#RRGGBB`). `JackSettings::value` maps a position
+  to the sent value. `INTERFACE` holds the `status` and `settings` watches.
+- server.rs: `spawn_web_server` spawns `MAX_SESSIONS` picoserve tasks on port 80: the embedded,
+  gzipped UI at `/`, the WebSocket at `/ws`, and a redirect of every other path to the UI
+  (`CaptivePortal`), so devices open it as the network's sign-in page.
+- Protocol: a session sends `{"settings": ...}` on connect, then `{"status": ...}` or
+  `{"settings": ...}` on every watch change; every text message from the browser is a full
+  `Settings` object, broadcast to the firmware and all sessions. Non-finite floats serialize as
+  `null`.
+
+### 3.7 binaries (src/bin/)
+
+One flashable program per file, each with its own `#[embassy_executor::main]`:
+
+- `expression_controller`: the full firmware. Runs a `JackScanner` over every jack, maps each
+  position through the jack's settings, sends MIDI control changes (a newer one replaces one
+  still waiting), drives `JackIndicators`, publishes the status (~30 Hz) and logs mode changes and
+  position updates per second every 5 s. `no-wifi` holds the radio powered down.
+- `detect_pin_mapping`: board self-test: ADC ground/reference inputs, then every contact pulled up
+  and down against `board::JACKS`.
+- `capture`: holds every contact in the `DRIVE` pattern and captures every ADC input with bipolar
+  coding; the tool for measuring `ADC_VOLTAGE_NOISE`.
+- `adc_characterization`: SPI settings and every filter rate compared on a pot pedal in jack 1
+  (results in docs/fast-tracking.md).
+- `potentiometer`: one pedal's wiper on jack 1, mirrored on the LEDs.
+- `rainbow`: LED strip test. `midi_loopback`: echoes USB MIDI. `web_interface`: the web interface
+  with dummy status data.
+
+### 3.8 web/ frontend (web/)
+
+Vue 3, Vite, Tailwind CSS 4, PrimeVue 5, VueUse, TypeScript, built by build.rs into one gzipped
+index.html (`OUT_DIR/web`).
+
+- src/interface.ts mirrors src/web/interface.rs; src/composables/useInterface.ts owns the
+  WebSocket.
+- src/App.vue lays the jacks out as a mixing desk; components/: JackStrip.vue (per-jack settings,
+  DriveCurve.vue previews the curve), TopologyPanel.vue with ResistorCircuit.vue (the selected
+  jack's circuit) and JackNarrative.vue (`describeJack` in src/narrative.ts explains it).
+- src/theme.ts: Nora-based preset, surface ramp, `INDICATOR_COLORS`; jack colors come from the
+  device's settings.
+- mock/device.ts is the firmware stand-in (speaks the same protocol); vite.config.ts configures
+  the gzip build and dev proxy.
+
+### 3.9 Everything else
+
+- build.rs: copies memory.x, forwards `EXPAD_*` variables from the environment or `.env`, and
+  with `web` validates the WiFi password and runs `npm ci`/`npm run build` in web/.
+- Cargo.toml: workspace, `[[bin]]` per program, features `web` (default: networking and
+  `expad-topology/serde`) and `no-wifi`.
+- memory.x, rp235x_riscv.x, Embed.toml: linker and probe configuration.
+- firmware/cyw43/: vendored CYW43439 blobs (Infineon permissive binary license).
+- docs/: fast-tracking.md (ADC measurements, pull resistor analysis, monitor design), diagrams/
+  (TikZ state diagram of `JackMonitor` with PDF/SVG/PNG exports; build steps in its README).
+- presentations/, measurements/: milestone slides and bench measurement scripts, outside the
+  firmware.
+
+## 4. Concepts
+
+- Units: kΩ, mA, V, nF, ms throughout the solver (kΩ x mA = V, kΩ x nF = µs).
+- Arm indices: `TIP` 0, `RING` 1, `SLEEVE` 2, `TIP_SWITCH` 3 (contact index only); use the
+  constants, never literals. `ARM_COUNT` 3, `CONTACT_COUNT` 4.
+- Jack index 0-3 is the case's order (J5 to J2); switch chip, ADC chip and LED come from
+  `board::JACKS`, never from the jack index.
+- Three drive enums, one per layer: `Drive` (topology: High/Low/Floating), `TriState` (hal::buf:
+  High/Low/HiZ, mapped in the scanner), `ArmPull` (web protocol: up/down/floating).
+- Position vs. value: the monitor reports a raw position in `0.0..=1.0`; `JackSettings::value`
+  applies range, inversion and drive to give the sent value.
+- Power budget: the 5 V rail is a 200 mA linear regulator shared by the LEDs and the Pico, so LED
+  brightness is capped in `Ws2812Chain` and must never be raised past ~4%; `led_brightness`
+  scales within that cap.
+
+## 5. Recipes
+
+### Add a binary
+
+1. `src/bin/<name>.rs` with `#![no_std]`, `#![no_main]` and its own `#[embassy_executor::main]`;
+   build drivers through `expad::board`, name the peripherals `peripherals`, use `defmt::unwrap!`.
+2. A `[[bin]]` entry in Cargo.toml (`test = false`, `doctest = false`).
+3. Append `"<name>"` to the `binName` options in .vscode/tasks.json and .vscode/launch.json.
+
+### Add the web interface to a binary (see src/bin/web_interface.rs)
+
+1. `required-features = ["web"]` on its `[[bin]]` entry.
+2. Bind `PIO1_IRQ_0 => pio::InterruptHandler<PIO1>` and `DMA_IRQ_0` with the handler of every DMA
+   channel in use (they share the interrupt), e.g. `DMA_CH0` for WiFi, `DMA_CH1` for the LEDs.
+3. `let stack = start_access_point(spawner, AccessPointPeripherals { .. }, Irqs, AccessPointConfig::default()).await;`
+   then `spawn_web_server(spawner, stack);`.
+4. Publish with `INTERFACE.status.sender().send(status)`, take one `INTERFACE.settings.receiver()`
+   at startup and apply every change; sending to `INTERFACE.settings` updates every open page.
+
+### Extend the protocol
+
+Change src/web/interface.rs, web/src/interface.ts and web/mock/device.ts together.
+
+### Change solving or monitoring
+
+Edit topology/, extend topology/tests/ and run the host tests; update docs/fast-tracking.md and
+the state diagram when states or thresholds change.
+
+### Change the board
+
+Derive wiring from hardware/ (e.g. `kicad-cli sch export netlist`), edit only src/board.rs, then
+run `cargo run --bin detect_pin_mapping` with the jacks unplugged.
+
+## 6. Conventions
+
+- Rust 2024; small, self-contained modules; hardware-facing logic stays in its driver module.
+- Non-abbreviated, self-descriptive names; single letters only for very local indices.
+- Self-documenting code over comments: split larger expressions into named variables.
+- `Result`-based errors, typed config structs with `with_*` builders or `new` over ad-hoc values;
+  magic numbers become named constants in the module that owns the concept (board values in
+  board.rs).
+- In binaries, `defmt::unwrap!` rather than `.unwrap()`.
+- web/: `<script setup lang="ts">` single-file components, PrimeVue components imported
+  individually (`primevue/<name>`), icons from `@primeicons/vue/<name>`, Tailwind utilities
+  (with `tailwindcss-primeui` tokens), VueUse over hand-written browser glue, jack-specific color
+  through `--jack-color` and the `.jack-theme` block in src/main.css. Keep `npm run lint` and
+  `npm run type-check` clean.
+
+## 7. Testing
+
+- Host: `cargo test -p expad-topology --target <host triple>` before merging; extend topology/tests/
+  whenever solving or monitoring changes. The `expad` crate only builds for the firmware target, so
+  anything needing a host test belongs in topology/.
+- Register encoding: add unit tests when it changes.
+- Web: check the browser under `npm run dev:mock` (.claude/launch.json runs the mock device and
+  Vite on port 5190, since 5173 is reserved on the dev machine), then against a flashed
+  `web_interface` with `npm run dev`.
+- Hardware: RTT/defmt via .vscode/launch.json; after any change to the switch driver or
+  `board::JACKS`, run `detect_pin_mapping` with the jacks unplugged.
+
+## 8. Guardrails
+
+- Secrets stay in the untracked `.env` (WiFi password, PrimeUI license key); both are compiled into
+  the image and the license key is visible in the served page.
+- PrimeVue 5 and `@primeicons/vue` use the proprietary PrimeUI license (free Community License,
+  yearly key), not MIT.
+- Keep Cargo.lock, web/package-lock.json and LICENSE files; update dependencies intentionally.
+- Never change linker scripts, board targets, pins, SPI settings or registers without checking the
+  hardware implications; review such changes carefully.
 - Avoid broad rewrites of the ADC or buffer abstractions unless justified and tested.
-- Prefer small, reviewable edits, verified with `cargo build` first.
-- Do not modify generated artifacts under target/ directly.
+- Prefer small, reviewable edits verified with `cargo build`; never edit target/.
 
-## Maintaining This File
+## 9. Maintaining this file
 
-- Update it in the same change as any larger one: new, renamed, or removed modules, binaries, features, dependencies, build steps, commands, or protocols. Small fixes inside an existing file need no update.
-- Touch only the affected lines, usually in Repository Structure, Build & Development Commands, and Architecture Notes.
-- Keep it condensed: one line per item, no changelog, history, rationale, or anything the code already states. Rewrite or delete stale lines instead of appending to them.
+- Update it in the same change as any larger one: new, renamed or removed modules, binaries,
+  features, dependencies, commands or protocols. Small fixes inside a file need no update.
+- Touch only the affected lines; add new terms to the index.
+- Keep it condensed: one line per item, no changelog, history or rationale the code already states.
+  Rewrite or delete stale lines instead of appending.

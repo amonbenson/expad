@@ -53,13 +53,6 @@ pub struct SolverConfig {
 }
 
 impl SolverConfig {
-    /// Standard deviation of a single AD7718 reading at an 819 Hz update rate, as measured on
-    /// the expression controller PCB through a pedal.
-    pub const DEFAULT_VOLTAGE_NOISE: f32 = 0.0005;
-
-    /// Series resistance each arm is driven through on the expression controller, in kΩ.
-    pub const DEFAULT_PULL_RESISTANCE: f32 = 1.0;
-
     /// Derives every tolerance from the noise of a single tap reading, a property of the
     /// measuring hardware rather than of the network being measured.
     pub fn from_voltage_noise(voltage_noise: f32) -> Self {
@@ -74,11 +67,5 @@ impl SolverConfig {
             ratio_division_epsilon: 10.0 * voltage_noise,
             min_ratio_conditioning: 0.5,
         }
-    }
-}
-
-impl Default for SolverConfig {
-    fn default() -> Self {
-        Self::from_voltage_noise(Self::DEFAULT_VOLTAGE_NOISE)
     }
 }

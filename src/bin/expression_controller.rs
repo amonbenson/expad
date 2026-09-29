@@ -11,7 +11,7 @@ use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant};
-use expad::board::{self, JACKS};
+use expad::board::{self, JACK_COUNT, JACKS};
 use expad::hal::adc::AdcChainConfig;
 use expad::hal::usb::{
     CableNumber, Channel as MidiChannel, ControlFunction, FromClamped, Message, U7, UsbMidi,
@@ -25,19 +25,9 @@ use expad::topology::scanner::{JackScanner, SettleConfig};
 use expad::topology::{JackMode, JackReport, MonitorConfig, SolverConfig};
 #[cfg(not(feature = "no-wifi"))]
 use expad::web::spawn_web_server;
-use expad::web::{ArmPull, INTERFACE, JACK_COUNT, JackSettings, JackStatus, Settings, Status};
+use expad::web::{ArmPull, INTERFACE, JackSettings, JackStatus, Settings, Status};
 
 use {defmt_rtt as _, panic_probe as _};
-
-/// ADC conversions per second (filter word 5). A reading takes three conversion periods to
-/// settle after a channel change, 4.4 ms here against 10.2 ms at 315 Hz, and still resolves
-/// 0.2 mV. Faster words turn much coarser - see docs/fast-tracking.md for the measurements.
-const ADC_UPDATE_RATE: u32 = 819;
-
-/// Standard deviation of a single reading at [`ADC_UPDATE_RATE`], measured on the PCB with
-/// `adc_characterization` through a pedal (0.39 mV, 0.45 mV sample to sample). Every tolerance
-/// the solver applies is derived from it.
-const ADC_VOLTAGE_NOISE: f32 = 0.0005;
 
 /// How often the web interface is sent a new status. Positions update far more often than
 /// a browser can show, so this only bounds the WebSocket traffic.
@@ -215,7 +205,7 @@ fn worth_sending(sent: Option<SentControlChange>, value: f32, control: u8) -> bo
 
 fn jack_status(report: &JackReport, settings: &JackSettings) -> JackStatus {
     let [tip, ring, sleeve] = report.voltages;
-    let mut status = JackStatus {
+    JackStatus {
         mode: report.mode,
         position: report.position,
         value: report
@@ -224,15 +214,7 @@ fn jack_status(report: &JackReport, settings: &JackSettings) -> JackStatus {
         resistances: report.resistances,
         voltages: [tip, ring, sleeve, report.tip_switch_voltage],
         pulls: report.drives.map(ArmPull::from),
-    };
-
-    // An empty jack keeps its plug checks' voltages and drives, but nothing behind them.
-    if report.mode == JackMode::Empty {
-        status.resistances = JackStatus::DISCONNECTED.resistances;
-        status.value = 0.0;
     }
-
-    status
 }
 
 /// Hands the settings' wiper choices to the scanner.
@@ -307,7 +289,7 @@ async fn main(spawner: Spawner) {
     let adc_config = AdcChainConfig::default()
         .with_channel_count(board::ADC_CHANNEL_COUNT)
         .with_reference_voltage(board::REFERENCE_VOLTAGE)
-        .with_update_rate(ADC_UPDATE_RATE);
+        .with_update_rate(board::ADC_UPDATE_RATE);
     unwrap!(adcs.init(adc_config).await);
     info!("ADC full scale: {}V", adcs.full_scale_voltage());
 
@@ -328,14 +310,13 @@ async fn main(spawner: Spawner) {
     spawner.spawn(unwrap!(send_control_changes(midi)));
 
     let monitor_config = MonitorConfig::new(
-        SolverConfig::from_voltage_noise(ADC_VOLTAGE_NOISE),
+        SolverConfig::from_voltage_noise(board::ADC_VOLTAGE_NOISE),
         board::PULL_RESISTANCE,
     );
-    let settle_config = SettleConfig {
-        tap_capacitance: board::INPUT_FILTER_CAPACITANCE,
-        tap_series_resistance: board::INPUT_FILTER_RESISTANCE,
-        ..Default::default()
-    };
+    let settle_config = SettleConfig::new(
+        board::INPUT_FILTER_CAPACITANCE,
+        board::INPUT_FILTER_RESISTANCE,
+    );
     let mut scanner = JackScanner::new(
         switches,
         adcs,

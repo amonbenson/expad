@@ -38,10 +38,10 @@ async fn echo_packets(midi: &mut UsbMidi) -> Result<(), EndpointError> {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
 
     info!("Initializing USB MIDI");
-    let (mut midi, mut device) = UsbMidi::new(p.USB, Irqs, UsbMidiConfig::default());
+    let (mut midi, mut device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());
 
     let loopback = async {
         loop {

@@ -12,12 +12,6 @@ pub const NON_CHOPPING_RANGE: RangeInclusive<u32> = 3..=255;
 
 pub type Filter = RegisterValue<0x03, 1>;
 
-// impl Default for Filter {
-//     fn default() -> Self {
-//         Self(69)
-//     }
-// }
-
 impl Filter {
     pub fn from_update_rate(update_rate: u32, chopping: bool) -> Self {
         // Inverse update rate formula from datasheet

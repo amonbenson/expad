@@ -53,7 +53,6 @@ pub enum AdcChainError {
         actual_id: u8,
     },
     InvalidChannel {
-        chip: u8,
         channel: u8,
     },
     ContinuousMeasurementNotRunning,
@@ -151,7 +150,7 @@ impl AdcChainConfig {
 
     fn control_register(&self, channel: u8) -> Result<Control, AdcChainError> {
         let channel_configuration = ChannelConfiguration::single(channel, self.channel_count)
-            .ok_or(AdcChainError::InvalidChannel { chip: 0, channel })?;
+            .ok_or(AdcChainError::InvalidChannel { channel })?;
 
         let mut control = Control::default();
         control.set_channel_configuration(channel_configuration);
@@ -180,7 +179,8 @@ enum Operation {
     Read = 0b1,
 }
 
-/// A single-ended reading taken from one channel of one chip in the chain.
+/// A single-ended reading taken from one channel of one chip in the chain, as
+/// [`AdcChain::wait_for_next_result`] hands it out.
 #[derive(Clone, Copy, Debug)]
 pub struct Measurement {
     pub chip: u8,
@@ -189,11 +189,13 @@ pub struct Measurement {
     pub voltage: f32,
 }
 
+/// `N` AD7718s on SPI0, each with its own chip select and ready (RDY) signal.
 pub struct AdcChain<'d, const N: usize> {
     spi: Spi<'d, SPI0, Blocking>,
-    cs: [Output<'d>; N],
-    rdy: [Input<'d>; N],
+    chip_selects: [Output<'d>; N],
+    ready_signals: [Input<'d>; N],
     config: AdcChainConfig,
+    /// Channel each chip is converting while a continuous capture runs.
     continuous_capture: Option<[u8; N]>,
     /// Channel each chip's control register currently selects, if known, so a conversion on the
     /// same channel as the last one can skip rewriting it.
@@ -203,20 +205,20 @@ pub struct AdcChain<'d, const N: usize> {
 impl<'d, const N: usize> AdcChain<'d, N> {
     pub fn new(
         spi: embassy_rp::Peri<'d, SPI0>,
-        clk: embassy_rp::Peri<'d, impl ClkPin<SPI0> + 'd>,
+        clock: embassy_rp::Peri<'d, impl ClkPin<SPI0> + 'd>,
         tx: embassy_rp::Peri<'d, impl MosiPin<SPI0> + 'd>,
         rx: embassy_rp::Peri<'d, impl MisoPin<SPI0> + 'd>,
-        cs: [embassy_rp::Peri<'d, impl Pin>; N],
-        rdy: [embassy_rp::Peri<'d, impl Pin>; N],
+        chip_selects: [embassy_rp::Peri<'d, impl Pin>; N],
+        ready_signals: [embassy_rp::Peri<'d, impl Pin>; N],
     ) -> Self {
-        let spi = Spi::new_blocking(spi, clk, tx, rx, Config::default());
-        let cs = cs.map(|c| Output::new(c, Level::High));
-        let rdy = rdy.map(|r| Input::new(r, Pull::Up));
+        let spi = Spi::new_blocking(spi, clock, tx, rx, Config::default());
+        let chip_selects = chip_selects.map(|pin| Output::new(pin, Level::High));
+        let ready_signals = ready_signals.map(|pin| Input::new(pin, Pull::Up));
 
         Self {
             spi,
-            cs,
-            rdy,
+            chip_selects,
+            ready_signals,
             config: AdcChainConfig::default(),
             continuous_capture: None,
             selected_channels: [None; N],
@@ -224,13 +226,13 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     fn select(&mut self, chip: usize) {
-        self.cs[chip].set_low();
+        self.chip_selects[chip].set_low();
         block_for(self.config.chip_select_guard);
     }
 
     fn deselect(&mut self, chip: usize) {
         block_for(self.config.chip_select_guard);
-        self.cs[chip].set_high();
+        self.chip_selects[chip].set_high();
         block_for(self.config.chip_select_guard);
     }
 
@@ -243,14 +245,14 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         chip: usize,
         register: R,
     ) -> Result<(), AdcChainError> {
-        let mut buf = [0u8; 1 + MAX_REGISTER_WIDTH];
-        buf[0] = Self::control_byte(Operation::Write, R::ADDRESS);
+        let mut buffer = [0u8; 1 + MAX_REGISTER_WIDTH];
+        buffer[0] = Self::control_byte(Operation::Write, R::ADDRESS);
 
         let bits = register.bits();
-        for (i, byte) in buf[1..1 + R::WIDTH].iter_mut().enumerate() {
-            *byte = (bits >> (8 * (R::WIDTH - 1 - i))) as u8;
+        for (index, byte) in buffer[1..1 + R::WIDTH].iter_mut().enumerate() {
+            *byte = (bits >> (8 * (R::WIDTH - 1 - index))) as u8;
         }
-        let data = &buf[..1 + R::WIDTH];
+        let data = &buffer[..1 + R::WIDTH];
 
         // Whatever channel this selects, the cached one no longer holds; `select_channel`
         // records its own after writing.
@@ -266,9 +268,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 
     pub fn read_register<R: Register>(&mut self, chip: usize) -> Result<R, AdcChainError> {
-        let mut buf = [0u8; 1 + MAX_REGISTER_WIDTH];
-        buf[0] = Self::control_byte(Operation::Read, R::ADDRESS);
-        let data = &mut buf[..1 + R::WIDTH];
+        let mut buffer = [0u8; 1 + MAX_REGISTER_WIDTH];
+        buffer[0] = Self::control_byte(Operation::Read, R::ADDRESS);
+        let data = &mut buffer[..1 + R::WIDTH];
 
         self.select(chip);
         let result = self.spi.blocking_transfer_in_place(data);
@@ -375,7 +377,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
                 }
 
                 // Wait for all chips to finish calibration in parallel
-                join_array(self.rdy.each_mut().map(wait_for_completion)).await;
+                join_array(self.ready_signals.each_mut().map(wait_for_completion)).await;
             }
         }
 
@@ -411,8 +413,8 @@ impl<'d, const N: usize> AdcChain<'d, N> {
             .update_rate(self.config.chopping)
     }
 
-    /// Converts `channel` continuously and fills `voltages` with consecutive results, then
-    /// leaves the chip idle. Staying on one channel, the ADC delivers a result every
+    /// Converts `channel` in the AD7718's continuous conversion mode and fills `voltages` with
+    /// consecutive results, then leaves the chip idle. Staying on one channel, the ADC delivers a result every
     /// conversion period instead of paying its filter's full settling time for each one;
     /// only the first result waits for that settling.
     pub async fn measure_continuous(
@@ -428,7 +430,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         for voltage in voltages.iter_mut() {
             // Reading the data register raises RDY again, so only the first result can
             // find it still low from before.
-            wait_for_completion(&mut self.rdy[chip]).await;
+            wait_for_completion(&mut self.ready_signals[chip]).await;
             let data: Data = self.read_register(chip)?;
             *voltage = self.code_to_voltage(data.bits());
         }
@@ -441,17 +443,6 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     /// this chain can tell apart from anything above it.
     pub fn full_scale_voltage(&self) -> f32 {
         self.config.full_scale_voltage()
-    }
-
-    /// Starts one conversion of `channel`. The filter register is left as `init` wrote it,
-    /// since it never changes afterwards.
-    fn start_single_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
-        self.select_channel(chip, channel)?;
-
-        let mode = self.config.mode_register(AdcMode::SingleConversion);
-        self.write_register(chip, mode)?;
-
-        Ok(())
     }
 
     /// Points `chip`'s control register at `channel`, unless it already is.
@@ -488,12 +479,15 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     /// [`finish_conversion`](Self::finish_conversion). Conversions started on different chips
     /// run at the same time.
     pub fn start_conversion(&mut self, chip: usize, channel: u8) -> Result<(), AdcChainError> {
-        self.start_single_conversion(chip, channel)
+        self.select_channel(chip, channel)?;
+
+        let mode = self.config.mode_register(AdcMode::SingleConversion);
+        self.write_register(chip, mode)
     }
 
     /// Waits for the conversion last started on `chip` and returns its voltage.
     pub async fn finish_conversion(&mut self, chip: usize) -> Result<f32, AdcChainError> {
-        wait_for_completion(&mut self.rdy[chip]).await;
+        wait_for_completion(&mut self.ready_signals[chip]).await;
 
         let data: Data = self.read_register(chip)?;
         Ok(self.code_to_voltage(data.bits()))
@@ -515,9 +509,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         // being read would leave its RDY low and cost the next wait its pickup timeout.
         let mut requested = channels.iter().map(Option::is_some);
         let waits = self
-            .rdy
+            .ready_signals
             .each_mut()
-            .map(|rdy| wait_if_requested(rdy, requested.next().unwrap_or(false)));
+            .map(|ready| wait_if_requested(ready, requested.next().unwrap_or(false)));
         join_array(waits).await;
 
         let mut voltages = [None; N];
@@ -531,9 +525,13 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         Ok(voltages)
     }
 
+    /// Starts cycling every chip through all its channels, one single conversion each, to be
+    /// collected with [`wait_for_next_result`](Self::wait_for_next_result). Unlike
+    /// [`measure_continuous`](Self::measure_continuous), every result pays the filter's full
+    /// settling time.
     pub fn start_continuous_capture(&mut self) -> Result<(), AdcChainError> {
         for chip in 0..N {
-            self.start_single_conversion(chip, 0)?;
+            self.start_conversion(chip, 0)?;
         }
         self.continuous_capture = Some([0; N]);
 
@@ -548,12 +546,14 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         self.continuous_capture.is_some()
     }
 
+    /// Waits for whichever chip of a continuous capture finishes first, returns its result and
+    /// starts its next channel.
     pub async fn wait_for_next_result(&mut self) -> Result<Measurement, AdcChainError> {
         if !self.continuous_capture_active() {
             return Err(AdcChainError::ContinuousMeasurementNotRunning);
         }
 
-        let (_, chip) = select_array(self.rdy.each_mut().map(Input::wait_for_low)).await;
+        let (_, chip) = select_array(self.ready_signals.each_mut().map(Input::wait_for_low)).await;
 
         let channel = self
             .continuous_capture
@@ -563,7 +563,7 @@ impl<'d, const N: usize> AdcChain<'d, N> {
         let data: Data = self.read_register(chip)?;
         let value = data.bits();
 
-        self.start_single_conversion(chip, next_channel)?;
+        self.start_conversion(chip, next_channel)?;
         if let Some(channels) = &mut self.continuous_capture {
             channels[chip] = next_channel;
         }
@@ -577,9 +577,9 @@ impl<'d, const N: usize> AdcChain<'d, N> {
     }
 }
 
-async fn wait_if_requested(rdy: &mut Input<'_>, requested: bool) {
+async fn wait_if_requested(ready: &mut Input<'_>, requested: bool) {
     if requested {
-        wait_for_completion(rdy).await;
+        wait_for_completion(ready).await;
     }
 }
 
@@ -589,7 +589,7 @@ async fn wait_if_requested(rdy: &mut Input<'_>, requested: bool) {
 /// 32.768 kHz clock. Waiting for it to fall straight away returns immediately whenever it is
 /// still low from before - which it always is after a calibration, whose result is never
 /// read - and hands back a result that does not exist yet.
-async fn wait_for_completion(rdy: &mut Input<'_>) {
-    select(rdy.wait_for_high(), Timer::after(COMMAND_PICKUP_TIMEOUT)).await;
-    rdy.wait_for_low().await;
+async fn wait_for_completion(ready: &mut Input<'_>) {
+    select(ready.wait_for_high(), Timer::after(COMMAND_PICKUP_TIMEOUT)).await;
+    ready.wait_for_low().await;
 }

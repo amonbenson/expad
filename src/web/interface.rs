@@ -5,16 +5,15 @@ use embassy_sync::watch::Watch;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::topology::{ArmResistances, CONTACT_COUNT, Drive, JackMode};
-
-pub use crate::board::JACK_COUNT;
+use crate::board::JACK_COUNT;
+use crate::topology::{ArmResistances, CONTACT_COUNT, Drive, JackMode, RING, SLEEVE, TIP};
 
 /// Receivers each shared value supports: one for the firmware plus one per browser session.
 const MAX_RECEIVERS: usize = super::server::MAX_SESSIONS + 1;
 
 pub type SharedValue<T> = Watch<CriticalSectionRawMutex, T, MAX_RECEIVERS>;
 
-/// Rail an arm is driven to while it is measured, mirroring [`Drive`] for the web protocol.
+/// Rail a contact is switched to while it is measured, mirroring [`Drive`] for the web protocol.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ArmPull {
@@ -36,10 +35,11 @@ impl From<Drive> for ArmPull {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct JackStatus {
     pub mode: JackMode,
-    /// Wiper position in `0.0..=1.0` as measured, before the jack's range and inversion
-    /// settings apply; `None` while no potentiometer is plugged in.
+    /// Position in `0.0..=1.0` as measured (see `JackReport::position`), before the jack's
+    /// settings apply; `None` while nothing is followed.
     pub position: Option<f32>,
-    /// Expression value in `0.0..=1.0` that is sent to the host.
+    /// Expression value in `0.0..=1.0` the position stands for (see [`JackSettings::value`]),
+    /// `0.0` without a position.
     pub value: f32,
     pub resistances: ArmResistances,
     /// Voltage last measured at each contact's tap - tip, ring, sleeve, tip switch - in volts.
@@ -71,7 +71,8 @@ pub struct Status {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, defmt::Format)]
 #[serde(rename_all = "camelCase")]
 pub enum WiperContact {
-    /// The wiper last seen in the jack, or the ring.
+    /// The wiper last seen in the jack, else the likelier one (the ring at an end stop with ring
+    /// and sleeve shorted).
     Auto,
     Tip,
     Ring,
@@ -83,9 +84,9 @@ impl WiperContact {
     pub fn arm(self) -> Option<usize> {
         match self {
             Self::Auto => None,
-            Self::Tip => Some(0),
-            Self::Ring => Some(1),
-            Self::Sleeve => Some(2),
+            Self::Tip => Some(TIP),
+            Self::Ring => Some(RING),
+            Self::Sleeve => Some(SLEEVE),
         }
     }
 }

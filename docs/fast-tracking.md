@@ -107,13 +107,14 @@ whatever the pedal was driven with before.
 | Empty | Plug check every 50 ms | Plug seen: Identify |
 | Identify | Back-to-back full solves (rails re-measured first when older than 30 s) | The solve classifies the network (below) |
 | Tracking | Track ends driven (the start low, the other end high; see Position below), only the wiper read; one end tap read every ~25 ms, alternating | An end tap's pull drop strays from what the solve implied (6σ, or 25% on its first reading and 3% after), or the wiper leaves the span of the ends (unplugged, polarity switched): Identify |
-| Other | Back-to-back full solves (switch pedals, rheostats, TS cables), reported like today | The classification changes, or the solve finds nothing |
-| Open | A plug check and a full solve every 100 ms | Something conducts, or the plug is gone |
+| Switch, Rheostat | Tip driven high, sleeve low, only the tip read; plug check every 50 ms, ring check every 100 ms (see Switches and rheostats) | The plug is gone: Empty; the ring no longer matches: Identify |
+| Other | Back-to-back full solves of a network that is no known pedal (a dual footswitch, say) | The classification changes, or the solve finds nothing |
+| Open | Followed like a switch, looking for tip and sleeve to connect; a full solve every 1 s | Something conducts: Identify; the plug is gone: Empty |
 
 Identify classifies each solve:
 
 - **Potentiometer** (every arm resolved, exactly one near the star point): Tracking, remembering
-  which arm is the wiper until the jack is next seen empty.
+  which arm is the wiper for the next ambiguous end stop in that jack.
 - **Potentiometer at an end stop** (a second arm within 2% of the star point, the third carrying
   the track): the wiper touches one track end, shorting two pins. Position is still unambiguous
   unless the shorted pair is ring and sleeve (a ring wiper on the sleeve end, or a sleeve wiper
@@ -136,8 +137,9 @@ Identify classifies each solve:
   unless that is the sleeve, the grounded end, so a ring or tip wiper resting on the sleeve end
   is right from the start. The wiper carries no current while tracked, so its lead resistance
   never affects the position.
-- **Nothing conducts**: plug check, then Empty or (plugged cable with nothing at the end) a full
-  solve every 100 ms.
+- **A single element between tip and sleeve**: Switch, which turns into Rheostat once it reads
+  between open and closed (see Switches and rheostats).
+- **Nothing conducts**: plug check, then Empty or (plugged cable with nothing at the end) Open.
 - **Anything else**: Other.
 
 While tracking, a pedal returning to an end stop is harmless: the wiper then reads exactly one

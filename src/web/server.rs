@@ -125,10 +125,7 @@ impl PathRouterService for CaptivePortal {
         (
             StatusCode::FOUND,
             ("Location", &url),
-            format_args!(
-                "{url}
-"
-            ),
+            format_args!("{url}\n"),
         )
             .write_to(request.body_connection.finalize().await?, response_writer)
             .await

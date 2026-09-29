@@ -44,10 +44,15 @@ fn wheel(position: u8) -> RGB8 {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
 
     info!("Initializing WS2812B strip");
-    let mut leds = board::leds(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
+    let mut leds = board::leds(
+        peripherals.PIO0,
+        Irqs,
+        peripherals.DMA_CH0,
+        peripherals.PIN_6,
+    );
 
     info!("Cycling rainbow pattern");
     let mut ticker = Ticker::every(Duration::from_millis(20));

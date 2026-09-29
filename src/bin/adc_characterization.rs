@@ -4,7 +4,7 @@
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Instant, Timer};
-use expad::board::{self, Contact, JACKS};
+use expad::board::{self, ADC_CHIPS, Contact, JACKS};
 use expad::hal::adc::{AdcChain, AdcChainConfig, Coding};
 use expad::hal::buf::TriState;
 
@@ -17,15 +17,14 @@ const HIGH_CONTACT: Contact = Contact::Ring;
 const LOW_CONTACT: Contact = Contact::Sleeve;
 const WIPER_CONTACT: Contact = Contact::Tip;
 
-/// Update rates to characterize, one per filter word from the fastest (3) to the
-/// controller's current one (13). Each lands on its filter word after the driver's
-/// rounding down of 4096 / rate.
+/// Update rates to characterize, one per filter word from the fastest (3) to 6, and 13 (the
+/// controller's former rate). Each lands on its filter word after the driver's rounding down
+/// of 4096 / rate.
 const UPDATE_RATES: [u32; 5] = [1365, 1024, 819, 682, 315];
 
-/// SPI clock (Hz) and chip select guard (µs) compared at the controller's update rate: what
-/// the breadboard needed, and the trimmed settings the driver now defaults to.
+/// SPI clock (Hz) and chip select guard (µs) compared at [`board::ADC_UPDATE_RATE`]: what the
+/// breadboard needed, and the trimmed settings the driver now defaults to.
 const SPI_SETTINGS: [(u32, u64); 2] = [(1_000_000, 50), (4_000_000, 10)];
-const COMPARISON_UPDATE_RATE: u32 = 819;
 
 /// Readings of the wiper taken per SPI setting, both switching channels and staying on one.
 const COMPARISON_READINGS: usize = 300;
@@ -87,6 +86,10 @@ fn cosine(angle: f32) -> f32 {
     sum
 }
 
+fn squared(value: f32) -> f32 {
+    value * value
+}
+
 #[derive(defmt::Format)]
 struct Statistics {
     /// Mean, in V.
@@ -103,13 +106,17 @@ struct Statistics {
 fn statistics(samples: &[f32]) -> Statistics {
     let count = samples.len() as f32;
     let mean = samples.iter().sum::<f32>() / count;
-    let variance = samples.iter().map(|x| (x - mean) * (x - mean)).sum::<f32>() / count;
+    let variance = samples
+        .iter()
+        .map(|sample| squared(sample - mean))
+        .sum::<f32>()
+        / count;
 
     let differences = samples.windows(2).map(|pair| pair[1] - pair[0]);
-    let difference_variance = differences.clone().map(|d| d * d).sum::<f32>() / (count - 1.0);
+    let difference_variance = differences.clone().map(squared).sum::<f32>() / (count - 1.0);
     let step = differences
         .map(f32::abs)
-        .filter(|&d| d > 0.0)
+        .filter(|&difference| difference > 0.0)
         .fold(f32::INFINITY, f32::min);
 
     Statistics {
@@ -185,11 +192,7 @@ fn outliers(samples: &[f32]) -> (usize, f32) {
 /// Reading time, noise and outlying codes of the wiper under one SPI setting: switching
 /// between the three taps as a solve does, then staying on the wiper as tracking one pedal
 /// does, which also skips rewriting the control register.
-async fn compare_spi(
-    adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>,
-    chip: usize,
-    channels: [u8; 3],
-) {
+async fn compare_spi(adcs: &mut AdcChain<'_, ADC_CHIPS>, chip: usize, channels: [u8; 3]) {
     let [wiper_channel, high_channel, low_channel] = channels;
     let mut wiper = [0.0f32; COMPARISON_READINGS];
 
@@ -224,7 +227,7 @@ async fn compare_spi(
     );
 }
 
-async fn average(adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>, chip: usize, channel: u8) -> f32 {
+async fn average(adcs: &mut AdcChain<'_, ADC_CHIPS>, chip: usize, channel: u8) -> f32 {
     let mut sum = 0.0;
     for _ in 0..AVERAGED_READINGS {
         sum += unwrap!(adcs.measure_channel(chip, channel).await);
@@ -234,7 +237,7 @@ async fn average(adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>, chip: usize, cha
 
 /// Ground and reference inputs plus both driven track ends, averaged: the values offset
 /// and gain errors show up in.
-async fn report_levels(adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>, label: &str) {
+async fn report_levels(adcs: &mut AdcChain<'_, ADC_CHIPS>, label: &str) {
     let wiring = JACKS[JACK];
     let chip = wiring.adc_chip;
     let ground = average(adcs, chip, board::ADC_GROUND_CHANNEL).await;
@@ -249,20 +252,33 @@ async fn report_levels(adcs: &mut AdcChain<'_, { board::ADC_CHIPS }>, label: &st
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
     let wiring = JACKS[JACK];
     let chip = wiring.adc_chip;
     let wiper_channel = wiring.adc_channel(WIPER_CONTACT);
     let high_channel = wiring.adc_channel(HIGH_CONTACT);
     let low_channel = wiring.adc_channel(LOW_CONTACT);
 
-    let mut switches = board::pull_switches(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
+    let mut switches = board::pull_switches(
+        peripherals.SPI1,
+        peripherals.PIN_14,
+        peripherals.PIN_15,
+        peripherals.PIN_11,
+        peripherals.PIN_13,
+    );
     switches.set_output(wiring.switch_chip, HIGH_CONTACT.tap(), TriState::High);
     switches.set_output(wiring.switch_chip, LOW_CONTACT.tap(), TriState::Low);
     unwrap!(switches.update());
 
     let mut adcs = board::adcs(
-        p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_20, p.PIN_21, p.PIN_22,
+        peripherals.SPI0,
+        peripherals.PIN_18,
+        peripherals.PIN_19,
+        peripherals.PIN_16,
+        peripherals.PIN_17,
+        peripherals.PIN_20,
+        peripherals.PIN_21,
+        peripherals.PIN_22,
     );
     let base_config = AdcChainConfig::default()
         .with_channel_count(board::ADC_CHANNEL_COUNT)
@@ -277,7 +293,7 @@ async fn main(_spawner: Spawner) {
 
     for (spi_frequency, guard_micros) in SPI_SETTINGS {
         let config = base_config
-            .with_update_rate(COMPARISON_UPDATE_RATE)
+            .with_update_rate(board::ADC_UPDATE_RATE)
             .with_spi_frequency(spi_frequency)
             .with_chip_select_guard(Duration::from_micros(guard_micros));
         unwrap!(adcs.init(config).await);

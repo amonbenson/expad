@@ -38,8 +38,9 @@ Pedals are recognised within ~0.1 s of being plugged in, and unplugging is notic
 
 ## Using it
 
-1. Plug the Pico into a computer over USB. It shows up as a USB MIDI device; every jack sends
-   CC 11 (Expression) on MIDI channel 1 by default.
+1. Plug the Pico into a computer over USB. It shows up as a USB MIDI device; by default the
+   first two jacks send CC 11 (Expression) and the last two CC 1 (Modulation), all on MIDI
+   channel 1.
 2. Join the WiFi network **Expression Adapter** (password: the one it was built with, see below).
    Phones, tablets and computers open the interface by themselves as the network's sign-in page;
    otherwise open http://192.168.4.1.
@@ -53,20 +54,45 @@ Pedals are recognised within ~0.1 s of being plugged in, and unplugging is notic
 
 The topology panel on the right draws the selected jack's measured network.
 
-## Building and flashing
+## Setup
 
-Needs Rust (with the `thumbv8m.main-none-eabihf` target), Node.js for the web interface, and a
-debug probe for `probe-rs`.
+Needs Rust, Node.js (see `engines` in [web/package.json](web/package.json)) for the web interface,
+and a debug probe (e.g. a Raspberry Pi Debug Probe) on the Pico's SWD pins.
 
 ```bash
+rustup target add thumbv8m.main-none-eabihf
+cargo install probe-rs-tools --locked
 cp .env.example .env   # then set EXPAD_WIFI_PASSWORD (8-63 characters)
-cargo run --bin expression_controller   # build, flash and show the log
 ```
 
-Other programs in [src/bin/](src/bin/) test parts of the board, e.g. `detect_pin_mapping` checks
-every contact's switches and ADC input against the wiring table. Run the host tests with
-`cargo test -p expad-topology --target <host triple>`, and develop the web interface without
-hardware with `npm run dev:mock` in web/.
+## Building and flashing
+
+```bash
+cargo run --bin expression_controller   # build, flash and show the log
+cargo run --bin expression_controller --features no-wifi   # the same with the radio off
+cargo build --no-default-features       # without the web interface (no Node.js needed)
+```
+
+The other programs in [src/bin/](src/bin/) test parts of the board:
+
+| Program | What it does |
+|---|---|
+| `detect_pin_mapping` | checks every contact's switches and ADC input against the wiring table (unplug all jacks) |
+| `capture` | holds every contact in one state and logs every ADC input, for noise measurements |
+| `adc_characterization` | compares ADC filter rates and SPI settings on a pedal in jack 1 |
+| `potentiometer` | reads a pedal in jack 1 and shows its position on the LEDs |
+| `rainbow` | LED strip test |
+| `midi_loopback` | echoes every USB MIDI message back to the host |
+| `web_interface` | the web interface with made-up data |
+
+## Development
+
+```bash
+cargo test -p expad-topology --target x86_64-pc-windows-msvc   # solver tests, on your host triple
+cargo fmt
+cargo clippy --all-features
+cd web && npm run dev:mock   # web interface against a simulated device, no hardware needed
+```
 
 [AGENTS.md](AGENTS.md) describes the repository in detail, and
 [docs/fast-tracking.md](docs/fast-tracking.md) the measurements and design behind the pedal

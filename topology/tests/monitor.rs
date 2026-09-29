@@ -5,10 +5,9 @@
 mod star_network;
 
 use expad_topology::{
-    ARM_COUNT, Drive, JackMode, JackMonitor, MonitorConfig, RING, Reading, SLEEVE, SolverConfig,
-    TIP, TIP_SWITCH,
+    ARM_COUNT, Drive, JackMode, JackMonitor, RING, Reading, SLEEVE, TIP, TIP_SWITCH,
 };
-use star_network::{Role, StarNetwork};
+use star_network::{PULL_RESISTANCE, Role, StarNetwork, VOLTAGE_NOISE, monitor_config};
 
 const HIGH_RAIL: f32 = 2.5;
 
@@ -19,7 +18,7 @@ const FLOATING_TAP: f32 = 1.0;
 const READING_TIME: u64 = 5;
 
 /// Standard deviation of the noise on every reading in the noisy tests, as measured.
-const NOISE: f32 = SolverConfig::DEFAULT_VOLTAGE_NOISE;
+const NOISE: f32 = VOLTAGE_NOISE;
 
 /// Resistance of a potentiometer's wiper contact, in kΩ.
 const WIPER_CONTACT: f32 = 0.05;
@@ -41,7 +40,8 @@ struct SimulatedJack {
     plugged: bool,
     /// What is behind the plug; `None` for a cable with nothing at its other end.
     network: Option<[f32; ARM_COUNT]>,
-    /// Actual resistance of every contact's pull path, in kΩ - the monitor assumes 1 kΩ.
+    /// Actual resistance of every contact's pull path, in kΩ - the monitor assumes
+    /// [`PULL_RESISTANCE`].
     pull_resistances: [f32; ARM_COUNT],
     noise: f32,
     random_state: u32,
@@ -52,7 +52,7 @@ impl SimulatedJack {
         Self {
             plugged: false,
             network: None,
-            pull_resistances: [1.0; ARM_COUNT],
+            pull_resistances: [PULL_RESISTANCE; ARM_COUNT],
             noise: 0.0,
             random_state: 12345,
         }
@@ -138,7 +138,7 @@ struct Harness {
 impl Harness {
     fn new() -> Self {
         let mut harness = Self {
-            monitor: JackMonitor::new(MonitorConfig::default()),
+            monitor: JackMonitor::new(monitor_config()),
             jack: SimulatedJack::empty(),
             now: 0,
             readings: 0,
@@ -396,7 +396,11 @@ fn notices_an_unplugged_pedal_within_a_tenth_of_a_second() {
     let delay = harness.run_until(JackMode::Empty, 200);
 
     assert!(delay <= 100, "empty after {delay} ms");
-    assert_eq!(harness.monitor.report().position, None);
+    let report = harness.monitor.report();
+    assert_eq!(report.position, None);
+    // Nothing behind the plug is kept for the empty jack.
+    let disconnected = report.resistances.relative;
+    assert!(disconnected.iter().all(|relative| relative.is_infinite()));
 }
 
 #[test]

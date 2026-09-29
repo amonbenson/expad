@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::info;
+use defmt::{info, unwrap};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
@@ -39,9 +39,11 @@ pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
     embassy_rp::binary_info::rp_program_build_attribute!(),
 ];
 
-fn indicator_color() -> RGB8 {
-    (0, 128, 255).into()
-}
+const INDICATOR_COLOR: RGB8 = RGB8 {
+    r: 0,
+    g: 128,
+    b: 255,
+};
 
 /// Scales an RGB8 color by an intensity factor in `0.0..=1.0`.
 fn scale_color(color: RGB8, factor: f32) -> RGB8 {
@@ -65,48 +67,67 @@ fn show_position(leds: &mut LedStrip<'_, PIO0, LED_COUNT>, position: f32) {
     for index in 0..LED_COUNT {
         leds.set_color(index, RGB8::default());
     }
-    leds.set_color(low_index, scale_color(indicator_color(), 1.0 - high_weight));
-    leds.set_color(high_index, scale_color(indicator_color(), high_weight));
+    leds.set_color(low_index, scale_color(INDICATOR_COLOR, 1.0 - high_weight));
+    leds.set_color(high_index, scale_color(INDICATOR_COLOR, high_weight));
 }
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
 
     let wiring = JACKS[JACK];
 
     info!("Initializing pull switches");
-    let mut switches = board::pull_switches(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
+    let mut switches = board::pull_switches(
+        peripherals.SPI1,
+        peripherals.PIN_14,
+        peripherals.PIN_15,
+        peripherals.PIN_11,
+        peripherals.PIN_13,
+    );
     switches.set_output(wiring.switch_chip, LOW_CONTACT.tap(), TriState::Low);
     switches.set_output(wiring.switch_chip, HIGH_CONTACT.tap(), TriState::High);
-    switches.update().unwrap();
+    unwrap!(switches.update());
 
     info!("Initializing ADCs");
     let mut adcs = board::adcs(
-        p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_20, p.PIN_21, p.PIN_22,
+        peripherals.SPI0,
+        peripherals.PIN_18,
+        peripherals.PIN_19,
+        peripherals.PIN_16,
+        peripherals.PIN_17,
+        peripherals.PIN_20,
+        peripherals.PIN_21,
+        peripherals.PIN_22,
     );
     let adc_config = AdcChainConfig::default()
         .with_channel_count(board::ADC_CHANNEL_COUNT)
-        .with_reference_voltage(board::REFERENCE_VOLTAGE);
-    adcs.init(adc_config).await.unwrap();
+        .with_reference_voltage(board::REFERENCE_VOLTAGE)
+        .with_update_rate(board::ADC_UPDATE_RATE);
+    unwrap!(adcs.init(adc_config).await);
 
     info!("Initializing WS2812B strip");
-    let mut leds = board::leds(p.PIO0, Irqs, p.DMA_CH0, p.PIN_6);
+    let mut leds = board::leds(
+        peripherals.PIO0,
+        Irqs,
+        peripherals.DMA_CH0,
+        peripherals.PIN_6,
+    );
 
     info!("Measuring potentiometer wiper position");
     loop {
-        let low = adcs
-            .measure_channel(wiring.adc_chip, wiring.adc_channel(LOW_CONTACT))
-            .await
-            .unwrap();
-        let wiper = adcs
-            .measure_channel(wiring.adc_chip, wiring.adc_channel(WIPER_CONTACT))
-            .await
-            .unwrap();
-        let high = adcs
-            .measure_channel(wiring.adc_chip, wiring.adc_channel(HIGH_CONTACT))
-            .await
-            .unwrap();
+        let low = unwrap!(
+            adcs.measure_channel(wiring.adc_chip, wiring.adc_channel(LOW_CONTACT))
+                .await
+        );
+        let wiper = unwrap!(
+            adcs.measure_channel(wiring.adc_chip, wiring.adc_channel(WIPER_CONTACT))
+                .await
+        );
+        let high = unwrap!(
+            adcs.measure_channel(wiring.adc_chip, wiring.adc_channel(HIGH_CONTACT))
+                .await
+        );
         let position = (wiper - low) / (high - low);
 
         info!(

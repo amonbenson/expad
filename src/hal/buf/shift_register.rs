@@ -15,23 +15,27 @@ const LATCH_PULSE_WIDTH: Duration = Duration::from_micros(1);
 /// so there is no need to disable them while shifting.
 pub struct ShiftRegisterChain<'d, const N: usize> {
     spi: Spi<'d, SPI1, Blocking>,
-    oe: Output<'d>,
-    lat: Output<'d>,
+    output_enable: Output<'d>,
+    latch: Output<'d>,
 }
 
 impl<'d, const N: usize> ShiftRegisterChain<'d, N> {
     pub fn new(
         spi: embassy_rp::Peri<'d, SPI1>,
-        clk: embassy_rp::Peri<'d, impl ClkPin<SPI1> + 'd>,
+        clock: embassy_rp::Peri<'d, impl ClkPin<SPI1> + 'd>,
         data: embassy_rp::Peri<'d, impl MosiPin<SPI1> + 'd>,
-        oe: embassy_rp::Peri<'d, impl Pin>,
-        lat: embassy_rp::Peri<'d, impl Pin>,
+        output_enable: embassy_rp::Peri<'d, impl Pin>,
+        latch: embassy_rp::Peri<'d, impl Pin>,
     ) -> Self {
-        let spi = Spi::new_blocking_txonly(spi, clk, data, Config::default());
-        let oe = Output::new(oe, Level::High);
-        let lat = Output::new(lat, Level::Low);
+        let spi = Spi::new_blocking_txonly(spi, clock, data, Config::default());
+        let output_enable = Output::new(output_enable, Level::High);
+        let latch = Output::new(latch, Level::Low);
 
-        Self { spi, oe, lat }
+        Self {
+            spi,
+            output_enable,
+            latch,
+        }
     }
 
     /// Shifts `data` out, first byte to the last chip in the chain, and latches it onto every
@@ -39,10 +43,10 @@ impl<'d, const N: usize> ShiftRegisterChain<'d, N> {
     pub fn write(&mut self, data: [u8; N]) -> Result<(), Error> {
         self.spi.blocking_write(&data)?;
 
-        self.lat.set_high();
+        self.latch.set_high();
         block_for(LATCH_PULSE_WIDTH);
-        self.lat.set_low();
-        self.oe.set_low();
+        self.latch.set_low();
+        self.output_enable.set_low();
 
         Ok(())
     }

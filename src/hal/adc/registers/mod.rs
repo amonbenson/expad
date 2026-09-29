@@ -63,7 +63,8 @@ impl<const ADDRESS: u8, const WIDTH: usize> RegisterValue<ADDRESS, WIDTH> {
     }
 
     /// Reads a multi-bit field, decoded through `T`'s `TryFrom<u8>` impl
-    /// (typically derived via `num_enum::TryFromPrimitive`).
+    /// (typically derived via `num_enum::TryFromPrimitive`). Every field type covers each
+    /// value its width can hold, so decoding never fails.
     fn field<T>(&self, shift: u32, width: u32) -> T
     where
         T: TryFrom<u8>,

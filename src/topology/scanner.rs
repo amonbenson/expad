@@ -41,19 +41,18 @@ pub struct SettleConfig {
     pub max_delay: Duration,
 }
 
-impl Default for SettleConfig {
-    fn default() -> Self {
+impl SettleConfig {
+    /// Settling for taps behind a filter of `tap_series_resistance` kΩ and `tap_capacitance` nF.
+    pub fn new(tap_capacitance: f32, tap_series_resistance: f32) -> Self {
         Self {
-            tap_capacitance: 10.0,
-            tap_series_resistance: 0.0,
+            tap_capacitance,
+            tap_series_resistance,
             time_constants: 2.0,
             min_delay: Duration::from_millis(1),
             max_delay: Duration::from_millis(400),
         }
     }
-}
 
-impl SettleConfig {
     /// How long taps charging through `resistance` kΩ take to settle, or the longest allowed
     /// if that is not known (`f32::NAN`).
     pub fn delay(&self, resistance: f32) -> Duration {

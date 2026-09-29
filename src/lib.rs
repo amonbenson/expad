@@ -4,9 +4,8 @@
 
 pub mod board;
 
-// `hal` and `topology` expose a broader register/API surface than any binary in
-// src/bin/ currently drives; see AGENTS.md's Extensibility Hooks for the parts
-// still awaiting callers.
+// `hal` and `topology` expose a broader register and driver surface (every AD7718 register
+// field and mode, for instance) than the binaries in src/bin/ currently drive.
 #[allow(dead_code)]
 pub mod hal;
 pub mod indicator;

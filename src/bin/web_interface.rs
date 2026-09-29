@@ -8,20 +8,21 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::peripherals::{DMA_CH0, PIO1};
 use embassy_rp::{dma, pio};
 use embassy_time::{Duration, Instant, Ticker};
+use expad::board::{JACK_COUNT, PULL_RESISTANCE, REFERENCE_VOLTAGE};
 use expad::hal::wifi::{AccessPointConfig, AccessPointPeripherals, start_access_point};
-use expad::topology::{ArmResistances, JackMode};
-use expad::web::{ArmPull, INTERFACE, JACK_COUNT, JackStatus, Status, spawn_web_server};
+use expad::topology::{
+    ARM_COUNT, ArmResistances, CONTACT_COUNT, JackMode, RING, SLEEVE, TIP, TIP_SWITCH,
+};
+use expad::web::{ArmPull, INTERFACE, JackStatus, Status, spawn_web_server};
 
 use {defmt_rtt as _, panic_probe as _};
 
 const STATUS_INTERVAL: Duration = Duration::from_millis(100);
 const SWEEP_PERIOD_MILLISECONDS: u64 = 4000;
 
-/// Pretended circuit the dummy voltages are derived from: a 10 kOhm potentiometer measured
-/// between a pulled-up and a pulled-down arm. Resistances are in kOhm and currents in mA.
+/// Pretended potentiometer the dummy voltages are derived from, measured between a pulled-up
+/// and a pulled-down arm through the board's pulls, in kΩ.
 const DUMMY_TOTAL_RESISTANCE: f32 = 10.0;
-const DUMMY_PULL_RESISTANCE: f32 = 1.0;
-const HIGH_RAIL_VOLTAGE: f32 = 2.5;
 
 bind_interrupts!(struct Irqs {
     PIO1_IRQ_0 => pio::InterruptHandler<PIO1>;
@@ -45,7 +46,7 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     if jack == JACK_COUNT - 1 {
         // Plug checks: the tip switch pulled up against the tip pulled down, halfway between.
         return JackStatus {
-            voltages: [0.0, f32::NAN, f32::NAN, HIGH_RAIL_VOLTAGE / 2.0],
+            voltages: [0.0, f32::NAN, f32::NAN, REFERENCE_VOLTAGE / 2.0],
             pulls: [
                 ArmPull::Down,
                 ArmPull::Floating,
@@ -60,10 +61,13 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     let phase = (uptime_milliseconds + phase_offset) % SWEEP_PERIOD_MILLISECONDS;
     let value = 1.0 - (2.0 * phase as f32 / SWEEP_PERIOD_MILLISECONDS as f32 - 1.0).abs();
 
-    // Arm 0 is the wiper, so the two pot halves sit on arms 1 and 2, with the wiper `value`
-    // of the way from arm 2's (the sleeve's) end, as `ArmResistances::position_with_wiper` reads it.
+    // The tip is the wiper, so the two track halves sit on ring and sleeve, with the wiper
+    // `value` of the way from the sleeve's end, as `ArmResistances::position_with_wiper` reads it.
+    let mut relative = [0.0; ARM_COUNT];
+    relative[RING] = 1.0 - value;
+    relative[SLEEVE] = value;
     let resistances = ArmResistances {
-        relative: [0.0, 1.0 - value, value],
+        relative,
         total: DUMMY_TOTAL_RESISTANCE,
     };
 
@@ -82,42 +86,38 @@ fn dummy_jack_status(uptime_milliseconds: u64, jack: usize) -> JackStatus {
     }
 }
 
-/// Voltages the contacts of `resistances` would show while arm 1 is pulled up and arm 2 pulled
-/// down: the driven arms drop the current across their pull resistors, and the floating arm 0
-/// carries no current, so its tap sits at the center node voltage. The tip switch keeps the
-/// high rail from the plug check that found the plug.
-fn dummy_contact_voltages(resistances: ArmResistances) -> [f32; 4] {
-    let pulled_up_resistance = resistances.relative[1] * resistances.total;
-    let pulled_down_resistance = resistances.relative[2] * resistances.total;
-    let current = HIGH_RAIL_VOLTAGE
-        / (2.0 * DUMMY_PULL_RESISTANCE + pulled_up_resistance + pulled_down_resistance);
+/// Voltages the contacts of `resistances` would show while the ring is pulled up and the
+/// sleeve pulled down: the driven arms drop the current across their pull resistors, and the
+/// floating tip carries no current, so its tap sits at the star point voltage. The tip switch
+/// keeps the high rail from the plug check that found the plug.
+fn dummy_contact_voltages(resistances: ArmResistances) -> [f32; CONTACT_COUNT] {
+    let pulled_up_resistance = resistances.absolute(RING);
+    let pulled_down_resistance = resistances.absolute(SLEEVE);
+    let current =
+        REFERENCE_VOLTAGE / (2.0 * PULL_RESISTANCE + pulled_up_resistance + pulled_down_resistance);
 
-    let pulled_up_voltage = HIGH_RAIL_VOLTAGE - current * DUMMY_PULL_RESISTANCE;
-    let pulled_down_voltage = current * DUMMY_PULL_RESISTANCE;
-    let center_voltage = pulled_down_voltage + current * pulled_down_resistance;
-
-    [
-        center_voltage,
-        pulled_up_voltage,
-        pulled_down_voltage,
-        HIGH_RAIL_VOLTAGE,
-    ]
+    let mut voltages = [0.0; CONTACT_COUNT];
+    voltages[RING] = REFERENCE_VOLTAGE - current * PULL_RESISTANCE;
+    voltages[SLEEVE] = current * PULL_RESISTANCE;
+    voltages[TIP] = voltages[SLEEVE] + current * pulled_down_resistance;
+    voltages[TIP_SWITCH] = REFERENCE_VOLTAGE;
+    voltages
 }
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
 
     info!("Starting WiFi access point");
-    let peripherals = AccessPointPeripherals {
-        pio: p.PIO1,
-        dma: p.DMA_CH0,
-        power: p.PIN_23,
-        data: p.PIN_24,
-        chip_select: p.PIN_25,
-        clock: p.PIN_29,
+    let radio = AccessPointPeripherals {
+        pio: peripherals.PIO1,
+        dma: peripherals.DMA_CH0,
+        power: peripherals.PIN_23,
+        data: peripherals.PIN_24,
+        chip_select: peripherals.PIN_25,
+        clock: peripherals.PIN_29,
     };
-    let stack = start_access_point(spawner, peripherals, Irqs, AccessPointConfig::default()).await;
+    let stack = start_access_point(spawner, radio, Irqs, AccessPointConfig::default()).await;
     spawn_web_server(spawner, stack);
 
     let mut settings = unwrap!(INTERFACE.settings.receiver());

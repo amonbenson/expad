@@ -54,7 +54,8 @@ const TAP_SWITCH_BITS: [TapSwitchBits; TAPS_PER_CHIP] = [
     },
 ];
 
-pub type PullSwitchOutputState = [TriState; TAPS_PER_CHIP];
+/// How every tap of one chip is driven, indexed by tap.
+type TapStates = [TriState; TAPS_PER_CHIP];
 
 /// Pull-up and pull-down switches of `N` jacks, one 74HC595 per jack driving the select
 /// inputs of two TMUX1511 quad switches: one connecting each tap to that jack's shared
@@ -63,23 +64,24 @@ pub type PullSwitchOutputState = [TriState; TAPS_PER_CHIP];
 /// Chips are numbered from the microcontroller outwards, so chip 0 is the first one in the
 /// shift register chain.
 pub struct PullSwitchChain<'d, const N: usize> {
-    sr_chain: ShiftRegisterChain<'d, N>,
-    outputs: [PullSwitchOutputState; N],
+    shift_registers: ShiftRegisterChain<'d, N>,
+    outputs: [TapStates; N],
 }
 
 impl<'d, const N: usize> PullSwitchChain<'d, N> {
-    pub fn new(sr_chain: ShiftRegisterChain<'d, N>) -> Self {
+    pub fn new(shift_registers: ShiftRegisterChain<'d, N>) -> Self {
         Self {
-            sr_chain,
-            outputs: [PullSwitchOutputState::default(); N],
+            shift_registers,
+            outputs: [TapStates::default(); N],
         }
     }
 
+    /// Sets how `tap` of `chip` is to be driven, applied by the next [`update`](Self::update).
     pub fn set_output(&mut self, chip: usize, tap: u8, state: TriState) {
         self.outputs[chip][tap as usize] = state;
     }
 
-    pub fn get_output(&self, chip: usize, tap: u8) -> TriState {
+    pub fn output(&self, chip: usize, tap: u8) -> TriState {
         self.outputs[chip][tap as usize]
     }
 
@@ -93,17 +95,19 @@ impl<'d, const N: usize> PullSwitchChain<'d, N> {
             *chip_data = encode(outputs);
         }
 
-        self.sr_chain.write(data).map_err(PullSwitchChainError::Spi)
+        self.shift_registers
+            .write(data)
+            .map_err(PullSwitchChainError::Spi)
     }
 
     /// Opens every switch, leaving all taps floating.
     pub fn clear(&mut self) -> Result<(), PullSwitchChainError> {
-        self.outputs = [PullSwitchOutputState::default(); N];
+        self.outputs = [TapStates::default(); N];
         self.update()
     }
 }
 
-fn encode(outputs: &PullSwitchOutputState) -> u8 {
+fn encode(outputs: &TapStates) -> u8 {
     outputs
         .iter()
         .zip(TAP_SWITCH_BITS.iter())

@@ -46,20 +46,18 @@ impl<'d, P: Instance, const N: usize> Ws2812Chain<'d, P, N> {
     /// [`MAX_CHANNEL_VALUE`]. Blocks (asynchronously) for the WS2812B latch delay after the
     /// data has been shifted out.
     pub async fn write(&mut self, colors: &[RGB8; N]) {
-        let limited_colors = colors.map(limit_color);
+        let limited_colors = colors.map(|color| scale_color(color, MAX_CHANNEL_VALUE));
         self.driver.write(&limited_colors).await;
     }
 }
 
-fn limit_color(color: RGB8) -> RGB8 {
+/// Scales every channel of `color` by `scale / u8::MAX`, rounding up, so that a dim channel
+/// still lights instead of vanishing.
+pub(super) fn scale_color(color: RGB8, scale: u8) -> RGB8 {
+    let scale_channel = |value: u8| (value as u16 * scale as u16).div_ceil(u8::MAX as u16) as u8;
     RGB8::new(
-        limit_channel(color.r),
-        limit_channel(color.g),
-        limit_channel(color.b),
+        scale_channel(color.r),
+        scale_channel(color.g),
+        scale_channel(color.b),
     )
-}
-
-/// Rounds up, so that a dim channel still lights instead of vanishing under the limit.
-fn limit_channel(value: u8) -> u8 {
-    (value as u16 * MAX_CHANNEL_VALUE as u16).div_ceil(u8::MAX as u16) as u8
 }

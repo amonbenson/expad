@@ -4,10 +4,10 @@
 mod star_network;
 
 use expad_topology::{
-    ARM_COUNT, ArmResistances, MonitorConfig, Network, PairMeasurement, PairVoltages, SolveError,
-    SolveSequence, SolveStep, SolverConfig,
+    ARM_COUNT, ArmResistances, Network, PairMeasurement, PairVoltages, SolveError, SolveSequence,
+    SolveStep,
 };
-use star_network::{Role, StarNetwork};
+use star_network::{Role, StarNetwork, VOLTAGE_NOISE, monitor_config, solver_config};
 
 /// Relative tolerance for solved resistances. The solver works in f32, and deriving a loop
 /// current from the small difference between two tap voltages costs significant digits, so
@@ -20,11 +20,11 @@ const HIGH_RESISTANCE_TOLERANCE: f32 = 1e-2;
 const INCONSISTENT_OFFSET: f32 = 0.05;
 
 /// Voltage offset of one standard deviation of the default noise floor.
-const NOISE_OFFSET: f32 = SolverConfig::DEFAULT_VOLTAGE_NOISE;
+const NOISE_OFFSET: f32 = VOLTAGE_NOISE;
 
 /// How a jack monitor with the default configuration classifies `resistances`.
 fn network(resistances: &ArmResistances) -> Network {
-    let config = MonitorConfig::default();
+    let config = monitor_config();
     resistances.network(config.max_wiper_relative, config.end_stop_relative)
 }
 
@@ -58,7 +58,7 @@ fn solve_with_offsets(
     network: &StarNetwork,
     offsets: [f32; ARM_COUNT],
 ) -> Result<ArmResistances, SolveError> {
-    let config = SolverConfig::default();
+    let config = solver_config();
     let mut sequence = SolveSequence::new(config);
 
     loop {
@@ -275,7 +275,7 @@ fn rejects_a_measurement_whose_loop_current_disagrees_between_its_two_sides() {
 /// which no single network can produce, but a pedal moved between them can.
 #[test]
 fn rejects_two_measurements_that_disagree_about_the_total_resistance() {
-    let mut sequence = SolveSequence::new(SolverConfig::default());
+    let mut sequence = SolveSequence::new(solver_config());
 
     sequence.record(PairMeasurement {
         conducts: true,

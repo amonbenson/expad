@@ -10,8 +10,8 @@ use expad::hal::buf::TriState;
 
 use {defmt_rtt as _, panic_probe as _};
 
-/// Inputs every AD7718 converts in ten-channel mode.
-const ADC_CHANNELS: usize = 10;
+/// Inputs every AD7718 converts in the board's channel mode.
+const ADC_CHANNELS: usize = board::ADC_CHANNEL_COUNT.count() as usize;
 
 /// How long a tap is left to settle after its switches change. The slowest node is the ADC
 /// input filter charging through the pull resistor, 11 kΩ x 10 nF = 110 µs.
@@ -110,15 +110,28 @@ async fn self_test_adcs(adcs: &mut AdcChain<'_, ADC_CHIPS>) -> u32 {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
+    let peripherals = embassy_rp::init(Default::default());
 
     info!("Initializing pull switches");
-    let mut switches = board::pull_switches(p.SPI1, p.PIN_14, p.PIN_15, p.PIN_11, p.PIN_13);
+    let mut switches = board::pull_switches(
+        peripherals.SPI1,
+        peripherals.PIN_14,
+        peripherals.PIN_15,
+        peripherals.PIN_11,
+        peripherals.PIN_13,
+    );
     unwrap!(switches.clear());
 
     info!("Initializing ADCs");
     let mut adcs = board::adcs(
-        p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_20, p.PIN_21, p.PIN_22,
+        peripherals.SPI0,
+        peripherals.PIN_18,
+        peripherals.PIN_19,
+        peripherals.PIN_16,
+        peripherals.PIN_17,
+        peripherals.PIN_20,
+        peripherals.PIN_21,
+        peripherals.PIN_22,
     );
     let adc_config = AdcChainConfig::default()
         .with_channel_count(board::ADC_CHANNEL_COUNT)

@@ -51,6 +51,16 @@ pub const ADC_REFERENCE_CHANNEL: u8 = 9;
 /// so every reading is ratiometric to the pull-ups.
 pub const REFERENCE_VOLTAGE: f32 = 2.5;
 
+/// Conversions per second the jacks are measured at (filter word 5). A reading takes three
+/// conversion periods to settle after a channel change, 4.4 ms here against 10.2 ms at 315 Hz,
+/// and still resolves 0.2 mV. Faster words turn much coarser - see docs/fast-tracking.md.
+pub const ADC_UPDATE_RATE: u32 = 819;
+
+/// Standard deviation of a single reading at [`ADC_UPDATE_RATE`], in V, measured on the PCB
+/// with `adc_characterization` through a pedal (0.39 mV, 0.45 mV sample to sample). Every
+/// tolerance the solver applies is derived from it.
+pub const ADC_VOLTAGE_NOISE: f32 = 0.0005;
+
 /// Shared pull-up and pull-down resistance of every jack (0.1%), in kΩ.
 pub const PULL_RESISTANCE: f32 = 1.0;
 

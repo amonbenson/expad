@@ -247,15 +247,6 @@ impl MonitorConfig {
     }
 }
 
-impl Default for MonitorConfig {
-    fn default() -> Self {
-        Self::new(
-            SolverConfig::default(),
-            SolverConfig::DEFAULT_PULL_RESISTANCE,
-        )
-    }
-}
-
 /// Rail voltages every arm's tap reads while all three are driven alike, so no current flows.
 #[derive(Debug, Clone, Copy)]
 struct Rails {
@@ -791,7 +782,7 @@ impl JackMonitor {
             PairVoltages {
                 high: solve.voltages[high],
                 low: solve.voltages[low],
-                floating: solve.voltages[ARM_COUNT - high - low],
+                floating: solve.voltages[floating_arm(high, low)],
             },
             ArmDrive {
                 rail_voltage: rails.high[high],
@@ -1145,7 +1136,7 @@ impl JackMonitor {
             let (resistance, sleeve_voltage) = self.tip_sleeve_resistance(voltage, rails);
             tip_sleeve.sleeve_voltage = sleeve_voltage;
 
-            if let Element::Open { .. } = tip_sleeve.element {
+            if matches!(tip_sleeve.element, Element::Open { .. }) {
                 // Something connects tip and sleeve now: find out what.
                 if resistance.is_finite() {
                     self.identify(now);
@@ -1290,7 +1281,14 @@ fn full_scale(resistance: f32) -> f32 {
 /// Order the taps of a pair are read in: the two driven ones first, and the floating one
 /// last, since it charges its filter capacitor through the whole network.
 fn pair_read_order(high: usize, low: usize) -> [usize; ARM_COUNT] {
-    [high, low, ARM_COUNT - high - low]
+    [high, low, floating_arm(high, low)]
+}
+
+/// The arm left floating while `high` and `low` are driven: the one arm index that is neither.
+fn floating_arm(high: usize, low: usize) -> usize {
+    (0..ARM_COUNT)
+        .find(|&arm| arm != high && arm != low)
+        .unwrap_or(high)
 }
 
 impl core::fmt::Debug for JackMonitor {

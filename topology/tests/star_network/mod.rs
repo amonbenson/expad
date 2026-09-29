@@ -4,7 +4,24 @@
 //!
 //! All resistances are in kΩ and all currents in mA, as in the solver itself.
 
-use expad_topology::{ARM_COUNT, ArmDrive};
+use expad_topology::{ARM_COUNT, ArmDrive, MonitorConfig, SolverConfig};
+
+/// Standard deviation of a single tap reading, in V: what the expression controller PCB
+/// measures at its 819 Hz update rate.
+pub const VOLTAGE_NOISE: f32 = 0.0005;
+
+/// Pull-up and pull-down resistance of every arm on the expression controller PCB, in kΩ.
+pub const PULL_RESISTANCE: f32 = 1.0;
+
+/// The solver configured for the expression controller PCB.
+pub fn solver_config() -> SolverConfig {
+    SolverConfig::from_voltage_noise(VOLTAGE_NOISE)
+}
+
+/// A jack monitor configured for the expression controller PCB.
+pub fn monitor_config() -> MonitorConfig {
+    MonitorConfig::new(solver_config(), PULL_RESISTANCE)
+}
 
 /// Rail an arm is driven to, or none at all.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,11 +39,11 @@ pub struct StarNetwork {
 }
 
 impl StarNetwork {
-    /// A network of three arms, driven through 1 kΩ from a 0 V and a 3.3 V rail.
+    /// A network of three arms, driven through [`PULL_RESISTANCE`] from a 0 V and a 3.3 V rail.
     pub fn new(arm_resistances: [f32; ARM_COUNT]) -> Self {
         Self {
             arm_resistances,
-            pull_resistances: [1.0; ARM_COUNT],
+            pull_resistances: [PULL_RESISTANCE; ARM_COUNT],
             low_rail: 0.0,
             high_rail: 3.3,
         }

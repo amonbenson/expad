@@ -1,9 +1,9 @@
 use embassy_rp::pio::Instance;
 
-use super::ws2812::{RGB8, Ws2812Chain};
+use super::ws2812::{RGB8, Ws2812Chain, scale_color};
 
 /// Global brightness defaults to half of the maximum scale (`u8::MAX`), which the driver's
-/// hard limit turns into about 10% of what the LEDs could do.
+/// hard limit turns into about 2% of what the LEDs could do.
 const DEFAULT_BRIGHTNESS: u8 = u8::MAX / 2;
 
 /// Tracks the desired color of every LED on a WS2812B strip plus a global
@@ -46,17 +46,4 @@ impl<'d, P: Instance, const N: usize> LedStrip<'d, P, N> {
         let scaled_colors = self.colors.map(|color| scale_color(color, self.brightness));
         self.chain.write(&scaled_colors).await;
     }
-}
-
-fn scale_color(color: RGB8, brightness: u8) -> RGB8 {
-    RGB8::new(
-        scale_channel(color.r, brightness),
-        scale_channel(color.g, brightness),
-        scale_channel(color.b, brightness),
-    )
-}
-
-/// Rounds up, so that a dim color stays lit at any brightness above `0`.
-fn scale_channel(value: u8, brightness: u8) -> u8 {
-    (value as u16 * brightness as u16).div_ceil(u8::MAX as u16) as u8
 }
