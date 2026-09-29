@@ -6,12 +6,12 @@ use embassy_rp::pio_programs::ws2812::{Grb, PioWs2812, PioWs2812Program};
 
 pub use smart_leds::RGB8;
 
-/// Highest duty cycle any LED channel is ever driven at, out of `u8::MAX`: about 20%.
+/// Highest duty cycle any LED channel is ever driven at, out of `u8::MAX`: about 4%.
 ///
 /// The strip runs from the board's 5 V linear regulator (200 mA, shared with the Pico), which
 /// cannot supply every LED at full white. Every frame is scaled into this range right before
 /// it is sent, so no caller can exceed it - full scale for a caller means this much.
-pub const MAX_CHANNEL_VALUE: u8 = 51;
+pub const MAX_CHANNEL_VALUE: u8 = 10;
 
 /// Drives a WS2812B ("NeoPixel") LED strip over one PIO block's state machine 0.
 ///

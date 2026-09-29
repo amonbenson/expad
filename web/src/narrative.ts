@@ -21,6 +21,8 @@ const PLUG_THRESHOLD_FRACTION = 0.75;
 const CLOSED_RESISTANCE = 0.2;
 /** Relative arm resistance up to which two arms both touch the star point: an end stop. */
 const END_STOP_RELATIVE = 0.02;
+/** Relative arm resistance up to which an arm passes as a wiper, its contact and lead. */
+const MAX_WIPER_RELATIVE = 0.25;
 
 const PLUG_CHECK_INTERVAL_MS = 50;
 const RING_CHECK_INTERVAL_MS = 100;
@@ -148,12 +150,16 @@ function describeTracking(status: JackStatus): NarrativeLine[] {
   const position = status.position ?? 0;
   const endDrop = lowVoltage === null ? null : lowVoltage;
 
-  const endStopArm = [low, high].find(
-    arm => (status.resistances.relative[arm] ?? Infinity) <= END_STOP_RELATIVE,
+  const trackEndWithin = (limit: number): number | undefined => [low, high].find(
+    arm => (status.resistances.relative[arm] ?? Infinity) <= limit,
   );
-  const why: Segment[] = endStopArm === undefined
-    ? say`The ${wiperName}'s arm is ${kiloOhms(armResistance(status, wiper))}, next to nothing, so the ${wiperName} sits at the star point: a wiper. The ${lowName} and ${highName} carry the track, ${kiloOhms(status.resistances.total)} end to end - together a potentiometer, an expression pedal.`
-    : say`The pedal rests on an end stop, where the ${wiperName} and the ${CONTACT_NAMES[endStopArm] ?? ""} both touch the star point. Either could be the wiper; until the pedal moves, the Wiper setting or the last pedal seen in this jack decides.`;
+  const endStopArm = trackEndWithin(END_STOP_RELATIVE);
+  const nearEndArm = trackEndWithin(MAX_WIPER_RELATIVE);
+  const why: Segment[] = endStopArm !== undefined
+    ? say`The pedal rests on an end stop, where the ${wiperName} and the ${CONTACT_NAMES[endStopArm] ?? ""} both touch the star point. Either could be the wiper; until the pedal moves, the Wiper setting or the last pedal seen in this jack decides.`
+    : nearEndArm !== undefined
+      ? say`The pedal is near the ${CONTACT_NAMES[nearEndArm] ?? ""} end of its track: the ${wiperName}'s arm is ${kiloOhms(armResistance(status, wiper))} and the ${CONTACT_NAMES[nearEndArm] ?? ""}'s ${kiloOhms(armResistance(status, nearEndArm))}, both close to the star point. A clean wiper a little way along the track and a wiper with resistance in its own lead resting on that end look alike; until the pedal moves, the Wiper setting or the last pedal seen in this jack decides, and otherwise the arm nearer the star point unless that is the sleeve.`
+      : say`The ${wiperName}'s arm is only ${kiloOhms(armResistance(status, wiper))}, its contact and lead, so the ${wiperName} meets the track at the star point: a wiper. The ${lowName} and ${highName} carry the track, ${kiloOhms(status.resistances.total)} end to end - together a potentiometer, an expression pedal.`;
 
   return [
     {

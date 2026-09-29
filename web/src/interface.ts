@@ -18,7 +18,7 @@ export type ArmPull = "up" | "down" | "floating";
  */
 export type JackMode = "empty" | "identifying" | "tracking" | "switch" | "rheostat" | "other" | "open";
 
-/** Contact a potentiometer's wiper is on, deciding the one ambiguous end stop (ring and sleeve shorted). */
+/** Contact a potentiometer's wiper is on, deciding the ambiguous end stop (ring and sleeve shorted) and a wiper near a track end. */
 export type WiperContact = "auto" | "tip" | "ring" | "sleeve";
 
 export interface JackStatus {

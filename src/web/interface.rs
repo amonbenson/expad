@@ -66,8 +66,8 @@ pub struct Status {
     pub jacks: [JackStatus; JACK_COUNT],
 }
 
-/// Which contact of a jack a potentiometer's wiper is on, for the one end stop where the
-/// measurement cannot tell: ring and sleeve shorted together.
+/// Which contact of a jack a potentiometer's wiper is on, where the measurement cannot tell:
+/// at the end stop with ring and sleeve shorted together, and near a track end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, defmt::Format)]
 #[serde(rename_all = "camelCase")]
 pub enum WiperContact {

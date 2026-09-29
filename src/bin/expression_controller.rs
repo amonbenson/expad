@@ -312,12 +312,15 @@ async fn main(spawner: Spawner) {
     info!("ADC full scale: {}V", adcs.full_scale_voltage());
 
     info!("Initializing LED strip");
-    let mut indicators = JackIndicators::new(board::leds(
-        peripherals.PIO0,
-        Irqs,
-        peripherals.DMA_CH1,
-        peripherals.PIN_6,
-    ));
+    let mut indicators = JackIndicators::new(
+        board::leds(
+            peripherals.PIO0,
+            Irqs,
+            peripherals.DMA_CH1,
+            peripherals.PIN_6,
+        ),
+        JACKS.map(|jack| jack.led),
+    );
 
     info!("Initializing USB MIDI");
     let (midi, usb_device) = UsbMidi::new(peripherals.USB, Irqs, UsbMidiConfig::default());

@@ -38,6 +38,12 @@ pub enum Network {
     /// wiper resting on one end of its track, so either of them could be the wiper.
     EndStop { candidates: [usize; 2] },
 
+    /// Two arms are close to the star point without touching it, the lower-resistance one
+    /// first: a potentiometer's wiper near one end of its track. Either a clean wiper sits a
+    /// little way along the track, or a wiper with resistance in its own lead rests on that
+    /// end - the same network, at opposite positions.
+    NearEnd { candidates: [usize; 2] },
+
     /// A single element between tip and sleeve, a switch or a rheostat: with the ring shorted
     /// to the sleeve behind a mono plug, isolated behind a stereo one.
     TipSleeve { ring_shorted: bool },
@@ -59,9 +65,9 @@ impl ArmResistances {
     }
 
     /// Classifies the network. An arm within `max_wiper_relative` of the star point passes
-    /// as a wiper, a second one within `end_stop_relative` makes it an end stop, and two arms
-    /// within `end_stop_relative` on ring and sleeve are what a mono plug's sleeve does to
-    /// the ring.
+    /// as a wiper, a second one within `end_stop_relative` makes it an end stop and within
+    /// `max_wiper_relative` a wiper near a track end, and two arms within `end_stop_relative`
+    /// on ring and sleeve are what a mono plug's sleeve does to the ring.
     pub fn network(&self, max_wiper_relative: f32, end_stop_relative: f32) -> Network {
         if self.relative.iter().all(|relative| relative.is_infinite()) {
             return Network::Disconnected;
@@ -85,8 +91,9 @@ impl ArmResistances {
     }
 
     /// Every arm resolved, the lowest one within `max_wiper_relative` of the star point and
-    /// the highest one beyond it: a potentiometer, or one on its end stop if the middle arm
-    /// is within `end_stop_relative` as well.
+    /// the highest one beyond it: a potentiometer, one on its end stop if the middle arm is
+    /// within `end_stop_relative` as well, and one near a track end if it is within
+    /// `max_wiper_relative`.
     fn potentiometer(&self, max_wiper_relative: f32, end_stop_relative: f32) -> Option<Network> {
         if !self.relative.iter().all(|relative| relative.is_finite()) {
             return None;
@@ -100,10 +107,11 @@ impl ArmResistances {
             return None;
         }
 
+        let candidates = [lowest, middle];
         Some(if self.relative[middle] <= end_stop_relative {
-            Network::EndStop {
-                candidates: [lowest, middle],
-            }
+            Network::EndStop { candidates }
+        } else if at_star_point(middle) {
+            Network::NearEnd { candidates }
         } else {
             Network::Potentiometer { wiper: lowest }
         })

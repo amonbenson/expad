@@ -15,7 +15,7 @@ WS2812B LEDs below the jacks glow a dim white while a plug is in but no known pe
 A recognised pedal is announced for a second in its own color - purple for an expression pedal,
 lime for a footswitch, yellow for a rheostat - after which the LED shows the value it sends, from
 dark red at 0 through red, orange and yellow to white at 127. They run off a linear regulator, so
-the firmware caps them at ~20% brightness.
+the firmware caps them at ~4% brightness.
 
 ## Supported pedals
 
@@ -40,8 +40,9 @@ Pedals are recognised within ~0.1 s of being plugged in, and unplugging is notic
 
 1. Plug the Pico into a computer over USB. It shows up as a USB MIDI device; every jack sends
    CC 11 (Expression) on MIDI channel 1 by default.
-2. Join the WiFi network **Expression Adapter** (password: the one it was built with, see below)
-   and open http://192.168.4.1.
+2. Join the WiFi network **Expression Adapter** (password: the one it was built with, see below).
+   Phones, tablets and computers open the interface by themselves as the network's sign-in page;
+   otherwise open http://192.168.4.1.
 3. Per jack, set the MIDI channel and controller, **Invert**, and the **Range**: move the pedal to
    one end and press **Min**, to the other and press **Max**, so its travel covers the full MIDI
    range. **Drive** bends the response against a pedal's nonlinear track: centered is linear,

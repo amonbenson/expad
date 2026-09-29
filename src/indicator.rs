@@ -143,13 +143,18 @@ fn blend(from: RGB8, to: RGB8, fraction: f32) -> RGB8 {
 /// The LED strip below the jacks, one LED per jack, each showing what its jack holds.
 pub struct JackIndicators<'d, P: Instance, const N: usize> {
     leds: LedStrip<'d, P, N>,
+    /// The LED below each jack, as an index into the strip.
+    jack_leds: [usize; N],
     jacks: [JackIndicator; N],
 }
 
 impl<'d, P: Instance, const N: usize> JackIndicators<'d, P, N> {
-    pub fn new(leds: LedStrip<'d, P, N>) -> Self {
+    /// Lights `jack_leds[jack]` for each jack, so the jacks can be numbered in any order along
+    /// the strip.
+    pub fn new(leds: LedStrip<'d, P, N>, jack_leds: [usize; N]) -> Self {
         Self {
             leds,
+            jack_leds,
             jacks: [JackIndicator::EMPTY; N],
         }
     }
@@ -168,8 +173,8 @@ impl<'d, P: Instance, const N: usize> JackIndicators<'d, P, N> {
 
     /// Writes every jack's color as of `now` to the strip.
     pub async fn update(&mut self, now: Instant) {
-        for (index, jack) in self.jacks.iter().enumerate() {
-            self.leds.set_color(index, jack.color(now));
+        for (jack, &led) in self.jacks.iter().zip(&self.jack_leds) {
+            self.leds.set_color(led, jack.color(now));
         }
         self.leds.update().await;
     }

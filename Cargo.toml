@@ -74,6 +74,7 @@ web = [
   "expad-topology/serde",
   "dep:cyw43",
   "dep:cyw43-pio",
+  "dep:edge-captive",
   "dep:edge-dhcp",
   "dep:edge-nal",
   "dep:edge-nal-embassy",
@@ -119,6 +120,10 @@ usbd-midi = "0.5.1"
 
 cyw43 = { version = "0.7.0", features = ["defmt"], optional = true }
 cyw43-pio = { version = "0.10.0", features = ["defmt"], optional = true }
+edge-captive = { version = "0.8.0", default-features = false, features = [
+  "defmt",
+  "io",
+], optional = true }
 edge-dhcp = { version = "0.8.0", features = ["defmt"], optional = true }
 edge-nal = { version = "0.7.0", optional = true }
 edge-nal-embassy = { version = "0.9.0", default-features = false, features = [

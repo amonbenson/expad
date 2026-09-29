@@ -13,7 +13,7 @@ use expad::hal::led::{LedStrip, RGB8};
 
 use {defmt_rtt as _, panic_probe as _};
 
-/// Jack the potentiometer is plugged into (J2).
+/// Jack the potentiometer is plugged into (J5).
 const JACK: usize = 0;
 
 /// Contact pulled to the low rail, as on most expression pedals.

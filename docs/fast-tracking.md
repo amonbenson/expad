@@ -126,6 +126,16 @@ Identify classifies each solve:
   The end-stop threshold was 10% at first, the wiper's own allowance: the PCB's pedal fully
   closed leaves 9% of its track on the sleeve, so it was taken for an end stop and solved over
   and over instead of tracked.
+- **Potentiometer near a track end** (the second-lowest arm within the wiper's 25% as well):
+  a clean wiper a little way along the track and a wiper with resistance in its own lead
+  resting on that end are the same network, at opposite positions. A pedal on the PCB (ring
+  wiper, 11.4 kΩ track) measured 1 kΩ in its wiper at rest and up to 1.9 kΩ while moving, 8-15%
+  of its total; with the wiper's allowance at 10% it was classified Other over most of its
+  travel and tracked with the wrong wiper near both ends. Tracked straight away like an end
+  stop, with the per-jack setting, the remembered wiper, then the arm nearer the star point -
+  unless that is the sleeve, the grounded end, so a ring or tip wiper resting on the sleeve end
+  is right from the start. The wiper carries no current while tracked, so its lead resistance
+  never affects the position.
 - **Nothing conducts**: plug check, then Empty or (plugged cable with nothing at the end) a full
   solve every 100 ms.
 - **Anything else**: Other.

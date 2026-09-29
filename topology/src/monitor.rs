@@ -20,7 +20,9 @@
 
 use crate::config::SolverConfig;
 use crate::measurement::{ArmDrive, PairMeasurement, PairVoltages};
-use crate::resistances::{ARM_COUNT, ArmResistances, Network, RING, SLEEVE, TIP, track_ends};
+use crate::resistances::{
+    ARM_COUNT, ArmResistances, GROUNDED_END, Network, RING, SLEEVE, TIP, track_ends,
+};
 use crate::sequence::{PAIR_SEQUENCE, SolveSequence, SolveStep};
 
 /// Contacts of one jack that can be driven and read: its three arms plus the tip's
@@ -144,7 +146,8 @@ pub struct MonitorConfig {
 
     /// Largest relative resistance an arm can have and still pass as a potentiometer's wiper,
     /// which sits at the star point and so contributes little more than its own contact and
-    /// lead resistance.
+    /// lead resistance. That can be a lot: a pedal on the PCB measured 8% at rest and up to 15%
+    /// while moving, and within this of a track end the wiper is ambiguous.
     pub max_wiper_relative: f32,
     /// Largest relative resistance a track end can have and still count as shorted to the
     /// star point by a wiper resting on it, and a mono plug's ring as shorted to the sleeve.
@@ -221,7 +224,7 @@ impl MonitorConfig {
             solver,
             pull_up_resistances: [pull_resistance; ARM_COUNT],
             pull_down_resistances: [pull_resistance; ARM_COUNT],
-            max_wiper_relative: 0.1,
+            max_wiper_relative: 0.25,
             end_stop_relative: 0.02,
             plug_check_interval: 50,
             open_solve_interval: 1000,
@@ -868,16 +871,22 @@ impl JackMonitor {
                     return;
                 }
 
-                let wiper = [
-                    self.preferred_wiper,
-                    self.remembered_wiper,
-                    Some(TIP),
-                    Some(RING),
-                ]
-                .into_iter()
-                .flatten()
-                .find(|wiper| candidates.contains(wiper))
-                .unwrap_or(candidates[0]);
+                let wiper = self.choose_wiper(candidates, [TIP, RING]);
+                self.track(&resistances, wiper, now);
+            }
+
+            // The lower-resistance arm is the likelier wiper, the one right next to the track
+            // end, unless that is the sleeve, the grounded end in the TRS convention: then the
+            // other is a wiper with resistance in its lead, resting on the sleeve end. A wrong
+            // guess is corrected like at an end stop, once the pedal moves.
+            Network::NearEnd { candidates } => {
+                let [lower, higher] = candidates;
+                let defaults = if lower == GROUNDED_END {
+                    [higher, lower]
+                } else {
+                    candidates
+                };
+                let wiper = self.choose_wiper(candidates, defaults);
                 self.track(&resistances, wiper, now);
             }
 
@@ -896,6 +905,17 @@ impl JackMonitor {
                 self.start_solve(now, JackMode::Other);
             }
         }
+    }
+
+    /// The wiper out of two `candidates` the network cannot tell apart: the one chosen in the
+    /// settings, else the last one seen in this jack, else the first of `defaults`.
+    fn choose_wiper(&self, candidates: [usize; 2], defaults: [usize; 2]) -> usize {
+        [self.preferred_wiper, self.remembered_wiper]
+            .into_iter()
+            .flatten()
+            .chain(defaults)
+            .find(|wiper| candidates.contains(wiper))
+            .unwrap_or(candidates[0])
     }
 
     /// Whether an end stop with ring and sleeve shorted is really a rheostat between tip and

@@ -1,13 +1,17 @@
+use core::fmt;
+use core::net::Ipv4Addr;
+
 use defmt::{unwrap, warn};
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either, select};
 use embassy_net::Stack;
 use picoserve::futures::Either as MessageOrUpdate;
 use picoserve::io::{Read, Write};
-use picoserve::response::File;
+use picoserve::request::{Path, Request};
 use picoserve::response::ws::{Message, SocketRx, SocketTx, WebSocketCallback, WebSocketUpgrade};
-use picoserve::routing::{get, get_service};
-use picoserve::{Config, Router, Server};
+use picoserve::response::{File, IntoResponse, ResponseWriter, StatusCode};
+use picoserve::routing::{PathRouterService, get, get_service};
+use picoserve::{Config, ResponseSent, Router, Server};
 use serde::Serialize;
 
 use super::interface::{INTERFACE, Settings, Status};
@@ -90,17 +94,60 @@ impl WebSocketCallback for InterfaceSession {
     }
 }
 
+/// The web interface's address as a URL.
+struct InterfaceUrl(Ipv4Addr);
+
+impl fmt::Display for InterfaceUrl {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "http://{}/", self.0)
+    }
+}
+
+/// Redirects every request the interface has no route for to the interface. After joining a
+/// network, phones and computers fetch a fixed page (`/generate_204` on Android,
+/// `/hotspot-detect.html` on Apple devices, `/connecttest.txt` on Windows) from a host the DNS
+/// server resolves to this device; the redirect makes them show the interface as the network's
+/// sign-in page.
+struct CaptivePortal {
+    interface: Ipv4Addr,
+}
+
+impl PathRouterService for CaptivePortal {
+    async fn call_path_router_service<R: Read, W: ResponseWriter<Error = R::Error>>(
+        &self,
+        _state: &(),
+        _current_path_parameters: (),
+        _path: Path<'_>,
+        request: Request<'_, R>,
+        response_writer: W,
+    ) -> Result<ResponseSent, W::Error> {
+        let url = InterfaceUrl(self.interface);
+        (
+            StatusCode::FOUND,
+            ("Location", &url),
+            format_args!(
+                "{url}
+"
+            ),
+        )
+            .write_to(request.body_connection.finalize().await?, response_writer)
+            .await
+    }
+}
+
 async fn send<W: Write>(tx: &mut SocketTx<W>, update: Update) -> Result<(), W::Error> {
     tx.send_json(update).await?;
     tx.flush().await
 }
 
 #[embassy_executor::task(pool_size = MAX_SESSIONS)]
-async fn serve(task_id: usize, stack: Stack<'static>) -> ! {
-    let router = Router::new().route("/", get_service(INDEX_HTML)).route(
-        "/ws",
-        get(async |upgrade: WebSocketUpgrade| upgrade.on_upgrade(InterfaceSession)),
-    );
+async fn serve(task_id: usize, stack: Stack<'static>, interface: Ipv4Addr) -> ! {
+    let router = Router::from_service(CaptivePortal { interface })
+        .route("/", get_service(INDEX_HTML))
+        .route(
+            "/ws",
+            get(async |upgrade: WebSocketUpgrade| upgrade.on_upgrade(InterfaceSession)),
+        );
 
     let mut tcp_rx_buffer = [0; 1024];
     let mut tcp_tx_buffer = [0; 1024];
@@ -111,9 +158,11 @@ async fn serve(task_id: usize, stack: Stack<'static>) -> ! {
         .into_never()
 }
 
-/// Serves the web interface on port 80 of `stack`. Panics if called twice.
+/// Serves the web interface on port 80 of `stack`, which must have its IPv4 address configured,
+/// and redirects every other path there. Panics if called twice.
 pub fn spawn_web_server(spawner: Spawner, stack: Stack<'static>) {
+    let interface = unwrap!(stack.config_v4()).address.address();
     for task_id in 0..MAX_SESSIONS {
-        spawner.spawn(unwrap!(serve(task_id, stack)));
+        spawner.spawn(unwrap!(serve(task_id, stack, interface)));
     }
 }

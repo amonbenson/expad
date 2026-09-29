@@ -2,11 +2,14 @@
 //! pins, chips and channels every jack's contacts are connected to. Every application builds
 //! its drivers through here, so this module is the only place that knows the board.
 //!
-//! Each jack J2-J5 (left to right) has its own analog channel block: a 74HC595 whose outputs
+//! Each jack J2-J5 (left to right on the PCB) has its own analog channel block: a 74HC595 whose outputs
 //! drive two TMUX1511 quad switches, one connecting each contact to a shared 1 kΩ pull-up to
 //! the 2.5 V reference, the other to a shared 1 kΩ pull-down to ground. Every contact is also
 //! read through a 10 kΩ / 10 nF filter by one of two AD7718s. The WS2812B LEDs D4-D7 sit
-//! below the jacks in the same order.
+//! below the jacks in the same order, chained from D4.
+//!
+//! The PCB is mounted upside down in its case, so the jacks are numbered from J5: jack 1 is
+//! J5, jack 4 is J2.
 
 use embassy_rp::Peri;
 use embassy_rp::dma::{self, ChannelInstance};
@@ -91,6 +94,8 @@ pub struct JackWiring {
     pub adc_chip: usize,
     /// ADC input reading every contact, indexed by [`Contact`] (AIN number minus one).
     pub adc_channels: [u8; 4],
+    /// The WS2812B below the jack, counted from the microcontroller along the LED chain.
+    pub led: usize,
 }
 
 impl JackWiring {
@@ -126,27 +131,31 @@ const FIRST_JACK_ADC_CHANNELS: [u8; 4] = [7, 0, 6, 1];
 /// The same for the second jack on each AD7718: AIN3, AIN9, AIN4, AIN5.
 const SECOND_JACK_ADC_CHANNELS: [u8; 4] = [2, 8, 3, 4];
 
-/// Every jack's wiring, J2 to J5.
+/// Every jack's wiring, in the case's order: J5 to J2.
 pub const JACKS: [JackWiring; JACK_COUNT] = [
     JackWiring {
-        switch_chip: 0,
-        adc_chip: 0,
-        adc_channels: FIRST_JACK_ADC_CHANNELS,
-    },
-    JackWiring {
-        switch_chip: 1,
-        adc_chip: 0,
+        switch_chip: 3,
+        adc_chip: 1,
         adc_channels: SECOND_JACK_ADC_CHANNELS,
+        led: 3,
     },
     JackWiring {
         switch_chip: 2,
         adc_chip: 1,
         adc_channels: FIRST_JACK_ADC_CHANNELS,
+        led: 2,
     },
     JackWiring {
-        switch_chip: 3,
-        adc_chip: 1,
+        switch_chip: 1,
+        adc_chip: 0,
         adc_channels: SECOND_JACK_ADC_CHANNELS,
+        led: 1,
+    },
+    JackWiring {
+        switch_chip: 0,
+        adc_chip: 0,
+        adc_channels: FIRST_JACK_ADC_CHANNELS,
+        led: 0,
     },
 ];
 

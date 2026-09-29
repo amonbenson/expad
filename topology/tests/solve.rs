@@ -28,10 +28,14 @@ fn network(resistances: &ArmResistances) -> Network {
     resistances.network(config.max_wiper_relative, config.end_stop_relative)
 }
 
-/// Wiper position of `resistances` if they form a potentiometer with a clear wiper.
+/// Wiper position of `resistances` if they form a potentiometer with a clear wiper, or with
+/// the lower of two candidates near a track end.
 fn wiper_position(resistances: &ArmResistances) -> Option<f32> {
     match network(resistances) {
-        Network::Potentiometer { wiper } => resistances.position_with_wiper(wiper),
+        Network::Potentiometer { wiper }
+        | Network::NearEnd {
+            candidates: [wiper, _],
+        } => resistances.position_with_wiper(wiper),
         _ => None,
     }
 }
@@ -366,9 +370,10 @@ fn keeps_the_position_steady_when_the_wiper_contact_resistance_is_the_shared_arm
     }
 }
 
+/// Every arm carries more than a quarter of the total, more than any wiper's lead.
 #[test]
 fn classifies_a_network_with_no_arm_at_the_star_point_as_other() {
-    let resistances = solve(&StarNetwork::new([10.0, 22.0, 47.0])).unwrap();
+    let resistances = solve(&StarNetwork::new([33.0, 47.0, 39.0])).unwrap();
 
     assert_eq!(network(&resistances), Network::Other);
     assert_eq!(wiper_position(&resistances), None);

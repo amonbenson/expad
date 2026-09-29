@@ -720,3 +720,66 @@ fn tracks_a_high_value_pedal_through_noise_and_notices_it_unplugged() {
     harness.jack.plugged = false;
     harness.run_until(JackMode::Empty, 300);
 }
+
+/// A potentiometer like [`potentiometer`] whose wiper adds `lead` kΩ of its own: a pedal on the
+/// PCB, 11.4 kΩ with its wiper on the ring, measured 1 kΩ in its wiper at rest and up to 1.9 kΩ
+/// while moving - more than a tenth of its total, beyond what a wiper was allowed.
+fn resistive_wiper(wiper: usize, position: f32, total: f32, lead: f32) -> [f32; ARM_COUNT] {
+    let mut arms = potentiometer(wiper, position, total);
+    arms[wiper] = lead;
+    arms
+}
+
+/// Near the heel end, the sleeve's arm drops below the wiper's: the sleeve is never taken for
+/// the wiper by default, so the pedal is tracked from the start, all the way to the toe end -
+/// where the tip's arm drops below it - and back.
+#[test]
+fn tracks_a_ring_wiper_with_lead_resistance_through_its_whole_travel() {
+    let mut harness = Harness::new();
+    harness
+        .jack
+        .plug(Some(resistive_wiper(RING, 0.0, 11.4, 1.7)));
+    harness.run_until(JackMode::Tracking, 150);
+    harness.run_for(20);
+    assert_close(harness.position(), 0.0, 1e-3);
+    harness.reset_counters();
+
+    for step in (0..=50).chain((0..50).rev()) {
+        let position = step as f32 / 50.0;
+        harness.jack.network = Some(resistive_wiper(RING, position, 11.4, 1.7));
+        harness.run_for(20);
+        assert_eq!(harness.mode(), JackMode::Tracking, "at {position}");
+        assert_close(harness.position(), position, 1e-3);
+    }
+    assert_eq!(harness.mode_changes, 0);
+}
+
+/// A tip wiper with lead resistance resting on its toe end looks like a clean ring wiper a
+/// little way along the track, which is tracked first; once the pedal moves, the right wiper is
+/// found and remembered for when it returns.
+#[test]
+fn corrects_a_wrong_guess_near_a_track_end_once_the_pedal_moves() {
+    let mut harness = Harness::new();
+    harness
+        .jack
+        .plug(Some(resistive_wiper(TIP, 1.0, 11.4, 1.7)));
+    harness.run_until(JackMode::Tracking, 150);
+
+    for step in 1..=20 {
+        let position = 1.0 - step as f32 * 0.025;
+        harness.jack.network = Some(resistive_wiper(TIP, position, 11.4, 1.7));
+        harness.run_for(20);
+    }
+    harness.run_until(JackMode::Tracking, 200);
+    harness.run_for(20);
+    assert_close(harness.position(), 0.5, 1e-3);
+    harness.reset_counters();
+
+    for step in 20..=40 {
+        let position = step as f32 * 0.025;
+        harness.jack.network = Some(resistive_wiper(TIP, position, 11.4, 1.7));
+        harness.run_for(20);
+        assert_close(harness.position(), position, 1e-3);
+    }
+    assert_eq!(harness.mode_changes, 0);
+}

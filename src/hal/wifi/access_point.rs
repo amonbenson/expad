@@ -15,6 +15,7 @@ use embassy_rp::pio::{self, Pio};
 use static_cell::StaticCell;
 
 use super::dhcp::run_dhcp_server;
+use super::dns::run_dns_server;
 
 /// TCP and UDP sockets the network stack can hold at once, shared by every service on it.
 const SOCKET_COUNT: usize = 8;
@@ -64,7 +65,8 @@ async fn run_network(mut runner: embassy_net::Runner<'static, NetDriver<'static>
 }
 
 /// Opens a WPA2-protected WiFi access point on the Pico 2 W and returns its network stack, with a DHCP
-/// server already handing out addresses to clients. Panics if called twice.
+/// server already handing out addresses to clients and a DNS server resolving every name to the
+/// device. Panics if called twice.
 pub async fn start_access_point<D: ChannelInstance>(
     spawner: Spawner,
     peripherals: AccessPointPeripherals<D>,
@@ -124,6 +126,7 @@ pub async fn start_access_point<D: ChannelInstance>(
         .start_ap_wpa2(config.ssid, config.password, config.channel)
         .await;
     spawner.spawn(unwrap!(run_dhcp_server(stack, config.address)));
+    spawner.spawn(unwrap!(run_dns_server(stack, config.address)));
 
     info!(
         "WiFi access point '{}' up at {}",
