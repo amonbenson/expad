@@ -12,6 +12,9 @@ the monitor's phases marked. Writes plugin_timing_rail_refresh.png (rails older 
 again before the solve), plugin_timing_fresh_rails.png (rails less than 30 s old) and
 unplug_timing.png.
 
+SPI edges (M7b), from raw_data/spi_edges_rise.csv: the ADC bus clock and MOSI around one clock
+pulse, with every edge's 10-90 % transition time marked. Writes spi_edges.png.
+
 Usage (in measurements/): uv run create_plots.py   (dependencies in pyproject.toml)
 """
 
@@ -119,8 +122,22 @@ NARROW_PHASE = (
     0.15  # share of the plotted time below which a phase's label turns vertical
 )
 
+# SPI capture: CH1 on SPI0_CLK (TP7), CH2 on SPI0_TX (TP8), 10X probes, bandwidth limit off,
+# triggered on the clock's rising edge. Each edge is (trace, label, window in ns holding only that
+# edge, side of the edge its label goes on); its levels are the medians at the window's ends.
+SPI_CAPTURE = "spi_edges_rise.csv"
+SPI_TRACES = {"SCLK": ("TP7", "#2a78d6"), "MOSI": ("TP8", "#eb6834")}  # test point, color
+SPI_EDGES = [
+    ("SCLK", "SCLK rise", (-10, 40), "right"),
+    ("SCLK", "SCLK fall", (100, 160), "left"),
+    ("MOSI", "MOSI rise", (100, 189), "right"),
+]
+SETTLED_SAMPLES = 25  # 5 ns at 5 GSa/s, averaged into each level of an edge
+TRANSITION_SHARES = (0.1, 0.9)
+
 MILLIVOLTS = 1e3
 MILLISECONDS = 1e3
+NANOSECONDS_PER_MILLISECOND = 1e6
 TEXT_COLOR = "#000000"
 MUTED_COLOR = "#52514e"
 LIMIT_COLOR = "#a4161a"  # deep red, kept apart from the orange WiFi bars
@@ -315,6 +332,56 @@ def plot_jack_timing(capture, time_range, tip_switch_event, phases):
     return figure
 
 
+def transition(time, voltage, window):
+    """Times the one edge inside `window` first crosses 10 % and 90 % of its step."""
+    inside = (time >= window[0]) & (time <= window[1])
+    edge_time, edge_voltage = time[inside], voltage[inside]
+    start_level = np.median(edge_voltage[:SETTLED_SAMPLES])
+    end_level = np.median(edge_voltage[-SETTLED_SAMPLES:])
+    direction = np.sign(end_level - start_level)
+
+    crossings = []
+    for share in TRANSITION_SHARES:
+        level = start_level + share * (end_level - start_level)
+        past_level = (edge_voltage - level) * direction >= 0
+        crossings.append(edge_time[np.argmax(past_level)])
+    return crossings
+
+
+def plot_spi_edges():
+    time, clock, data = load_capture(SPI_CAPTURE)
+    time = time * NANOSECONDS_PER_MILLISECOND
+    voltages = {"SCLK": clock, "MOSI": data}
+
+    figure, axes = plt.subplots(figsize=(13.33, 7.0))
+    for name, (test_point, color) in SPI_TRACES.items():
+        axes.plot(
+            time, voltages[name], color=color, linewidth=2.5, label=f"{name} ({test_point})"
+        )
+
+    for trace, label, window, side in SPI_EDGES:
+        start, end = transition(time, voltages[trace], window)
+        axes.axvspan(start, end, color=SPI_TRACES[trace][1], alpha=0.15, linewidth=0)
+        on_right = side == "right"
+        axes.text(
+            end + 2 if on_right else start - 2,
+            1.65,
+            f"{label}\n{end - start:.1f} ns",
+            fontsize=20,
+            ha="left" if on_right else "right",
+            va="center",
+        )
+
+    axes.set_xlim(time[0], time[-1])
+    axes.set_ylim(-0.2, 3.9)
+    axes.set_yticks([0, 1, 2, 3])
+    axes.set_xlabel("Time (ns), shaded: 10-90 % transition")
+    axes.set_ylabel("Voltage (V)")
+    figure.legend(loc="upper center", ncols=len(SPI_TRACES), frameon=False)
+    figure.tight_layout(rect=(0, 0, 1, 0.92))
+    return figure
+
+
 def save(figure, name):
     figure.savefig(HERE / name, dpi=200, facecolor="white")
     plt.close(figure)
@@ -330,6 +397,7 @@ def main():
         phases,
     ) in TIMING_CAPTURES.items():
         save(plot_jack_timing(capture, time_range, tip_switch_event, phases), name)
+    save(plot_spi_edges(), "spi_edges.png")
 
 
 if __name__ == "__main__":
