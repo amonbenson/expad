@@ -238,7 +238,8 @@ index.html (`OUT_DIR/web`).
 - memory.x, rp235x_riscv.x, Embed.toml: linker and probe configuration.
 - firmware/cyw43/: vendored CYW43439 blobs (Infineon permissive binary license).
 - docs/: fast-tracking.md (ADC measurements, pull resistor analysis, monitor design), diagrams/
-  (TikZ state diagram of `JackMonitor` with PDF/SVG/PNG exports; build steps in its README).
+  (TikZ state diagram of `JackMonitor` and a large-type overview for slides, with PDF/SVG/PNG
+  exports; build steps in its README).
 - presentations/, measurements/: milestone slides and bench measurement scripts, outside the
   firmware.
 
