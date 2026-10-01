@@ -1,0 +1,53 @@
+% !TEX root = ../main.tex
+
+\section{Update Rate}
+\label{sec:results-update-rate}
+
+\scaffold{
+  \textbf{Paragraph 1, measurement.} The controller firmware logs the number of position updates per jack every \qty{5}{\second}. With one pedal on its ADC, \numrange{188}{189} updates per second were measured after the SPI changes of \cref{sec:update-rate} (168 before); about \qty{15}{\percent} of the readings are track-end checks. Present \cref{tab:update-rate} and compare with the 2.6 updates per second of the first firmware, a factor of about 70. Point out which rows are measured and which calculated.
+}
+
+\begin{table}[htbp]
+  \centering
+  \titledcaption{Update Rate per Pedal}{\scaffoldinline{State which values are measured (firmware log) and which calculated; jacks 1 and 2 share one ADC, jacks 3 and 4 the other.}}
+  \label{tab:update-rate}
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X ll@{}}
+    \toprule
+    \textbf{Situation} & \textbf{Updates per second} & \textbf{Origin} \\
+    \midrule
+    First firmware, full solves of all jacks & 2.6 & measured \\
+    Full solves at \qty{819}{\hertz} & 5.8 & measured (sweep \qty{171}{\milli\second}) \\
+    One pedal on its ADC, \qty{1}{\mega\hertz} SPI & 168 & measured \\
+    One pedal on its ADC, \qty{4}{\mega\hertz} SPI & 188 to 189 & measured \\
+    Two pedals on one ADC, or all four jacks & $\approx$ 95 & calculated \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\scaffold{
+  \textbf{Paragraph 2, reading time.} Present \cref{tab:spi-trim}: the SPI changes shortened a reading by about \qty{0.34}{\milli\second} without changing the noise or producing outlying codes; three conversion periods take \qty{3.66}{\milli\second}, so about \qty{0.35}{\milli\second} of overhead per reading remain.
+}
+
+\begin{table}[htbp]
+  \centering
+  \titledcaption{Reading Time Before and After the SPI Changes}{\scaffoldinline{Conditions: \qty{819}{\hertz}, pedal in jack~1 held still, 300 readings per configuration. Source: \code{docs/fast-tracking.md}.}}
+  \label{tab:spi-trim}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    & \textbf{\qty{1}{\mega\hertz}, \qty{50}{\micro\second} guard} & \textbf{\qty{4}{\mega\hertz}, \qty{10}{\micro\second} guard} \\
+    \midrule
+    Reading with channel change & \qty{4357}{\micro\second} & \qty{4021}{\micro\second} \\
+    Reading on the same channel & \qty{4188}{\micro\second} & \qty{3985}{\micro\second} \\
+    Wiper noise ($\sigma$) & \qty{442}{\micro\volt} & \qty{431}{\micro\volt} \\
+    Outlying codes in 300 readings & 0 & 0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\openquestion{Rate with several pedals}{
+  The rate with two pedals on one ADC (jacks 1 and 2, or 3 and 4) and with four pedals is calculated, not measured. Measure it with the firmware log if pedals are available, and say which jacks were used.
+}
+
+\openquestion{End-to-end latency}{
+  The milestone plan listed the latency from a resistance change to the value arriving at the host. The measurement guide describes it (a GPIO toggled when the packet is handed to USB, plus a timestamping MIDI monitor on the host), but no data exists. Measure it or state that it was dropped and why.
+}

@@ -1,0 +1,34 @@
+% !TEX root = ../main.tex
+
+\section{Board Self-Test}
+\label{sec:results-self-test}
+
+\scaffold{
+  \textbf{Paragraph 1, procedure.} The self-test program reads the grounded input AIN6 and the reference input AIN10 of both ADCs, then pulls every contact of every jack up and down in turn with all jacks empty and checks that exactly the ADC input that \code{board.rs} assigns to that contact follows: 4 jacks $\times$ 4 contacts $\times$ 2 polarities = 32 checks, plus the check that the tip switch follows the tip while no plug is inserted. Both ADCs convert in parallel; the whole test takes \qty{1.26}{\second}.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, result.} On its first run on the assembled board, every contact read \qty{2.50}{\volt} pulled up and \qty{0.0}{\volt} pulled down on exactly the expected input, which confirms switch polarity, the order of the shift-register chain and the bit mapping; the grounded inputs read \qty{0.0}{\volt} and the reference inputs \qty{2.50}{\volt}. (At that time the jacks were not yet soldered, so the tip-switch check was repeated afterwards and passed.) Present the result as \cref{tab:self-test}. Conclude in one sentence that wiring, switches, shift registers and both ADCs work as designed, which every later measurement rests on.
+}
+
+\begin{table}[htbp]
+  \centering
+  \titledcaption{Self-Test Result}{\scaffoldinline{Explain rows and columns and that \enquote{pass} means only the expected input followed. Fill in from a fresh run of \code{cargo run --bin detect\_pin\_mapping} with the jacks unplugged; the numbers shown are from the log of the first run.}}
+  \label{tab:self-test}
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    & \textbf{Tip} & \textbf{Ring} & \textbf{Sleeve} & \textbf{Tip switch} \\
+    \midrule
+    Jack 1 (J5) & pass & pass & pass & pass \\
+    Jack 2 (J4) & pass & pass & pass & pass \\
+    Jack 3 (J3) & pass & pass & pass & pass \\
+    Jack 4 (J2) & pass & pass & pass & pass \\
+    \midrule
+    \multicolumn{5}{@{}l}{Grounded input AIN6: \qty{0.0}{\volt} on both ADCs; reference input AIN10: \qty{2.50}{\volt}} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\openquestion{Self-test log}{
+  The table is reconstructed from a development session. Rerun the self-test on the final firmware and fill in the measured values (pulled-up and pulled-down voltage per contact, AIN6 and AIN10 per ADC).
+}

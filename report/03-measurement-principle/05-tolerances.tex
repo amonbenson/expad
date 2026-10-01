@@ -1,0 +1,30 @@
+% !TEX root = ../main.tex
+
+\section{Tolerances from the ADC Noise}
+\label{sec:tolerances}
+
+\scaffold{
+  \textbf{Paragraph 1, the principle.} Every threshold of the solver is expressed in standard deviations of the noise of a single ADC reading, $\sigma_V$, propagated to the quantity that is checked: a current read across $R_\mathrm{p}$ has $\operatorname{Var}(I_\mathrm{H}) = (\sigma_V / R_\mathrm{p})^2$, the averaged current a quarter of the sum of both sides. Consequence: a high-value pedal, whose small currents are noisy, gets proportionally wider tolerances instead of being rejected, and adapting the solver to another front end only requires its $\sigma_V$. On this board $\sigma_V = \qty{0.5}{\milli\volt}$ at the chosen update rate (\cref{sec:update-rate}). Note the history: the first version used exact-arithmetic thresholds from the simulator ($10^{-9}$) that rejected every real measurement.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, the thresholds.} Present \cref{tab:solver-tolerances} and comment on the two that matter most: the conduction threshold of $3\sigma$ decides the largest pair resistance still distinguishable from an open circuit, and the minimum conditioning (\cref{sec:solving}) decides when a third pair is measured. Compute once what the conduction threshold means in resistance for $R_\mathrm{p} = \qty{1}{\kilo\ohm}$ and a \qty{2.5}{\volt} rail.
+}
+
+\begin{table}[htbp]
+  \centering
+  \titledcaption{Solver Tolerances}{\scaffoldinline{Say that $\sigma$ is the noise of the checked quantity derived from $\sigma_V$, that a check passes if either the noise criterion or the relative criterion holds, and give the source (\code{SolverConfig::from\_voltage\_noise} in \code{topology/src/config.rs}).}}
+  \label{tab:solver-tolerances}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Check} & \textbf{Noise criterion} & \textbf{Relative criterion} \\
+    \midrule
+    Pair conducts & $I > 3\sigma_I$ & -- \\
+    High and low current agree & $5\sigma$ & \qty{10}{\percent} of $I$ \\
+    Pair totals agree & $4\sigma$ & \qty{10}{\percent} of $R_\mathrm{tot}$ \\
+    Pair is a short & -- & $R_{hl} < \qty{50}{\ohm}$ \\
+    Ratio is defined & $V_h - V_l > 10\sigma_V$ & -- \\
+    Two pairs suffice & -- & conditioning $c \geq 0.5$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}

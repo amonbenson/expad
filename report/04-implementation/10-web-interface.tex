@@ -1,0 +1,31 @@
+% !TEX root = ../main.tex
+
+\section{Web Interface}
+\label{sec:web-interface}
+
+\scaffold{
+  \textbf{Paragraph 1, access point and protocol.} The Pico~2~W opens a WPA2-protected WiFi access point and runs a DHCP server, a DNS server that answers every name with the device's address, and an HTTP server. Every path other than the interface itself is redirected to it, so phones and laptops open the interface as the sign-in page of the network (captive portal). The page holds a WebSocket connection: the device sends the status of every jack (mode, raw position, value, arm resistances, voltage and drive of every contact) about 30 times per second and the settings on every change; every settings message from a browser is applied and forwarded to all other open pages. Settings are not stored in flash yet, so they reset with every power cycle.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, the interface.} Describe \cref{fig:web-interface}: the jacks laid out as channel strips of a mixing desk, each with MIDI channel, controller, invert, range with minimum and maximum buttons, wiper setting and drive knob; and the side panel that draws the identified network of the selected jack with every pull switch, the measured contact voltages and a three-line explanation of what the jack is doing now, why, and what it waits for. State its role in the project in one sentence: it was the main debugging tool during development and made the classification visible during the demonstration.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \placeholderfigure{
+    \textbf{Content.} Screenshot of the web interface with four channel strips and the topology panel open on a jack that follows a potentiometer pedal.
+    \textbf{Focus.} Crop to the strips and the panel; mark (numbered callouts) the range slider with its minimum and maximum buttons, the drive knob, the wiper setting, the drawn network with the identified wiper, and the explanation text.
+    \textbf{How to obtain.} Either connect to the device (\code{npm run dev} in \code{web/}) with a pedal plugged in, or run \code{npm run dev:mock}, which simulates a potentiometer, a switch and a scripted plug-in sequence; take the screenshot in the browser at a window width of about 1600 pixels.
+  }
+  \titledcaption{Web Interface}{\scaffoldinline{Explain each numbered callout and which jack and pedal the screenshot shows.}}
+  \label{fig:web-interface}
+\end{figure}
+
+\scaffold{
+  \textbf{Paragraph 3, implementation in one sentence each.} The front end is a Vue single-page application built with Vite, Tailwind CSS and PrimeVue; the build step of the firmware compiles it into one gzipped HTML file that is embedded in the firmware image. A mock device that speaks the same protocol allows developing the interface without hardware. Do not go further into the web stack; it is not the subject of the report.
+}
+
+\openquestion{Android tablet drops}{
+  WebSocket connections to one Android tablet dropped repeatedly (unacknowledged frames at the radio level) while other devices stayed connected; the captive portal was added in the hope of reducing the tablet's background scanning. Did it help? If the issue remains, mention it as a limitation in \cref{ch:discussion}.
+}

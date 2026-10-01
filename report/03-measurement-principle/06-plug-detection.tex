@@ -1,0 +1,21 @@
+% !TEX root = ../main.tex
+
+\section{Plug Detection}
+\label{sec:plug-detection}
+
+\scaffold{
+  \textbf{Paragraph 1, why a separate check.} A solve cannot tell an empty jack from a plugged cable with nothing conducting behind it, since both leave every pair open. The jacks have a fourth contact for this: the \emph{tip switch}, a normalling contact that touches the tip while no plug is inserted and is lifted by the plug \cite{neutrik2026nmj6hfd2}. Use the term \enquote{tip switch} throughout, never \enquote{normalling contact} after its definition.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, the check.} The \emph{plug check} drives the tip low and the tip switch high and leaves ring and sleeve floating. Without a plug the two pulls form a divider and the tip switch reads half the rail span, \qty{1.25}{\volt}; with a plug it is isolated and reads its own rail, \qty{2.5}{\volt}. A plug is assumed above three quarters of the span (\cref{eq:plug-threshold}). Explain why the check is independent of the pedal: ring and sleeve float, so no current flows through the pedal whatever its wiring, position or end stop, including a wiper on the tip. It costs one reading plus the re-settling of whatever the jack was driven with before.
+}
+
+\begin{equation}
+  V_\mathrm{TS} > V_{\mathrm{L},\mathrm{TS}} + 0.75\,\bigl(V_{\mathrm{H},\mathrm{TS}} - V_{\mathrm{L},\mathrm{TS}}\bigr)
+  \label{eq:plug-threshold}
+\end{equation}
+
+\scaffold{
+  \textbf{Paragraph 3, origin of the fourth contact.} One sentence for the reader: the board switches four contacts per jack because the switch ICs have four channels, and the spare channel was put on the tip switch (author's statement in the final presentation); the use for plug detection followed from that. Refer to \cref{sec:design-history}.
+}

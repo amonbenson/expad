@@ -1,0 +1,18 @@
+% !TEX root = ../main.tex
+
+\chapter*{Abstract}
+
+\scaffold{
+  One paragraph of about ten sentences, no citations, no abbreviation without its full form (writing guide, section 3.2). Write it last. Sentence order and content:
+  \begin{enumerate}
+    \item Context: expression pedals are passive potentiometers operated by foot that musicians use to change a sound parameter continuously while both hands stay on the instrument.
+    \item Problem: no wiring standard exists; the wiper sits on the tip or on the ring, some pedals have two wires only, and a pedal on a mismatched input reads reversed, nonlinear or not at all.
+    \item What the project presents: a four-jack interface that identifies what is plugged in electrically and sends its position as a MIDI control change over USB.
+    \item Parts, as one sentence with a dash-enclosed enumeration: analog switches that pull every jack contact up or down through \qty{1}{\kilo\ohm} resistors, two 24-bit sigma-delta analog-to-digital converters (written out, since the abstract defines no abbreviations) referenced to the same \qty{2.5}{\volt} rail, and a Raspberry Pi Pico~2~W running firmware in Rust.
+    \item Central method: each pedal is modelled as a three-terminal star network, whose arm resistances follow from voltages measured while one contact is driven high, one low and the third left floating.
+    \item How it follows the pedal: once identified, a potentiometer is read with a single conversion of its wiper between its driven track ends; switches and two-wire rheostats are followed through the tip.
+    \item Development and verification: the solver and the per-jack state machine run and are tested on the host against a simulated network; the hardware was verified with a self-test and oscilloscope measurements.
+    \item Results, with numbers: about 188 position updates per second for a single pedal (2.6 for repeated full identification), recognition within 65 to \qty{95}{\milli\second} (about \qty{300}{\milli\second} when the reference levels are re-measured first), and a position noise of \num{274} parts per million, about 1/29 of a MIDI step.
+    \item Concluding sentence: what the results show, i.e. that an unknown passive pedal can be identified in place with switchable pull resistors and a slow high-resolution ADC, and followed fast enough for live use.
+  \end{enumerate}
+}

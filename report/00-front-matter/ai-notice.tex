@@ -1,0 +1,18 @@
+% !TEX root = ../main.tex
+
+\chapter*{Notice on the Use of AI Tools}
+
+\scaffold{
+  One paragraph, one sentence per tool: product name, manufacturer, version, purpose, citation (writing guide, section 3.1). Name the concrete work products each tool contributed to and cite the repository \cite{benson2026expad} where they live. The facts below are taken from the Claude Code session logs of the project.
+
+  \begin{itemize}
+    \item Anthropic Claude Code \cite{anthropic2026claudecode}, versions 2.1.227 to 2.1.284, with the models Claude Opus~5.5 \cite{anthropic2026opus55}, Claude Opus~5 \cite{anthropic2026opus5} and Claude Sonnet~5 \cite{anthropic2026sonnet5}. Purposes: implementation of the firmware (drivers for the AD7718, the pull switches, the LEDs, USB MIDI and WiFi; the port of the solver from the simulator \cite{benson2026topologysim}; the jack state machine and its host tests), the web interface, parsing the KiCad netlist into the board table, the evaluation scripts for the oscilloscope data (\code{measurements/create\_plots.py}, OCR extraction of scope statistics), the TikZ state diagram, the project documentation, the measurement guide, and the scaffold of this report.
+    \item Anthropic Claude (claude.ai chat): early concept research on the measurement circuit, the network identification and component selection.
+  \end{itemize}
+
+  Final sentence: all AI-generated content was reviewed and verified by the author, who takes full responsibility for the final content of this work.
+}
+
+\openquestion{AI tools in the chats and in the text}{
+  The model and version used in the claude.ai chats are not recorded in the repository. Name them. State also whether an AI tool is used for grammar and spell checking of the final text, as in the reference report.
+}

@@ -1,0 +1,67 @@
+% !TEX root = ../main.tex
+
+\section{Scheduling and Update Rate}
+\label{sec:update-rate}
+
+\scaffold{
+  \textbf{Paragraph 1, the starting point.} The first firmware on the PCB solved every jack in turn and needed \qty{382}{\milli\second} per sweep, so a pedal was updated 2.6 times per second; the user-facing target set during development was at least \qty{50}{\hertz}. Break the time down, which is the diagnosis: every reading changed the ADC channel and therefore paid three conversion periods (\cref{sec:conversion}), \qty{9.5}{\milli\second} at the initial \qty{315}{\hertz} plus about \qty{0.7}{\milli\second} of SPI traffic; every jack took nine readings (three pairs of three contacts), the empty ones included; four jacks $\times$ nine readings $\times$ \qty{10.3}{\milli\second} plus twelve settling waits of \qty{1}{\milli\second} gives the \qty{382}{\milli\second}. At \qty{50}{\hertz}, \qty{20}{\milli\second} buy about two readings, so no full solve can fit: speed had to come from reading faster and reading less.
+}
+
+\openquestion{Update-rate target}{
+  Is the \qty{50}{\hertz} target a requirement of the project or a value chosen during development? The proposal only asks for \enquote{real time without perceptible latency}.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, reading faster: the ADC operating point.} A characterization program measured, on a \qty{10.85}{\kilo\ohm} potentiometer pedal held still in jack~1, the time per reading and the noise at five filter rates (\cref{tab:adc-characterization}). Draw the three conclusions: the output resolution scales with the cube of the filter word, as sinc\textsuperscript{3} decimation predicts ($(13/3)^3 \approx 81$ between the fastest and the slowest word), which rules out the fastest rate; continuous conversion on one channel is 2.5 to 3 times noisier at the fast rates and was not worth a separate code path; calibration does not carry over between filter words (the ground reading moved between \qty{-2.9}{\milli\volt} and \qty{+1.75}{\milli\volt}), so the firmware uses one rate for rails, solves and following. \qty{819}{\hertz} reads 2.3 times faster than \qty{315}{\hertz} at a noise of \qty{0.39}{\milli\volt}, which is the $\sigma_V = \qty{0.5}{\milli\volt}$ of \cref{sec:tolerances}. Mains hum of 100 to \qty{140}{\micro\volt} was present at every rate but amounts to about 60 parts per million of travel.
+}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \titledcaption{ADC Characterization}{\scaffoldinline{State the conditions: \qty{10.85}{\kilo\ohm} pedal in jack~1, tip as wiper, ring high, sleeve low, bipolar coding, calibrated at every rate; \enquote{reading} includes the channel switch; position noise refers to the full travel. One MIDI step is \num{7874} parts per million. Source: \code{docs/fast-tracking.md}, program \code{adc\_characterization}.}}
+  \label{tab:adc-characterization}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}rrrrrr@{}}
+    \toprule
+    \textbf{Rate} & \textbf{Filter word} & \textbf{Reading} & \textbf{Noise} & \textbf{Output step} & \textbf{Position noise} \\
+    \textbf{(\unit{\hertz})} & & \textbf{(\unit{\milli\second})} & \textbf{(\unit{\milli\volt})} & \textbf{(\unit{\milli\volt})} & \textbf{(ppm)} \\
+    \midrule
+    1365 & 3 & 2.89 & 1.93 & 3.88 & 887 \\
+    1024 & 4 & 3.63 & 0.80 & 0.41 & 374 \\
+    819 & 5 & 4.36 & 0.39 & 0.21 & 203 \\
+    682 & 6 & 5.09 & 0.40 & 0.12 & 184 \\
+    315 & 13 & 10.22 & 0.11 & 0.012 & 62 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\scaffold{
+  \textbf{Paragraph 3, a solver weakness exposed.} At \qty{819}{\hertz} the sweep dropped to \qty{156}{\milli\second}, but the position noise rose instead of staying put. Cause: the test pedal has its wiper on the tip, which is the arm shared by the first two pairs, and with a contact resistance of \qty{1.5}{\percent} the conditioning (\cref{eq:conditioning}) was 0.083, just above the old minimum of 0.05; the solver then split the track through a few millivolts across the wiper and amplified the noise about 25-fold. Raising the minimum to 0.5 forces the third pair for such pedals. Present \cref{tab:conditioning-fix} and state that the flaw had already cost accuracy at \qty{315}{\hertz}; going faster only made it visible.
+}
+
+\begin{table}[htbp]
+  \centering
+  \titledcaption{Effect of the Minimum Conditioning}{\scaffoldinline{State the condition: pedal held still at position 0.21; sweep of all four jacks with full solves. Source: \code{docs/fast-tracking.md}.}}
+  \label{tab:conditioning-fix}
+  \begin{tabularx}{\linewidth}{@{}Xrrr@{}}
+    \toprule
+    \textbf{Configuration} & \textbf{Position (ppm)} & \textbf{Total} & \textbf{Sweep} \\
+    \midrule
+    \qty{315}{\hertz}, minimum 0.05 & 2588 & \qty{0.91}{\percent} & \qty{382}{\milli\second} \\
+    \qty{819}{\hertz}, minimum 0.05 & 4880 & \qty{1.75}{\percent} & \qty{156}{\milli\second} \\
+    \qty{819}{\hertz}, minimum 0.5 & 274 & \qty{0.11}{\percent} & \qty{171}{\milli\second} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\scaffold{
+  \textbf{Paragraph 4, reading less.} The second and larger step was to stop re-solving an identified pedal: the jack monitor of \cref{sec:jack-monitor} follows it with one reading per update, which is the reason the state machine exists. Empty jacks cost one plug check every \qty{50}{\milli\second} instead of nine readings per sweep.
+}
+
+\scaffold{
+  \textbf{Paragraph 5, scheduling on two ADCs.} The scanner gives each ADC to whichever of its two jacks is most overdue, applies the drives of both chosen jacks in one shift-register write, starts a conversion on both chips and waits for both. A followed jack keeps its drives while the other jack on the same ADC is read, so alternating between them costs no settling of the contacts, only the ADC's own three periods. Settling waits (\cref{eq:settling}) are only inserted when a drive actually changes. Finally, the SPI clock was raised from \qty{1}{\mega\hertz} to \qty{4}{\mega\hertz} and the chip-select guard cut from \qty{50}{\micro\second} to \qty{10}{\micro\second}, which shortened a reading from \qty{4.36}{\milli\second} to \qty{4.02}{\milli\second} without additional noise or outliers; three conversion periods alone take \qty{3.66}{\milli\second}. The resulting rates are evaluated in \cref{sec:results-update-rate}.
+}
+
+\scaffold{
+  \textbf{Paragraph 6, two development bugs.} One sentence each, as examples of observations on the board that changed the design: a rejected solve made the firmware forget the pedal's resistance and fall back to the longest settling time, so a moving pedal was tracked in one direction only; and the first tracking check allowed only \qty{3}{\percent} deviation, which dropped pedals replugged on an end stop. Both are now covered by host tests.
+}

@@ -1,0 +1,31 @@
+% !TEX program = lualatex
+% Report: Self-Configuring Interface for Expression Pedals. Build: latexmk (see latexmkrc).
+
+\input{preamble}
+
+\begin{document}
+
+\pagenumbering{roman}
+\include{00-front-matter/chapter}
+
+\tableofcontents
+\listofloqs % scaffold only: remove with the last open question
+
+\cleardoublepage
+\pagenumbering{arabic}
+\include{01-introduction/chapter}
+\include{02-related-work/chapter}
+\include{03-measurement-principle/chapter}
+\include{04-implementation/chapter}
+\include{05-results/chapter}
+\include{06-discussion/chapter}
+\include{07-conclusion/chapter}
+
+\appendix
+\include{08-appendix/chapter}
+
+\printbibliography[heading=bibintoc]
+\listoffigures
+\listoftables
+
+\end{document}

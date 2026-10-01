@@ -1,0 +1,16 @@
+% !TEX root = ../main.tex
+
+\chapter{Measurement Principle}
+\label{ch:measurement-principle}
+
+\scaffold{
+  Chapter purpose: the theory the implementation rests on, independent of the concrete chips. The reader knows from \cref{ch:introduction} that the wiring of a pedal is unknown and from \cref{sec:related-component-identification} that component testers drive pins through resistors. By the end of the chapter the reader can compute the arm resistances of any pedal from three contact voltages per drive pair, knows why every tolerance is a multiple of the ADC noise, and knows how a plug is detected and an identified pedal is followed. Values of the board (\qty{1}{\kilo\ohm}, \qty{2.5}{\volt}) appear only as examples; the board itself follows in \cref{ch:implementation}.
+}
+
+\input{03-measurement-principle/01-pedal-wiring}
+\input{03-measurement-principle/02-star-network}
+\input{03-measurement-principle/03-pair-measurement}
+\input{03-measurement-principle/04-solving}
+\input{03-measurement-principle/05-tolerances}
+\input{03-measurement-principle/06-plug-detection}
+\input{03-measurement-principle/07-following}

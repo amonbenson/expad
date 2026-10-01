@@ -1,0 +1,35 @@
+% !TEX root = ../main.tex
+
+\section{Following an Identified Pedal}
+\label{sec:following}
+
+\scaffold{
+  \textbf{Paragraph 1, why following.} A full solve takes two or three pairs of three readings each. For an identified potentiometer, a single reading suffices: once the wiper and the track ends are known, the track ends are driven and only the wiper is read. The wiper then carries no current, so its contact resistance does not enter the position. Present \cref{eq:position}, with $V_\mathrm{s}$ and $V_\mathrm{e}$ the readings of the track start and end. Leave the timing argument (why this is necessary) to \cref{sec:update-rate}.
+}
+
+\begin{equation}
+  p = \frac{V_\mathrm{w} - V_\mathrm{s}}{V_\mathrm{e} - V_\mathrm{s}}, \qquad 0 \leq p \leq 1
+  \label{eq:position}
+\end{equation}
+
+\scaffold{
+  \textbf{Paragraph 2, position convention.} The track start is the sleeve whenever the sleeve is a track end, otherwise the lower-numbered end. With this, the position rises as the wiper moves away from the sleeve, which matches both common wirings of \cref{fig:pedal-wirings}. Mention that the first firmware counted from the lower-numbered end and read the tip-wiper test pedal backwards.
+}
+
+\scaffold{
+  \textbf{Paragraph 3, classification.} After a solve, the arms decide what follows. Walk through the classes in the order they are checked, with their thresholds relative to $R_\mathrm{tot}$:
+  \emph{potentiometer} (every arm resolved, exactly one within \qty{25}{\percent}: the wiper);
+  \emph{end stop} (two arms within \qty{2}{\percent}: the wiper rests on a track end);
+  \emph{near end} (the second-lowest arm also within \qty{25}{\percent});
+  \emph{tip-sleeve element} (a switch or rheostat behind a mono or stereo plug, \cref{tab:pedal-networks});
+  \emph{disconnected}; and \emph{other} for any remaining network, such as a dual footswitch.
+  Explain the ambiguity of end stop and near end: a clean wiper a little way along the track and a wiper with resistance in its own lead resting on that end are the same network at opposite positions; only the ring-sleeve end stop changes the position. The wiper is then taken from, in this order, the per-jack wiper setting, the wiper remembered for the jack, and the arm nearer the star point unless that is the sleeve. Refer to \cref{sec:pedal-types} for the pedal that required the \qty{25}{\percent} limit.
+}
+
+\scaffold{
+  \textbf{Paragraph 4, checks while following a potentiometer.} Every \qty{25}{\milli\second} one track end is read instead of the wiper, alternating. Its drop across the pull resistor must stay within $6\sigma$ or \qty{3}{\percent} of the reference (\qty{25}{\percent} on the very first reading, because solves of a pedal on an end stop were seen up to \qty{10}{\percent} off). The wiper must stay within the span of the ends, with $6\sigma$ plus \qty{0.5}{\percent} of the span as margin (a pedal read its wiper up to \qty{7}{\milli\volt} past the end it rested on). A violation means the pedal was unplugged, rewired, or its wiper guessed wrong, and the jack is identified again.
+}
+
+\scaffold{
+  \textbf{Paragraph 5, switches and rheostats.} A tip-sleeve element is followed with one reading as well: tip high, sleeve low, tip read; the resistance follows from the tip's pull drop. At most \qty{0.2}{\kilo\ohm} reads as a closed switch (value 1), no current as open (value 0); three consecutive readings in between make it a rheostat, whose resistance is scaled to the smallest standard pedal value (1, 2.5, 5, 10, 25 \ldots\ \qty{1000}{\kilo\ohm}) it fits within \qty{25}{\percent}. A plug check every \qty{50}{\milli\second} and a ring check every \qty{100}{\milli\second} confirm the plug is still there and the ring still wired as identified; the ring check allows \qty{1}{\percent} of the sleeve's drop on top of $6\sigma$ because the two pull paths differ by a few ohms. State the two known limitations: a mono cable without a pedal reads as a released switch, and a rheostat behind a mono plug first reads as a potentiometer on its end stop until its resistance has changed by \qty{20}{\percent}.
+}

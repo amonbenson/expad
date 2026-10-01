@@ -1,0 +1,35 @@
+% !TEX root = ../main.tex
+
+\section{Requirement Review}
+\label{sec:results-requirements}
+
+\scaffold{
+  Close the loop on the proposal \cite{benson2026proposal} and the evaluation plan of milestone~1 with \cref{tab:requirements}: one row per promise, the number or observation that settles it, and a status (met, partly met, not met, dropped). No prose beyond one introductory and one closing sentence; interpretation belongs to \cref{ch:discussion}.
+}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \titledcaption{Requirements and Results}{\scaffoldinline{Explain the source of each requirement (P: proposal, M: milestone-1 evaluation plan) and the status values. Fill in the status column after the open measurements are decided.}}
+  \label{tab:requirements}
+  \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X l@{}}
+    \toprule
+    & \textbf{Requirement} & \textbf{Result} & \textbf{Status} \\
+    \midrule
+    P & Detect presence and wiring of a pedal automatically & plug detection and classification, \cref{sec:results-recognition,sec:pedal-types} & \scaffoldinline{?} \\
+    P & Value linear to the pedal angle & ratiometric wiper reading, drive curve for nonlinear pots; linearity not measured & \scaffoldinline{?} \\
+    P & Real time without perceptible latency & 188 updates/s, recognition 65 to \qty{95}{\milli\second} (about \qty{300}{\milli\second} with rail refresh) & \scaffoldinline{?} \\
+    P & One to four TRS jacks & four jacks & \scaffoldinline{?} \\
+    P & Class-compliant USB MIDI & USB MIDI 1.0 device, no driver & \scaffoldinline{?} \\
+    P & Calibration of the channels with no pedal & rails measured per arm, refreshed after \qty{30}{\second} & \scaffoldinline{?} \\
+    P & Digital filter against noise and contact bounce & hysteresis on the MIDI value; rheostat needs three readings; no moving average & \scaffoldinline{?} \\
+    P & Optional DIN MIDI output & not implemented & \scaffoldinline{?} \\
+    M & Power supply quality & below the 7-bit limit, \cref{sec:results-supply} & \scaffoldinline{?} \\
+    M & SPI signal quality & \cref{sec:results-spi} & \scaffoldinline{?} \\
+    M & Functional self-test & \cref{sec:results-self-test} & \scaffoldinline{?} \\
+    M & Identification of known static networks & host tests; hardware with real pedals only & \scaffoldinline{?} \\
+    M & Accuracy and linearity & \scaffoldinline{open question} & \scaffoldinline{?} \\
+    M & End-to-end latency & \scaffoldinline{open question} & \scaffoldinline{?} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

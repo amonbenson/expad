@@ -1,0 +1,41 @@
+% !TEX root = ../main.tex
+
+\section{Pedal Types}
+\label{sec:pedal-types}
+
+\scaffold{
+  \textbf{Paragraph 1, tested pedals.} Present \cref{tab:pedal-types}: which pedals were plugged in, on which cable, what the device identified and whether that is correct. Distinguish hardware tests from simulated ones (host tests of the jack monitor) explicitly in the table and the text.
+}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \titledcaption{Identified Pedals}{\scaffoldinline{Explain the columns; \enquote{host test} marks cases verified only against the simulated jack. Pedal models to be added.}}
+  \label{tab:pedal-types}
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l >{\raggedright\arraybackslash}X l@{}}
+    \toprule
+    \textbf{Pedal} & \textbf{Cable} & \textbf{Identified as} & \textbf{Verified on} \\
+    \midrule
+    Potentiometer, \qty{10.85}{\kilo\ohm}, wiper on tip & stereo & expression pedal (tracking), 0.09 closed to 1.0 open & hardware \\
+    Potentiometer, about \qty{11.4}{\kilo\ohm}, wiper on ring, \qtyrange{1}{1.9}{\kilo\ohm} in the wiper lead & stereo & expression pedal (near-end case) & hardware \\
+    Sustain switch & mono & switch & hardware \\
+    Potentiometer & mono & not usable (track halves in parallel) & hardware \\
+    Sustain switch & stereo & switch (open while released) & host test \\
+    Two-wire rheostat & mono, stereo & rheostat & host test \\
+    Dual footswitch & stereo & other (no value sent) & host test \\
+    Cable without pedal & mono / stereo & released switch / open & host test \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\scaffold{
+  \textbf{Paragraph 2, the resistive wiper.} The second potentiometer pedal is the reason for the \qty{25}{\percent} wiper limit and the near-end class of \cref{sec:following}: its wiper arm measured \qty{8}{\percent} of the total at rest and up to \qty{15}{\percent} while moving, so with the original limit of \qty{10}{\percent} it was classified as \enquote{other} over most of its travel and tracked with the wrong wiper near both ends. Its wiper resistance does not affect the position, since the wiper carries no current while followed. Give the probable cause of the wiper resistance (a worn contact, or a series resistor such as a minimum-volume control, which some Boss and Roland pedals have \cite{nonlinearlabs2026pedals}).
+}
+
+\scaffold{
+  \textbf{Paragraph 3, behaviour while plugging.} Name the transient cases observed on the hardware and handled: a plug noticed before it is fully seated (\cref{sec:results-recognition}); a stereo cable plugged into the jack first and into a potentiometer pedal afterwards, which is identified correctly since the stereo ring check (\cref{sec:jack-monitor}); repeated replugging at both end stops. Then the limits that remain by design (\cref{sec:following}): potentiometers need a stereo cable, a mono cable without a pedal reads as a released switch, a mono rheostat first reads as a potentiometer on its end stop, and a wiper guessed wrong at the ring-sleeve end stop is corrected once the pedal moves.
+}
+
+\openquestion{Pedal models and coverage}{
+  Name the models of the pedals in \cref{tab:pedal-types} (and of the \qty{9.4}{\kilo\ohm} pedal in the oscilloscope captures, if it is a third one). Were a two-wire rheostat, a stereo sustain pedal or a dual footswitch ever tested on the hardware? Was a plug-cycle stress test made (repeated plugging, counting misdetections)?
+}

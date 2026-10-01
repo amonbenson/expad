@@ -1,0 +1,10 @@
+# latexmk configuration: LuaLaTeX and Biber, build files in build/.
+$pdf_mode = 4;
+$out_dir = 'build';
+$lualatex = 'lualatex -interaction=nonstopmode -file-line-error -synctex=1 %O %S';
+
+# \include writes one .aux per chapter into build/<chapter folder>/, which has to exist.
+mkdir $out_dir;
+foreach my $chapter (glob('[0-9][0-9]-*')) {
+    mkdir "$out_dir/$chapter" if -d $chapter;
+}

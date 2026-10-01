@@ -1,0 +1,30 @@
+% !TEX root = ../main.tex
+
+\chapter{Discussion}
+\label{ch:discussion}
+
+\scaffold{
+  Writing guide, section 3.6: no new results, no figures, prose only, compact paragraphs. Past tense for what was shown, present tense for properties of the design.
+}
+
+\scaffold{
+  \textbf{Paragraph 1, what was shown.} An unknown passive pedal can be identified in place with nothing but switchable pull resistors and a slow high-resolution ADC, and followed afterwards with one conversion per update: the interface identified the pedals of \cref{tab:pedal-types} within 65 to \qty{95}{\milli\second} (about \qty{300}{\milli\second} when the rails are refreshed first) and updated them about 188 times per second with a position noise far below one MIDI step. Name the limit of the claim in the same paragraph: the identification yields the star equivalent of the network, so it recognizes classes of pedals (potentiometer, switch, rheostat) and their wiring, not arbitrary circuits; anything else is reported as \enquote{other}.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, evaluation of the method.} What worked: the speed came from changing what is measured, not from faster hardware (the ADC is the same one that delivered 2.6 updates per second); the host-tested library made every solver bug of \cref{sec:update-rate,sec:jack-monitor} reproducible within seconds and kept fixes from breaking earlier cases; expressing every tolerance in multiples of the measured noise let the same code handle a \qty{10}{\kilo\ohm} pedal on the PCB and a \qty{700}{\kilo\ohm} potentiometer on the breadboard. What required correction: noise and repeatability measurements, not functional tests, revealed the subtle defects (the conditioning threshold, the end-stop threshold, the plug-in transient); and the oscilloscope measurements had to be repeated after the probes were found on 1X. Mention in one sentence that most solver thresholds are empirical, set from one or two pedals, which bounds how general the classification is.
+}
+
+\scaffold{
+  \textbf{Paragraph 3, limitations, each with its cause and remedy.} Write as continuous prose; one or two sentences per item:
+  the \qty{1}{\kilo\ohm} pull resistors limit the accuracy of the total resistance of 250 to \qty{500}{\kilo\ohm} pedals (larger pulls, \cref{tab:pull-resistance});
+  the rail refresh adds about \qty{214}{\milli\second} to the first plug-in after \qty{30}{\second} and to every unplug (refresh the rails in the background while a jack is empty);
+  two pedals on one ADC halve each other's rate to about 95 updates per second (the jacks to use for two pedals are 1 and 3);
+  potentiometer pedals need a stereo cable (a property of the pedal, \cref{sec:pedal-wiring});
+  settings are lost at power-off (store them in flash);
+  the 7-bit MIDI value throws away most of the measured resolution;
+  WiFi raises the ripple of the analog rails slightly and the web interface is awkward to use on stage (author's statement in the final presentation);
+  the LED brightness is limited to about \qty{4}{\percent} by the shared \qty{5}{\volt} regulator.
+  A development session left one case open that has to be checked on the final firmware before it is listed: a rheostat on a stereo cable whose far end is unplugged read as full travel instead of an open plug.
+  Add the limitations that remain from the open questions (unmeasured accuracy, linearity and latency; rheostats verified only in host tests).
+}

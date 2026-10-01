@@ -1,0 +1,32 @@
+% !TEX root = ../main.tex
+
+\section{ADC Noise on the PCB}
+\label{sec:results-adc-noise}
+
+\scaffold{
+  \textbf{Paragraph 1, setup.} The capture program held every contact in one drive state (pulled low, pulled high, or floating) and recorded all inputs for \qty{30}{\second} at \qty{315}{\hertz}, bipolar coding; this was the first measurement on the assembled board, before the operating point of \cref{sec:update-rate} was chosen. Present \cref{tab:adc-noise}.
+}
+
+\begin{table}[htbp]
+  \centering
+  \titledcaption{ADC Noise on the Empty Board}{\scaffoldinline{State conditions (\qty{315}{\hertz}, \qty{30}{\second} per state, all jacks empty) and that ranges span the inputs of both ADCs.}}
+  \label{tab:adc-noise}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    \textbf{Input} & \textbf{Mean} & \textbf{Noise ($\sigma$)} & \textbf{Drift in \qty{30}{\second}} \\
+    \midrule
+    Contacts pulled low & \qty{+1.3}{\milli\volt} / \qty{+1.5}{\milli\volt} & 15 to \qty{23}{\micro\volt} & $\leq \qty{0.04}{\milli\volt}$ \\
+    Contacts pulled high & \qtyrange{2.4998}{2.5001}{\volt} & 50 to \qty{60}{\micro\volt} & $\leq \qty{0.16}{\milli\volt}$ \\
+    Grounded input AIN6 & \qty{+1.3}{\milli\volt} / \qty{+1.5}{\milli\volt} & 15 to \qty{21}{\micro\volt} & none \\
+    Reference input AIN10 & \qtyrange{2.4999}{2.5000}{\volt} & 55 to \qty{85}{\micro\volt} & $\leq \qty{0.17}{\milli\volt}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\scaffold{
+  \textbf{Paragraph 2, what it shows.} The noise is about \qty{20}{\micro\volt} near ground and about \qty{55}{\micro\volt} near the rail; the part that grows with the voltage most likely comes from the reference and cancels in the ratiometric reading. The constant offset of about \qty{1.4}{\milli\volt} appears on the grounded input as well, so it belongs to the ADC, not to the switches, and the measured rails of \cref{sec:pair-measurement} compensate it. Floating inputs drift by tenths of a volt, charged by about \qty{0.2}{\nano\ampere} to \qty{0.5}{\nano\ampere} of leakage into the filter capacitors, which through a pedal of \qty{100}{\kilo\ohm} or less amounts to less than \qty{50}{\micro\volt}. Compare with the breadboard (about \qty{1}{\milli\volt}) in half a sentence.
+}
+
+\scaffold{
+  \textbf{Paragraph 3, with a pedal.} With the \qty{10.85}{\kilo\ohm} pedal reproducing the three solver pairs, driven contacts read 0.03 to \qty{0.12}{\milli\volt} and the floating contact up to \qty{0.36}{\milli\volt} where it reads the wiper directly, part of it slow wander attributed to the wiper contact. This set the solver's noise figure first to \qty{0.4}{\milli\volt} at \qty{315}{\hertz}, later to \qty{0.5}{\milli\volt} at \qty{819}{\hertz} (\cref{tab:adc-characterization}).
+}

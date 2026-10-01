@@ -1,0 +1,29 @@
+% !TEX root = ../main.tex
+
+\chapter{Related Work}
+\label{ch:related-work}
+
+\scaffold{
+  Writing guide, section 3.4: one section per group of existing work; the group name in italics at its definition; two or more examples with manufacturer and citation; each section ends with one sentence placing the project against the group. Two to five sentences per section, no figures.
+}
+
+\section{Pinout Workarounds}
+\label{sec:related-pinout-workarounds}
+
+\scaffold{
+  Two groups. \emph{Switchable pedals} carry a polarity or pinout selector that swaps tip and ring, for example the M-Audio EX-P \cite{maudio2026exp} and some Moog pedals \cite{nonlinearlabs2026pedals}. \emph{Configurable inputs} move the choice to the receiving device: the Nonlinear Labs C15 offers presets per pedal type and wiring and learns the range of a pedal by auto-ranging, which only completes after the pedal has been moved across part of its travel \cite{nonlinearlabs2026pedals}; MIDI devices with a calibration routine map the measured minimum and maximum of a pedal to the full MIDI range \cite{mission2014expression}. Closing sentence: both groups rely on the user to know or select the wiring, while this project measures it.
+}
+
+\section{Pedal-to-MIDI Interfaces}
+\label{sec:related-pedal-interfaces}
+
+\scaffold{
+  Two groups. \emph{Fixed-wiring interfaces}, mostly do-it-yourself projects on a microcontroller, read one wiring and send its position as USB MIDI \cite{gaspar2026diyexpression}. \emph{Pedal-sensing interfaces} detect the type of pedal: the Audiofront MIDI Expression loads a preset for the kind of pedal that is plugged in and offers polarity-reversing inputs \cite{audiofront2026midiexpression}, and the DOREMiDi MPC-10 detects expression pedals of both polarities, sustain pedals and dual switches \cite{doremidi2026mpc10}. Neither documents how its detection works or which networks it distinguishes. Closing sentence: this project identifies the arm resistances of any three-terminal network and derives the pedal type and wiring from them, so that the classification and its limits are documented and testable.
+}
+
+\section{Automatic Component Identification}
+\label{sec:related-component-identification}
+
+\scaffold{
+  The \emph{AVR transistor tester} by Frejek identifies the type and pinout of an unknown part on three test pins: every pin is connected to microcontroller port pins through a \qty{680}{\ohm} and a \qty{470}{\kilo\ohm} resistor and read by the ADC, and the firmware tries the drive combinations \cite{frejek2011avr}; Kübbeler extended it to further part types \cite{kuebbeler2023transistortester}. The underlying question, which network lies between accessible terminals, is the discrete inverse problem for resistor networks \cite{curtis1990determining, curtis2000inverse}: a three-terminal resistive network is externally equivalent to a star (wye) or triangle (delta) of three resistors \cite{kennelly1899equivalence}, and only such an equivalent, not the internal topology, can be recovered from terminal measurements \cite{borcea2012resistor}. Closing sentence: this project applies the component-tester principle to a pedal at run time, repeatedly, and adds a second mode that follows an identified pedal with a single conversion.
+}

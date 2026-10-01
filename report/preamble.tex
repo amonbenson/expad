@@ -1,0 +1,128 @@
+% !TEX root = main.tex
+% !TEX program = lualatex
+%
+% Preamble of the report. Build with latexmk (see latexmkrc), which runs LuaLaTeX and Biber.
+
+% The standard class, not KOMA-Script: the caption package of TeX Live 2025 does not recognize
+% the current scrreprt and then attaches no number to \label (every figure reference broke).
+\documentclass[a4paper, 11pt, oneside]{report}
+
+% --- Page layout and headings --------------------------------------------------------------
+\usepackage[a4paper, top=30mm, bottom=30mm, inner=30mm, outer=25mm]{geometry}
+\usepackage[skip=0.5\baselineskip plus 2pt]{parskip}
+\usepackage{titlesec}
+\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter\quad}{0pt}{}
+\titlespacing*{\chapter}{0pt}{0pt}{30pt}
+\usepackage[nottoc]{tocbibind} % lists of figures and tables in the table of contents
+\usepackage{tocbasic}           % list of open questions
+
+% --- Language and fonts --------------------------------------------------------------------
+\usepackage{polyglossia}
+\setdefaultlanguage[variant=american]{english}
+\setotherlanguage{german} % statutory declaration
+
+\usepackage{amsmath}
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmathfont{Latin Modern Math}
+\usepackage{microtype}
+\usepackage{csquotes}
+
+% --- Floats, tables, units -----------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage[labelfont=bf, font=small]{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{pdfpages}
+\usepackage{siunitx}
+\sisetup{
+  range-units = single,
+  range-phrase = { to },
+  per-mode = symbol,
+}
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+
+% --- Page style ----------------------------------------------------------------------------
+\usepackage{fancyhdr}
+\setlength{\headheight}{15pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\nouppercase{\leftmark}}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter\quad #1}{}}
+
+% --- Bibliography --------------------------------------------------------------------------
+\usepackage[backend=biber, style=ieee, sorting=nyt]{biblatex}
+\addbibresource{bibliography.bib}
+
+% --- Cross references (load last) ----------------------------------------------------------
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise, noabbrev]{cleveref}
+
+% --- Semantic commands for content ---------------------------------------------------------
+% Caption in the form "Title - description", with the title alone in the list of figures.
+\newcommand\titledcaption[2]{\caption[#1]{\textbf{#1}~-- #2}}
+
+% Vectors and matrices.
+\NewDocumentCommand\vecsym{m}{\symbf{#1}}
+\NewDocumentCommand\matsym{m}{\symbf{#1}}
+
+% Identifiers from the firmware (types, constants, binaries) and named signals or nets.
+\NewDocumentCommand\code{m}{\texttt{#1}}
+\NewDocumentCommand\net{m}{\texttt{#1}}
+
+% --- Scaffold commands (remove together with every use once the report is written) ----------
+\definecolor{scaffold}{HTML}{1F4E79}
+\definecolor{openquestion}{HTML}{9C1C1C}
+
+% What a paragraph has to convey.
+\newtcolorbox{scaffoldbox}{
+  breakable, enhanced,
+  colback=scaffold!5, colframe=scaffold!70, boxrule=0.4pt, arc=1pt,
+  left=4pt, right=4pt, top=3pt, bottom=3pt,
+  fontupper=\small\sffamily\color{scaffold!90!black},
+}
+\NewDocumentCommand\scaffold{+m}{\begin{scaffoldbox}#1\end{scaffoldbox}}
+
+% Scaffold text inside captions, table cells and other places where a box does not fit.
+\NewDocumentCommand\scaffoldinline{m}{{\sffamily\color{scaffold}[#1]}}
+
+% A figure that does not exist yet: what it shows and how to obtain it.
+\NewDocumentCommand\placeholderfigure{O{0.9\linewidth} +m}{%
+  \begin{tcolorbox}[
+    width=#1, enhanced, center,
+    colback=black!4, colframe=black!45, boxrule=0.4pt, sharp corners,
+    borderline={0.4pt}{2pt}{black!45, dashed},
+    title={Figure to be created}, coltitle=black, colbacktitle=black!12,
+    fonttitle=\small\sffamily\bfseries, fontupper=\small\sffamily,
+  ]#2\end{tcolorbox}%
+}
+
+% Information or a reason that is missing and has to come from the author. The first argument
+% is the short form for the list of open questions.
+\newcounter{openquestion}
+\crefname{openquestion}{open question}{open questions}
+\DeclareNewTOC[listname={List of Open Questions}]{loq}
+\NewDocumentCommand\openquestion{m +m}{%
+  \refstepcounter{openquestion}%
+  \addcontentsline{loq}{figure}{\protect\numberline{\theopenquestion}#1}%
+  \begin{tcolorbox}[
+    breakable, enhanced,
+    colback=openquestion!5, colframe=openquestion!75, boxrule=0.6pt, arc=1pt,
+    left=4pt, right=4pt, top=3pt, bottom=3pt,
+    title={Open question \theopenquestion: #1}, fonttitle=\small\sffamily\bfseries,
+    fontupper=\small\sffamily,
+  ]#2\end{tcolorbox}%
+}
+
+% --- Document data -------------------------------------------------------------------------
+\input{00-front-matter/metadata}
+
+\hypersetup{
+  pdftitle={\reporttitle},
+  pdfauthor={\authorname},
+}

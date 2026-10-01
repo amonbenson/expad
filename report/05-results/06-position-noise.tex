@@ -1,0 +1,27 @@
+% !TEX root = ../main.tex
+
+\section{Position Noise and Accuracy}
+\label{sec:results-position}
+
+\scaffold{
+  \textbf{Paragraph 1, position noise.} With the \qty{10.85}{\kilo\ohm} pedal held still, the position solved at \qty{819}{\hertz} has a standard deviation of \num{274} parts per million of travel (\cref{tab:conditioning-fix}). One MIDI step is $1/127$, \num{7874} parts per million, so the jitter is about 1/29 of a step, and the emitted 7-bit value does not change. In the following mode, where only the wiper is read, the single-reading noise of \num{203} parts per million (\cref{tab:adc-characterization}) applies. State the consequence plainly: the limit of the output resolution is the 7-bit MIDI value, not the measurement.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \placeholderfigure{
+    \textbf{Content.} (a) Histogram of a few thousand positions of a pedal held still in the following mode, x axis in parts per million of travel around the mean, with the width of one MIDI step (\num{7874} ppm) drawn on the same axis; (b) the emitted MIDI value over the same time, a flat line.
+    \textbf{Focus.} The ratio between the width of the histogram and one MIDI step.
+    \textbf{How to obtain.} Log the raw position of one jack over the debug probe (\code{defmt}) for about \qty{30}{\second} while the pedal is still, plot with \code{measurements/create\_plots.py}. This measurement (M3 of the measurement plan) has not been made yet.
+  }
+  \titledcaption{Position Noise}{\scaffoldinline{Conditions (pedal, position, rate, duration, number of samples) and the meaning of the drawn MIDI step.}}
+  \label{fig:position-noise}
+\end{figure}
+
+\scaffold{
+  \textbf{Paragraph 2, accuracy against known networks.} The milestone plan promised a sweep of precision resistors against the measured ratio and the identification of known static networks, including shorted and open arms. State what exists: the solver's arithmetic is verified against simulated networks by 25 host tests, including every short and open case; and the identified total of the test pedal was repeatable (\num{10.844} to \qty{10.850}{\kilo\ohm} over 300 solves); its agreement with an independent measurement, for example an ohmmeter across ring and sleeve, is not recorded. If the measurement with known resistors is made, present it here as measured against actual arm resistance with the relative error, and the error of the total against the total, with the prediction of \cref{tab:pull-resistance}.
+}
+
+\openquestion{Accuracy and linearity measurement}{
+  No measurement with precision resistors or a decade box (identification of known networks, ratio sweep for linearity) is in the repository, although the milestone plan promised it. Was it made? If not, say so in the text and in \cref{sec:results-requirements}, with the reason. At least compare the identified totals of the real pedals with an ohmmeter reading.
+}

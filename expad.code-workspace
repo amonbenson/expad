@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"name": "Firmware (root)",
+			"path": "."
+		},
+		{
+			"name": "Report",
+			"path": "report"
+		},
+		{
+			"name": "Hardware",
+			"path": "hardware"
+		},
+		{
+			"name": "Web Interface",
+			"path": "web"
+		}
+	],
+	"settings": {
+		"files.insertFinalNewline": true,
+		"files.trimFinalNewlines": true
+	}
+}

@@ -1,0 +1,27 @@
+% !TEX root = ../main.tex
+
+\section{Settling of a Floating Contact}
+\label{sec:results-settling}
+
+\scaffold{
+  \textbf{Paragraph 1, the model under test.} \Cref{eq:settling} predicts that a floating contact charges with $\tau = (R_\mathrm{net} + R_\mathrm{f})\,C_\mathrm{f}$ and the firmware waits $2\tau$, at least \qty{1}{\milli\second}. A plug-in capture at \qty{0.5}{\micro\second} resolution contains such a step: in the second pair the ring switches from driven low to floating and charges through a pedal of about \qty{9.4}{\kilo\ohm}. A least-squares fit gives $\tau = \qty{190.6}{\micro\second}$ against $(9.4 + 10)\,\unit{\kilo\ohm} \times \qty{10}{\nano\farad} = \qty{194}{\micro\second}$ predicted. Only \qty{0.61}{\volt} of the \qty{1.71}{\volt} step follow the RC curve; the rest happens instantly. After the \qty{1}{\milli\second} minimum wait ($5.2\,\tau$) \qty{3.2}{\milli\volt} are missing, and the floating contact is read last in its pair, about \qty{9}{\milli\second} after the latch, so the error is negligible.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, latch edges.} A driven contact jumps by about \qty{91}{\percent} at the latch edge and settles with $\tau \approx \qty{110}{\micro\second} = (\qty{10}{\kilo\ohm} + \qty{1}{\kilo\ohm}) \times \qty{10}{\nano\farad}$, because the filter capacitor sits behind the \qty{10}{\kilo\ohm} resistor; the minimum wait covers five to nine of these time constants.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \placeholderfigure{
+    \textbf{Content.} Floating-contact step of the ring after the latch of the tip-sleeve pair for three networks (two equal resistors $R$ between ring and tip and between tip and sleeve, $R = \qty{4.7}{\kilo\ohm}$, \qty{47}{\kilo\ohm}, \qty{220}{\kilo\ohm}), each with its exponential fit; normalized time axis.
+    \textbf{Focus.} Mark the firmware's wait (\qty{2.2}{\milli\second} while the network is still unknown) and the moment the ring is read (about \qty{10.5}{\milli\second} after the latch). Expected time constants: \qty{156}{\micro\second}, \qty{590}{\micro\second}, \qty{2.3}{\milli\second}; at \qty{220}{\kilo\ohm} about \qty{1}{\percent} (\qty{27}{\milli\volt}) of the step should still be missing when it is read, which is the case that tests the model. Correct the \qty{220}{\kilo\ohm} curve for the \qty{10}{\mega\ohm} probe load (about \qty{2}{\percent}).
+    \textbf{How to obtain.} Channel~1 on SR\_LAT (TP2), trigger rising at \qty{1.65}{\volt}, single; channel~2 on the ring, 10X, bandwidth limit on; \qty{5}{\milli\second}/div, trigger at \qty{10}{\percent}, at least 500k points; plug in within \qty{30}{\second} of the previous unplug so that the first latch is the first pair. The captures \code{settling\_*.csv} in the archive are unusable: they triggered on the plug sliding in.
+  }
+  \titledcaption{Settling of a Floating Contact}{\scaffoldinline{Conditions, the three networks, measured and predicted time constants, and the meaning of the two marked moments.}}
+  \label{fig:settling}
+\end{figure}
+
+\openquestion{Settling series}{
+  The settling series with known resistors was postponed from the presentation to the report. Has it been measured with the corrected trigger? If not, either measure it or report only the single plug-in data point of paragraph~1.
+}

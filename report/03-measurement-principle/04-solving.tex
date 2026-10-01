@@ -1,0 +1,41 @@
+% !TEX root = ../main.tex
+
+\section{Solving the Network}
+\label{sec:solving}
+
+\scaffold{
+  \textbf{Paragraph 1, the sequence.} Define the term \emph{solve}: the sequence of pair measurements that determines all three arms, and its result. One pair yields two independent numbers (a ratio and a resistance), the network has three unknowns, so at least two pairs are needed. The solver measures the pairs (tip high, ring low), (tip high, sleeve low) and, only if needed, (ring high, sleeve low). The first two share the tip, so only the low side has to be switched between them. The third pair is needed when neither of the first two conducts (an isolated tip and an empty plug look the same to them) or when the shared arm is too close to \qty{0}{\ohm} (paragraph 3).
+}
+
+\scaffold{
+  \textbf{Paragraph 2, ratios through a shared arm.} Two pairs that share arm $s$, one with arm $a$ and one with arm $b$, give the shares $\sigma_1 = r_s/(r_s + r_a)$ and $\sigma_2 = r_s/(r_s + r_b)$ from \cref{eq:low-fraction}. Present \cref{eq:ratios}: the three unnormalized ratios $x_i$ and the relative arms $q_i$. Derive in one step that each $x_i$ is proportional to $r_i$ with the common factor in \cref{eq:conditioning}, so the normalization recovers the arms exactly.
+}
+
+\begin{align}
+  x_s &= \sigma_1 \sigma_2, \qquad
+  x_a = (1 - \sigma_1)\,\sigma_2, \qquad
+  x_b = (1 - \sigma_2)\,\sigma_1, \qquad
+  q_i = \frac{x_i}{\sum_j x_j}
+  \label{eq:ratios} \\
+  c &= \sum_j x_j = \frac{r_s\,(r_s + r_a + r_b)}{(r_s + r_a)(r_s + r_b)}
+  \label{eq:conditioning}
+\end{align}
+
+\scaffold{
+  \textbf{Paragraph 3, conditioning.} Define the \emph{conditioning} $c$ of \cref{eq:conditioning}: it lies between 0 and 1 and approaches 0 as the shared arm approaches \qty{0}{\ohm}, because both pairs then only say \enquote{everything is in the other arm}. Noise in the ratios is amplified roughly by $1/c$. This is exactly the case of a potentiometer whose wiper is the tip: with a contact resistance $t$ of the wiper, $c \approx t/((t + r)(t + s))$ in relative terms. Below a minimum conditioning of 0.5 the solver measures the third pair and takes the better conditioned of its two combinations. Refer to \cref{sec:update-rate}, where a threshold of 0.05 let a pedal with a \qty{1.5}{\percent} wiper pass and its position jitter by \num{4880} instead of \num{274} parts per million.
+}
+
+\scaffold{
+  \textbf{Paragraph 4, the total.} Each conducting pair $k$ implies a total $R_{\mathrm{tot},k} = R_{hl,k} / (q_h + q_l)$. The solver combines them weighted with their squared signal-to-noise ratio $I_k^2/\operatorname{Var}(I_k)$ (\cref{eq:total}). The pairs must agree on the total within their noise; a pedal moved between two pairs does not, and the solve is rejected and repeated.
+}
+
+\begin{equation}
+  R_\mathrm{tot} = \frac{\sum_k w_k R_{\mathrm{tot},k}}{\sum_k w_k},
+  \qquad
+  w_k = \frac{I_k^2}{\operatorname{Var}(I_k)}
+  \label{eq:total}
+\end{equation}
+
+\scaffold{
+  \textbf{Paragraph 5, degenerate networks.} A pair whose resistance is below \qty{50}{\ohm} is a short: if both of the first pairs are shorts, every arm is 0; if one is, the remaining arm holds the whole resistance. If exactly one pair conducts, the third arm is isolated and the two conducting arms are either both shorted or only known as a sum (NaN, \cref{sec:star-network}). If no pair conducts, the network is disconnected. This covers every case of \cref{tab:pedal-networks}.
+}

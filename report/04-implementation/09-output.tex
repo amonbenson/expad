@@ -1,0 +1,44 @@
+% !TEX root = ../main.tex
+
+\section{Output Stage}
+\label{sec:output}
+
+\scaffold{
+  \textbf{Paragraph 1, from position to value.} The monitor reports a raw position $p$ (\cref{eq:position}); the per-jack settings turn it into the sent value in three steps, presented as \cref{eq:value-range,eq:drive-curve}: the range $[p_\mathrm{min}, p_\mathrm{max}]$, which the web interface sets from the current pedal position with two buttons, is stretched to $[0, 1]$ and clamped; the result is inverted if the jack is set to invert; then the drive curve bends it. Mention why the range exists: the test pedal only reached 0.909 of its track at the end of its travel, a mechanical stop common to pedals \cite{mission2014expression}.
+}
+
+\begin{align}
+  u &= \operatorname{clamp}\!\left(\frac{p - p_\mathrm{min}}{p_\mathrm{max} - p_\mathrm{min}},\, 0,\, 1\right),
+  \qquad u' = \begin{cases} 1 - u & \text{if inverted} \\ u & \text{otherwise} \end{cases}
+  \label{eq:value-range} \\
+  y &= \frac{(1 + b)\,u'}{1 - b + 2b\,u'},
+  \qquad b = 0.9\,d, \qquad d \in [-1, 1]
+  \label{eq:drive-curve}
+\end{align}
+
+\scaffold{
+  \textbf{Paragraph 2, the drive curve.} \Cref{eq:drive-curve} is Schlick's bias function \cite{schlick1994bias} with the parameter $a = (1 + b)/2$; show this substitution in one line. Explain its three properties that made it the choice for a single knob $d$: both ends of the travel stay in place, half travel maps to $(1 + b)/2$, so the knob reads as where the pedal's midpoint lands, and $-d$ gives the exact inverse of $+d$, so one knob can straighten a pedal with a logarithmic potentiometer as well as one with an antilogarithmic one \cite{mission2014expression}. It needs no power function, which matters on a microcontroller without a math library. Example from the development: a logarithmic potentiometer that reads \qty{10}{\percent} at half travel is linearized at $d \approx 0.89$.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \placeholderfigure[0.6\linewidth]{
+    \textbf{Content.} $y$ over $u'$ from \cref{eq:drive-curve} for $d = -1, -0.5, 0, 0.5, 1$, square plot, equal axes from 0 to 1.
+    \textbf{Focus.} Mark the point at $u' = 0.5$ on each curve with its value $(1 + 0.9d)/2$, and draw the curves for $\pm d$ in the same color with solid and dashed line to show that they are mirror images.
+    \textbf{How to obtain.} Add a function to \code{measurements/create\_plots.py} (matplotlib, same style as the other plots); the formula is \code{drive\_curve} in \code{src/web/interface.rs}.
+  }
+  \titledcaption{Drive Curve}{\scaffoldinline{Name the parameter values and the meaning of the marked midpoints and of the mirror pairs.}}
+  \label{fig:drive-curve}
+\end{figure}
+
+\scaffold{
+  \textbf{Paragraph 3, MIDI.} The device enumerates as a class-compliant USB MIDI device \cite{usbif1999midi}, so no driver is needed. Each jack sends its value as a 7-bit control change, by default on MIDI channel 1 with controller 11 (expression) for jacks 1 and 2 and controller 1 (modulation wheel) for jacks 3 and 4 \cite{midi2026controlchange}. A new value is sent only when the rounded value changes and the value has moved by more than 0.6 of a step since the last sent one, which suppresses toggling between two neighbouring values. If the host is not reading, a newer value replaces the one still waiting, so no queue builds up and a host that connects receives every pedal's current position.
+}
+
+\scaffold{
+  \textbf{Paragraph 4, USB robustness.} Two problems surfaced on a macOS host, and both are worth a sentence because they explain design choices of the driver. The device froze completely on connection: macOS reads the manufacturer string during enumeration, which was longer than the 64-byte control buffer of the USB stack allows, and the resulting panic halted the core (Windows never asked for it). Fix: a \qty{256}{\byte} control buffer and a check of the strings at start-up. In addition, embassy-rp~0.10 reported a suspend from before the bus reset, which can stall enumeration \cite{embassy2026pr6693}, and its writes do not end when the host disconnects \cite{embassy2024issue3426}; the firmware wraps the driver to clear the stale suspend, pace event floods, and end transfers on disconnection, and runs USB in its own tasks so that it can never stall the measurement.
+}
+
+\scaffold{
+  \textbf{Paragraph 5, LEDs.} Each jack has an RGB LED below it, colored from the jack's mode and sent value: off when empty, dim white for a plug that is not (yet) a known pedal, a pedal-specific color for \qty{1}{\second} once per plug-in (purple for an expression pedal, lime for a switch, yellow for a rheostat), then the value as a gradient from dark red through red, orange and yellow to white. One sentence on the purpose: the user sees without a computer that a pedal was recognized and what it sends.
+}

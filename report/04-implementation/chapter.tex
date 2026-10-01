@@ -1,0 +1,32 @@
+% !TEX root = ../main.tex
+
+\chapter{Implementation}
+\label{ch:implementation}
+
+\scaffold{
+  \textbf{Overview paragraph} (writing guide, section 3.5). The reader knows the measurement principle from \cref{ch:measurement-principle}. Introduce the blocks of \cref{fig:block-diagram} with one sentence each, in signal-flow order: four jacks with four switched contacts each (tip, ring, sleeve, tip switch); per jack a shift register driving two analog switches that connect each contact to a shared pull-up or pull-down resistor; an RC filter per contact; two 24-bit ADCs, each reading two jacks; the Raspberry Pi Pico~2~W running the firmware; and the three outputs, USB MIDI to the host, an LED per jack and a WiFi access point serving the web interface. Then one sentence on the development method: the solver and the per-jack state machine live in a library without hardware dependencies that is tested on the host; the hardware drivers and the scheduling live in the firmware crate.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \placeholderfigure{
+    \textbf{Content.} Block diagram of the system, left to right: 4 jacks (J2--J5, contacts T, R, S, TS) $\rightarrow$ per jack: 74HC595 + 2$\times$TMUX1511 + shared \qty{1}{\kilo\ohm} pull-up to \qty{2.5}{\volt} and pull-down to GND $\rightarrow$ 16$\times$ RC filter (\qty{10}{\kilo\ohm}, \qty{10}{\nano\farad}) $\rightarrow$ 2$\times$ AD7718 (jacks 1--2 / 3--4, SPI0) $\rightarrow$ Raspberry Pi Pico~2~W (shift registers on SPI1) $\rightarrow$ USB MIDI, 4$\times$ WS2812B LED (GPIO6, level shifter), WiFi access point with web interface. Power block below: barrel jack $\rightarrow$ protection $\rightarrow$ LDOs \qty{5}{\volt}, \qty{3.3}{\volt}, \qty{2.5}{\volt} (from \qty{3.3}{\volt}); mark the \qty{2.5}{\volt} rail as both pull-up rail and ADC reference.
+
+    \textbf{Focus.} Highlight (color) the analog measurement path of one jack; draw the other three jacks collapsed. Use the counts from \code{src/board.rs}.
+
+    \textbf{How to obtain.} Draw in TikZ or a vector tool; style consistent with \code{docs/diagrams/}.
+  }
+  \titledcaption{System Block Diagram}{\scaffoldinline{One sentence per block group and the meaning of the highlighted path.}}
+  \label{fig:block-diagram}
+\end{figure}
+
+\input{04-implementation/01-design-history}
+\input{04-implementation/02-analog-front-end}
+\input{04-implementation/03-conversion}
+\input{04-implementation/04-microcontroller-power}
+\input{04-implementation/05-pcb}
+\input{04-implementation/06-firmware-architecture}
+\input{04-implementation/07-jack-monitor}
+\input{04-implementation/08-update-rate}
+\input{04-implementation/09-output}
+\input{04-implementation/10-web-interface}

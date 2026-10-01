@@ -1,0 +1,18 @@
+# LaTeX build output (latexmk writes everything to build/, see latexmkrc)
+/build/
+
+# Files of editors and builds run outside latexmk
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.lo*
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+/main.pdf

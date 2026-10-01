@@ -1,0 +1,20 @@
+% !TEX root = ../main.tex
+
+\chapter{Conclusion and Outlook}
+\label{ch:conclusion}
+
+\scaffold{
+  Writing guide, section 3.7: one limited step of the project and how to extend it, a second extension, one closing sentence; no new facts about the project.
+}
+
+\scaffold{
+  \textbf{Paragraph 1, measurement front end.} The pull resistance of \qty{1}{\kilo\ohm} was chosen for position resolution; \qty{4.7}{\kilo\ohm} would multiply the current signal of high-value pedals by four to five while still resolving the position of a \qty{10}{\kilo\ohm} pedal far below a MIDI step (\cref{tab:pull-resistance}), which would make the identified totals of 250 to \qty{500}{\kilo\ohm} pedals accurate. The rails could be refreshed in the background while a jack is empty, removing the \qty{214}{\milli\second} from the worst-case recognition time.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, output and use.} The measurement resolves about 29 times finer than a 7-bit MIDI step; high-resolution control changes, which pair a controller with its least significant byte (controller 43 for expression \cite{midi2026controlchange}), or MIDI~2.0 would pass this resolution on to the host. For live use, settings should persist in flash, a hardware interface (buttons, a small display) should replace the web interface on stage, and the DIN MIDI output of the proposal \cite{benson2026proposal} would connect the device to instruments without a computer.
+}
+
+\scaffold{
+  \textbf{Closing sentence.} \enquote{Overall, this work demonstrates that \ldots}: an expression pedal of unknown wiring can be identified electrically within a tenth of a second (a third of a second in the worst case) and followed fast and precisely enough for live performance, with a measurement front end that consists only of switches, two resistors per jack and a shared reference.
+}

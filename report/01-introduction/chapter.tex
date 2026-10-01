@@ -1,0 +1,32 @@
+% !TEX root = ../main.tex
+
+\chapter{Introduction}
+\label{ch:introduction}
+
+\scaffold{
+  Purpose of the chapter (writing guide, section 3.3): background, the niche of the project, motivation and the minimum of fundamentals; no figures, no results, no chapter roadmap. Five paragraphs. The reader is electronics-literate but does not know what an expression pedal is.
+}
+
+\scaffold{
+  \textbf{Paragraph 1, the field.} Musicians who play an instrument with both hands, a keyboard or a guitar, change sound parameters such as volume, filter cutoff or effect intensity with their feet. An expression pedal is the continuous variant of these foot controllers, in contrast to a sustain pedal, which is a switch \cite{mission2014expression}. Expression pedals are connected to keyboards, amplifiers, effect units and MIDI controllers \cite{mission2014expression}; to control software on a computer, the pedal position has to reach the computer as MIDI data. By the end of the paragraph the reader knows what an expression pedal is used for and why it is connected to a computer at all.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, the underlying structure.} Inside, an expression pedal is passive: a potentiometer whose wiper is moved by the treadle, connected to a \qty{6.35}{\milli\metre} jack. The connected device supplies a voltage across the track and reads the wiper voltage back as the position \cite{mission2014expression, nonlinearlabs2026pedals}. Give the typical track resistance of \qtyrange{5}{50}{\kilo\ohm}, with some devices expecting \qty{100}{\kilo\ohm} to \qty{500}{\kilo\ohm} \cite{mission2014expression}. Introduce the terms tip, ring and sleeve here, once, because the rest of the report uses them; the term \emph{contact} denotes one of them.
+}
+
+\scaffold{
+  \textbf{Paragraph 3, the difficulty.} No standard defines which contact carries the wiper \cite{mission2014expression}. Two TRS wirings dominate: the wiper on the tip (Boss/Roland, \enquote{tip-active}) and the wiper on the ring (Yamaha, \enquote{ring-active}) \cite{nonlinearlabs2026pedals}; further pedals connect only tip and sleeve, as a variable resistor (rheostat) \cite{nonlinearlabs2026pedals, mission2014expression}. A pedal on an input that expects another wiring reads reversed, with a limited range, or not at all \cite{mission2014expression}. Manufacturers mitigate this with polarity switches on the pedal \cite{maudio2026exp, nonlinearlabs2026pedals}, which the user has to know about and set. State in one sentence that the pedal itself cannot tell which convention it follows; only a measurement of its network can.
+}
+
+\scaffold{
+  \textbf{Paragraph 4, \enquote{Concretely, \ldots}.} Concretely, this project builds an interface with four jacks that identifies the network behind every jack electrically, without user input, and then follows the pedal position and sends it as a MIDI control change over USB \cite{benson2026proposal}. Name the four kinds of pedal it supports: potentiometer pedals of either wiring, sustain switches and two-wire rheostats, on mono or stereo cables. Mention in half a sentence that a WiFi web interface shows the identified network and holds the per-jack settings.
+}
+
+\scaffold{
+  \textbf{Paragraph 5, method and tools.} The identification applies the principle of automatic component testers, which drive the pins of an unknown part through known resistors and read their voltages with an analog-to-digital converter (ADC) \cite{frejek2011avr, kuebbeler2023transistortester}. The solver and the per-jack state machine were first developed in an interactive simulator \cite{benson2026topologysim} and are tested on the host computer against a simulated network before they run on the device \cite{benson2026expad}; the device itself was verified with a self-test and with oscilloscope measurements.
+}
+
+\openquestion{Report title}{
+  The proposal is titled \enquote{Self-Configuring Interface for Expression Pedals}, all three presentations \enquote{Adapter for Expression Pedals}. Choose one title for the report and use it for the title page and the PDF metadata (\code{00-front-matter/metadata.tex}). Also add submission date, supervisor and assistant there.
+}

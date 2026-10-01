@@ -1,0 +1,130 @@
+% !TEX root = ../main.tex
+
+\chapter{Appendix}
+\label{ch:appendix}
+
+\scaffold{
+  Material referenced from the text but too long for it (writing guide, section 3.8). Each item is a section with a label.
+}
+
+\section{Schematics}
+\label{sec:appendix-schematics}
+
+\placeholderfigure{
+  \textbf{Content.} The complete schematic of the board, one page per sheet: root sheet, power supply, microcontroller, analog front end (ADCs), analog channel block (switches and filters, used four times), LEDs.
+  \textbf{How to obtain.} \code{kicad-cli sch export pdf hardware/ExpressionController.kicad\_sch -o report/08-appendix/figures/schematic.pdf}, then include the pages with \code{\textbackslash includepdf} (package \code{pdfpages}) in landscape. Check that the exported revision matches the manufactured board.
+}
+
+\section{Bill of Materials}
+\label{sec:appendix-bom}
+
+\scaffold{
+  One sentence introducing the table; mention that parts without an order number came from the university's stock. Note that A1 is listed as \enquote{RaspberryPi\_Pico} by the KiCad symbol but is a Pico~2~W.
+}
+
+\begingroup
+\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth} r l l@{}}
+  \caption[Bill of Materials]{\textbf{Bill of Materials}~-- \scaffoldinline{Source \code{hardware/BOM.csv}; order numbers are Mouser part numbers.}}
+  \label{tab:bom} \\
+  \toprule
+  \textbf{References} & \textbf{Qty} & \textbf{Value} & \textbf{Order number} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{References} & \textbf{Qty} & \textbf{Value} & \textbf{Order number} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+    A1 & 1 & RaspberryPi\_Pico &  \\
+    C1 & 1 & 47u & 667-EEH-ZC1E470P \\
+    C2, C10, C17 & 3 & 10u &  \\
+    C3, C5 & 2 & 4.7u &  \\
+    C4, C6, C8 & 3 & 2.2u &  \\
+    C9, C11, C13, C16, C18, C20, C39, C40, C41, C42, C47, C48, C49, C50, C51, C52, C53, C54, C55, C56, C57, C58, C59, C60 & 24 & 100n &  \\
+    C14, C15, C21, C22 & 4 & 18p &  \\
+    C23, C24, C25, C26, C27, C28, C29, C30, C31, C32, C33, C34, C35, C36, C37, C38 & 16 & 10n &  \\
+    D1 & 1 & SMBJ15CA & 947-SMBJ15CA \\
+    D2 & 1 & BZX84C15-7-F & 621-BZX84C15-F \\
+    D3 & 1 & PMEG6010ELR & 771-PMEG6010ELRX \\
+    D4, D5, D6, D7 & 4 & WS2812B & 485-1655 \\
+    F1 & 1 & MF-MSMF050-2 & 652-MF-MSMF050-2 \\
+    J1 & 1 & BarrelJack & 490-PJ-102AH \\
+    J2, J3, J4, J5 & 4 & AudioJack & 568-NMJ6HFD2-AU \\
+    Q1 & 1 & DMP3099L-7 & 621-DMP3099L-7 \\
+    R1 & 1 & 100k &  \\
+    R3, R4, R5, R6, R7, R8, R9, R10, R46, R47, R48, R49 & 12 & 47 &  \\
+    R15, R16, R17, R18, R23, R24, R25, R26, R31, R32, R33, R34, R39, R40, R41, R42, R58 & 17 & 10k &  \\
+    R43 & 1 & 220 &  \\
+    R44, R45 & 2 & 0 &  \\
+    R50, R51, R52, R53, R54, R55, R56, R57 & 8 & 1k 0.1\% & ERA-6AEB102V \\
+    TP1, TP2, TP3, TP4, TP5, TP6, TP7, TP8, TP9, TP10, TP11, TP12, TP13, TP14, TP15 & 15 & TestPoint &  \\
+    U1 & 1 & ADP7142AUJZ-3.3 & 584-ADP7142AUJZ3.3R7 \\
+    U2 & 1 & ADP7142AUJZ-5.0 & 584-ADP7142WAUJZ-50R \\
+    U3 & 1 & ADP7142AUJZ-2.5 & 584-ADP7142AUJZ2.5R7 \\
+    U4, U5 & 2 & AD7718BRZ & 584-AD7718BRZ \\
+    U6, U8, U10, U12 & 4 & 74HC595DR & 595-SN74HC595DR \\
+    U14 & 1 & 74AHCT1G125 & 595-74AHCT1G125DCKRG \\
+    U15, U16, U17, U18, U19, U20, U21, U22 & 8 & TMUX1511PWR & 595-TMUX1511PWR \\
+    Y1, Y2 & 2 & 32.768kHz & 428-200120-ML02 \\
+\end{longtable}
+\endgroup
+
+\section{Jack Monitor Configuration}
+\label{sec:appendix-monitor-config}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \titledcaption{Jack Monitor Configuration}{\scaffoldinline{Every field of \code{MonitorConfig::new} in \code{topology/src/monitor.rs} with its value and the observation that set it; complete the reasons from the field documentation in the code.}}
+  \label{tab:monitor-config-full}
+  \begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Field} & \textbf{Value} & \textbf{Reason} \\
+    \midrule
+    \code{max\_wiper\_relative} & 0.25 & pedal with \qtyrange{8}{15}{\percent} in its wiper lead \\
+    \code{end\_stop\_relative} & 0.02 & a pedal whose travel ends \qty{9}{\percent} short of its track is no end stop \\
+    \code{plug\_check\_interval} & \qty{50}{\milli\second} & \scaffoldinline{reason} \\
+    \code{open\_solve\_interval} & \qty{1000}{\milli\second} & networks without tip and sleeve behind an open plug \\
+    \code{ring\_check\_interval} & \qty{100}{\milli\second} & \scaffoldinline{reason} \\
+    \code{ring\_check\_fraction} & 0.01 & pull paths differ by a few ohms \\
+    \code{end\_tap\_interval} & \qty{25}{\milli\second} & \scaffoldinline{reason} \\
+    \code{rail\_refresh\_interval} & \qty{30}{\second} & \scaffoldinline{reason} \\
+    \code{rail\_samples} & 8 & rail noise negligible against a single reading \\
+    \code{initial\_total} & \qty{100}{\kilo\ohm} & covers common pedals for settling \\
+    \code{trusted\_failed\_solves} & 2 & a moving pedal is rejected once or twice \\
+    \code{end\_drop\_sigmas}, \code{end\_drop\_fraction} & 6, 0.03 & wrong wiper noticed within about \qty{5}{\percent} of travel \\
+    \code{first\_end\_drop\_fraction} & 0.25 & solves on an end stop up to \qty{10}{\percent} off \\
+    \code{wiper\_range\_sigmas}, \code{wiper\_range\_fraction} & 6, 0.005 & wiper read up to \qty{7}{\milli\volt} past its end \\
+    \code{closed\_resistance} & \qty{0.2}{\kilo\ohm} & \scaffoldinline{reason} \\
+    \code{element\_open\_sigmas} & 6 & checked on every reading, still resolves about \qty{800}{\kilo\ohm} \\
+    \code{rheostat\_readings} & 3 & a switch caught mid-bounce is no rheostat \\
+    \code{end\_stop\_change\_fraction} & 0.2 & mono rheostat versus potentiometer on its end stop \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Firmware Programs}
+\label{sec:appendix-binaries}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \titledcaption{Firmware Programs}{\scaffoldinline{Each program is flashed on its own with \code{cargo run --bin <name>}; source \code{src/bin/} of the repository \cite{benson2026expad}.}}
+  \label{tab:binaries}
+  \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Program} & \textbf{Purpose} \\
+    \midrule
+    \code{expression\_controller} & complete firmware: four jacks, USB MIDI, LEDs, web interface \\
+    \code{detect\_pin\_mapping} & board self-test (\cref{sec:results-self-test}) \\
+    \code{capture} & holds a drive pattern and records every ADC input; noise measurement \\
+    \code{adc\_characterization} & SPI settings and filter rates compared on a pedal in jack~1 \\
+    \code{potentiometer} & one pedal's wiper on jack~1, shown on the LEDs \\
+    \code{rainbow} & LED test \\
+    \code{midi\_loopback} & echoes USB MIDI \\
+    \code{web\_interface} & web interface with simulated status \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
