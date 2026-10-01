@@ -37,6 +37,13 @@ pub const TIP_SWITCH: usize = ARM_COUNT;
 /// the rails in half, with one it is isolated and reads its own rail.
 const PLUG_THRESHOLD: f32 = 0.75;
 
+macro_rules! diagnose {
+    ($($argument:tt)*) => {
+        #[cfg(feature = "defmt")]
+        defmt::warn!($($argument)*);
+    };
+}
+
 /// Standard values of rheostat pedals, in kΩ, the full scale a rheostat's resistance is read
 /// against.
 const RHEOSTAT_VALUES: [f32; 10] = [1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0];
@@ -202,6 +209,9 @@ pub struct MonitorConfig {
     /// Standard deviations of noise the wiper may read outside the span of its track ends,
     /// and a mono plug's ring away from the sleeve.
     pub wiper_range_sigmas: f32,
+    /// Fraction of the span the wiper may additionally read outside it: a pedal on the PCB
+    /// read its wiper up to 7 mV past the track end it rests on at either end stop.
+    pub wiper_range_fraction: f32,
 
     /// Largest resistance between tip and sleeve that counts as a closed switch, in kΩ.
     pub closed_resistance: f32,
@@ -239,6 +249,7 @@ impl MonitorConfig {
             end_drop_fraction: 0.03,
             first_end_drop_fraction: 0.25,
             wiper_range_sigmas: 6.0,
+            wiper_range_fraction: 0.005,
             closed_resistance: 0.2,
             element_open_sigmas: 6.0,
             rheostat_readings: 3,
@@ -641,6 +652,7 @@ impl JackMonitor {
     ) -> bool {
         measurement.sum += voltage;
         measurement.sample += 1;
+        diagnose!("DIAG rail sample {} arm {} #{}: {}V at {}", defmt::Debug2Format(&measurement.level), measurement.arm, measurement.sample, voltage, now);
         if measurement.sample < self.config.rail_samples {
             self.enter(State::Rails { measurement, then }, now);
             return false;
@@ -669,6 +681,7 @@ impl JackMonitor {
             return false;
         }
 
+        diagnose!("DIAG rails high {} low {}", measurement.high, measurement.low);
         self.rails = Some(Rails {
             high: measurement.high,
             low: measurement.low,
@@ -703,6 +716,7 @@ impl JackMonitor {
 
     fn record_confirm_plug(&mut self, voltage: f32, now: u64) -> bool {
         if !self.plugged(voltage) {
+            diagnose!("DIAG confirm plug: empty, tip switch {}V", voltage);
             self.empty(now);
             return false;
         }
@@ -818,7 +832,8 @@ impl JackMonitor {
             }
             // Usually the pedal moving between pairs: solve again straight away, trusting
             // the last total for settling until it keeps failing.
-            Err(_) => {
+            Err(error) => {
+                diagnose!("DIAG solve failed: {}, voltages {}", defmt::Debug2Format(&error), solve.voltages);
                 self.failed_solves += 1;
                 self.start_solve(now, mode);
                 false
@@ -837,6 +852,7 @@ impl JackMonitor {
             _ => resistances.total,
         };
         self.report.resistances = resistances;
+        diagnose!("DIAG classified {} from {}", defmt::Debug2Format(&network), resistances);
 
         match network {
             // Either the plug came out or nothing behind it conducts; only the tip switch
@@ -1006,6 +1022,12 @@ impl JackMonitor {
         };
 
         if !consistent {
+            diagnose!(
+                "DIAG track lost: read {} (wiper {}, low {}, high {}) at {}V, ends {}V/{}V, expected drops {}/{}",
+                read, track.wiper, follower.low, follower.high, voltage,
+                track.low_end.voltage, track.high_end.voltage,
+                track.low_end.expected_drop, track.high_end.expected_drop
+            );
             self.lose_track(now);
             return true;
         }
@@ -1066,7 +1088,9 @@ impl JackMonitor {
     }
 
     fn wiper_in_range(&self, track: &Track, voltage: f32) -> bool {
-        let tolerance = self.config.wiper_range_sigmas * self.config.solver.voltage_noise;
+        let span = track.high_end.voltage - track.low_end.voltage;
+        let tolerance = self.config.wiper_range_sigmas * self.config.solver.voltage_noise
+            + self.config.wiper_range_fraction * span.abs();
         voltage >= track.low_end.voltage - tolerance
             && voltage <= track.high_end.voltage + tolerance
     }
@@ -1116,6 +1140,7 @@ impl JackMonitor {
 
         if read == TIP_SWITCH {
             if !self.plugged(voltage) {
+                diagnose!("DIAG tip-sleeve plug check failed: tip switch {}V, rails tip {}V/{}V", voltage, rails.low[TIP], rails.high[TIP]);
                 self.empty(now);
                 return false;
             }
@@ -1128,6 +1153,7 @@ impl JackMonitor {
             };
             // Whatever is behind the plug now is not what was identified.
             if mismatch && ring_check.mismatch {
+                diagnose!("DIAG ring check mismatch: ring {}V, sleeve {}V, shorted {}", voltage, tip_sleeve.sleeve_voltage, ring_check.shorted);
                 self.identify(now);
                 return true;
             }
@@ -1139,6 +1165,7 @@ impl JackMonitor {
             if matches!(tip_sleeve.element, Element::Open { .. }) {
                 // Something connects tip and sleeve now: find out what.
                 if resistance.is_finite() {
+                    diagnose!("DIAG open plug conducts: tip {}V, {}kOhm", voltage, resistance);
                     self.identify(now);
                     return true;
                 }
