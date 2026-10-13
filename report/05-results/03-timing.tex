@@ -1,0 +1,23 @@
+% !TEX root = ../main.tex
+
+\section{Timing}
+\label{sec:results-timing}
+
+\scaffold{
+  \textbf{Paragraph 1, recognition} (about 110 words, \cref{fig:plug-in-refresh}). Channel~1 on the tip switch, channel~2 on the ring of one jack, triggered by the plug lifting the tip switch; every change of the drive pattern is visible on the ring, so the phases of the jack monitor can be read off. With rails measured less than \qty{30}{\second} before, the pedal was followed 65 to \qty{95}{\milli\second} after insertion in five runs: up to \qty{50}{\milli\second} until the next plug check and 44 to \qty{48}{\milli\second} of identification. Otherwise the rails are measured first (\qty{214}{\milli\second}), giving about \qty{300}{\milli\second} (\cref{fig:plug-in-refresh}). Unplugging was noticed within 2 to \qty{27}{\milli\second}; the jack reported empty after 260 to \qty{391}{\milli\second}, again mostly the rail measurement (\cref{tab:plug-in}).
+}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.7\linewidth]{05-results/figures/plug-in-rail-refresh}
+  \titledcaption{Plug-In with Rail Measurement}{\scaffoldinline{Conditions (tip switch and ring of jack~1, 10X, trigger on the tip switch); vertical lines are latch edges, the dashed one inferred; name the phases. Capture \code{plugin\_w\_rail\_meas.csv}.}}
+  \label{fig:plug-in-refresh}
+\end{figure}
+
+\scaffold{
+  \textbf{Paragraph 2, settling} (about 50 words). An earlier capture of a power-up with the EV-30 plugged in contains a floating ring charging through the pedal: the fitted time constant is \qty{190.6}{\micro\second} against \qty{194}{\micro\second} from \cref{eq:settling}, and after the minimum wait of \qty{1}{\milli\second} \qty{3.2}{\milli\volt} remain. A series with known resistors up to \qty{220}{\kilo\ohm}, which would test the model at its limit, was left out in favour of the other measurements.
+}
+
+\scaffold{
+  \textbf{Paragraph 3, update rate and latency} (about 100 words). The firmware logs 188 to 189 updates per second for one pedal on its ADC, against 2.6 for the first firmware; with two pedals on one ADC the rate was measured at about the expected 95 per jack. All four jacks were run at once with two expression pedals, a footswitch and an open cable. The end-to-end latency was not measured: the adapter adds at most one reading interval (\qty{5.3}{\milli\second}, \qty{10.5}{\milli\second} for two pedals on one ADC) and the next USB frame (\qty{1}{\milli\second}), while the host's USB stack and the audio buffers of the music software (\qty{5.3}{\milli\second} alone for 256 samples at \qty{48}{\kilo\hertz}) add more, so the adapter's share is small.
+}

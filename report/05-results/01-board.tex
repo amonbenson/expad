@@ -1,0 +1,23 @@
+% !TEX root = ../main.tex
+
+\section{Board and Signal Chain}
+\label{sec:results-board}
+
+\scaffold{
+  \textbf{Paragraph 1, setup and self-test} (about 90 words). Equipment: oscilloscope Rigol MSO5104 with PVP2350 probes at 10X, compensated; laboratory supply Rigol DP932E at \qty{9}{\volt} with a \qty{1}{\ampere} limit. The self-test reads the grounded and the reference input of both ADCs and pulls every contact up and down with the jacks empty, checking that only the expected input follows. All 32 checks passed in \qty{1.02}{\second}, including the tip switch following the tip of every empty jack. Grounded inputs read \qty{0.0}{\volt} and reference inputs \qty{2.5000}{\volt}.
+}
+
+\scaffold{
+  \textbf{Paragraph 2, supply} (about 80 words, \cref{fig:supply-ripple}). Ripple was measured AC-coupled at the test points of the input and the three rails in four operating states, as the RMS average over 70 to 1000 acquisitions; the noise floor of \qty{0.34}{\milli\volt} RMS was taken with the probe tip on ground. The limit for a stable 7-bit value follows from one step of the reference, $\qty{2.5}{\volt}/127 = \qty{19.7}{\milli\volt}$, divided by 6 for $\pm3\sigma$: \qty{3.28}{\milli\volt} RMS. Every regulator stage lowers the ripple; the \qty{3.3}{\volt} and \qty{2.5}{\volt} rails stay at or just above the noise floor, WiFi visibly raising them, and every rail stays below the limit. The \qty{5}{\volt} rail shows short spikes of about \qty{16}{\milli\volt} peak-to-peak once the microcontroller runs, suspected to come from the module's switching regulator.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\linewidth]{05-results/figures/supply-rail-ripple}
+  \titledcaption{Supply Rail Ripple}{\scaffoldinline{Conditions (AC coupling, \qty{10}{\milli\second}/div, RMS average), the four operating states, the noise floor and the limit for a stable 7-bit value; rails in the order of the regulator chain. Regenerate the plot with the step of 127 used in the text (limit \qty{3.28}{\milli\volt} instead of \qty{3.26}{\milli\volt}).}}
+  \label{fig:supply-ripple}
+\end{figure}
+
+\scaffold{
+  \textbf{Paragraph 3, SPI and ADC noise} (about 60 words). The SPI clock runs at \qty{3.95}{\mega\hertz}; at 10X its edges rise in \qty{10.2}{\nano\second} and the data edges in \qty{11.2}{\nano\second}, without ringing and within one oscilloscope step of overshoot (\cref{fig:spi-edges}). On the empty board the ADC noise is 15 to \qty{85}{\micro\volt} at \qty{315}{\hertz}, with a constant offset of about \qty{1.4}{\milli\volt} that the rail measurement removes; through a pedal at \qty{819}{\hertz}, a single reading has \qty{0.39}{\milli\volt} (\cref{tab:adc-noise,tab:adc-characterization}).
+}

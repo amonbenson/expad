@@ -1,29 +1,33 @@
 % !TEX program = lualatex
-% Report: Self-Configuring Interface for Expression Pedals. Build: latexmk (see latexmkrc).
+% Report: Adapter for Expression Pedals. Build: latexmk (see latexmkrc).
+%
+% Page budget: chapters 1 to 7 at most 10 pages including figures; the appendix does not count.
+% Every scaffold box states its word budget, about 3500 words in total next to 6 figures and
+% 3 tables.
 
 \input{preamble}
 
 \begin{document}
 
 \pagenumbering{roman}
-\include{00-front-matter/chapter}
+\input{00-front-matter/chapter}
 
 \tableofcontents
-\listofloqs % scaffold only: remove with the last open question
-
-\cleardoublepage
+\clearpage
 \pagenumbering{arabic}
-\include{01-introduction/chapter}
-\include{02-related-work/chapter}
-\include{03-measurement-principle/chapter}
-\include{04-implementation/chapter}
-\include{05-results/chapter}
-\include{06-discussion/chapter}
-\include{07-conclusion/chapter}
+\input{01-introduction/chapter}
+\input{02-related-work/chapter}
+\input{03-measurement-principle/chapter}
+\input{04-implementation/chapter}
+\input{05-results/chapter}
+\input{06-discussion/chapter}
+\input{07-conclusion/chapter}
 
+\clearpage
 \appendix
-\include{08-appendix/chapter}
+\input{08-appendix/chapter}
 
+\clearpage
 \printbibliography[heading=bibintoc]
 \listoffigures
 \listoftables

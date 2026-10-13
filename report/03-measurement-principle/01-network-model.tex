@@ -1,0 +1,38 @@
+% !TEX root = ../main.tex
+
+\section{Pedal Networks}
+\label{sec:network-model}
+
+\scaffold{
+  Budget: about 180 words and \cref{fig:principle}.
+
+  \textbf{Paragraph 1, wirings and plugs.} Show the common wirings in \cref{fig:pedal-wirings}: wiper on the tip with ring as reference and sleeve as ground, wiper on the ring with tip as reference \cite{mission2014expression, nonlinearlabs2026pedals}, and the two-wire variants. The sleeve is a track end in both three-wire wirings, which the position convention in \cref{sec:following} uses. A mono (TS) plug additionally shorts the jack's ring to its sleeve; for a potentiometer pedal this puts the two track halves in parallel, $R\,x(1-x)$ at travel $x$, which rises and falls again, so potentiometers need a stereo cable whatever the interface does.
+
+  \textbf{Paragraph 2, the star model.} Any passive network between three terminals is externally equivalent to three resistors meeting in an inaccessible star point (\cref{fig:star-network}) \cite{kennelly1899equivalence}; only this equivalent can be recovered from the terminals \cite{borcea2012resistor}. Define the term \emph{arm}: the resistance from one contact to the star point, $r_\mathrm{T}$, $r_\mathrm{R}$, $r_\mathrm{S}$. A potentiometer is the case with exactly one arm near \qty{0}{\ohm}, the wiper, and the ratio of the other two is the position; a two-wire pedal has an isolated arm. The solver reports relative arms $q_i = r_i/R_\mathrm{tot}$ and the total $R_\mathrm{tot}$.
+}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}[b]{0.46\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{03-measurement-principle/figures/pedal-wirings}
+    \caption{Pedal Wirings}
+    \label{fig:pedal-wirings}
+  \end{subfigure}%
+  \hfill%
+  \begin{subfigure}[b]{0.2\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{03-measurement-principle/figures/star-network}
+    \caption{Star Model}
+    \label{fig:star-network}
+  \end{subfigure}%
+  \hfill%
+  \begin{subfigure}[b]{0.3\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{03-measurement-principle/figures/pull-matrix}
+    \caption{Pull Matrix}
+    \label{fig:pull-matrix}
+  \end{subfigure}
+  \titledcaption{Measurement Principle}{\scaffoldinline{(a) the four wirings (which contact carries the wiper, which variant is two-wire); (b) the three arms meeting in the star point, ideally relabelled with $r_\mathrm{T}$, $r_\mathrm{R}$, $r_\mathrm{S}$; (c) every contact switchable to the high or the low rail through a resistor or left floating, each read by the ADC; the highlighted example drives contact~2 high and contact~3 low while contact~1 floats.}}
+  \label{fig:principle}
+\end{figure}

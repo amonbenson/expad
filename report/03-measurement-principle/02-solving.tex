@@ -1,0 +1,33 @@
+% !TEX root = ../main.tex
+
+\section{Pair Measurement and Solve}
+\label{sec:pair-measurement}
+
+\scaffold{
+  Budget: about 250 words plus \cref{eq:pair,eq:ratios}.
+
+  \textbf{Paragraph 1, the pair.} Each contact can be pulled up or down through $R_\mathrm{p}$ or left floating (the \emph{drive}), and is read by the ADC (one settled result is a \emph{reading}). The \emph{rail voltages} $V_{\mathrm{H},i}$, $V_{\mathrm{L},i}$ are what contact $i$ reads when all arms are driven to the same rail, so no current flows; measuring them cancels the ADC offset and the switch drops. A \emph{pair measurement} drives arm $h$ high and $l$ low; the floating contact $f$ carries no current and reads the star point. Present \cref{eq:pair}: the loop current, read on both sides, the pair resistance, and the share of the low arm. The ratio uses voltages spanning most of the rail and is precise; the current relies on the small drops across $R_\mathrm{p}$, so the total is less precise. The two currents must agree, which catches a pedal moved during the measurement.
+}
+
+\begin{equation}
+  I = \frac{1}{2}\left(\frac{V_{\mathrm{H},h} - V_h}{R_\mathrm{p}} + \frac{V_l - V_{\mathrm{L},l}}{R_\mathrm{p}}\right),
+  \qquad
+  r_h + r_l = \frac{V_h - V_l}{I},
+  \qquad
+  \frac{r_l}{r_h + r_l} = \frac{V_f - V_l}{V_h - V_l}
+  \label{eq:pair}
+\end{equation}
+
+\scaffold{
+  \textbf{Paragraph 2, the solve.} A \emph{solve} measures (tip high, ring low), (tip high, sleeve low) and only if needed (ring high, sleeve low). Two pairs sharing arm $s$ give its shares $\sigma_1$, $\sigma_2$; \cref{eq:ratios} turns them into the relative arms, normalized by the \emph{conditioning} $c$. $c$ approaches 0 when the shared arm approaches \qty{0}{\ohm}, i.e. a wiper on the tip, and noise is amplified by about $1/c$; below $c = 0.5$ the third pair is measured. The total is the mean of the totals the pairs imply, weighted by their squared signal-to-noise ratio, and pairs that disagree reject the solve.
+}
+
+\begin{equation}
+  x_s = \sigma_1 \sigma_2,\quad x_a = (1 - \sigma_1)\,\sigma_2,\quad x_b = (1 - \sigma_2)\,\sigma_1,\qquad
+  q_i = \frac{x_i}{c},\quad c = \sum_j x_j
+  \label{eq:ratios}
+\end{equation}
+
+\scaffold{
+  \textbf{Paragraph 3, tolerances.} Every threshold is a multiple of the noise $\sigma_V$ of one reading, propagated to the checked quantity (for a current, $\sigma_V/R_\mathrm{p}$): a high-value pedal with small, noisy currents gets wider tolerances instead of being rejected. Name the conduction threshold ($3\sigma$) and refer to \cref{tab:constants} in the appendix for the rest.
+}

@@ -11,8 +11,10 @@
 \usepackage[a4paper, top=30mm, bottom=30mm, inner=30mm, outer=25mm]{geometry}
 \usepackage[skip=0.5\baselineskip plus 2pt]{parskip}
 \usepackage{titlesec}
-\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter\quad}{0pt}{}
-\titlespacing*{\chapter}{0pt}{0pt}{30pt}
+% Chapters continue on the same page: the report is limited to 10 pages without the appendix.
+\titleclass{\chapter}{straight}
+\titleformat{\chapter}[hang]{\normalfont\LARGE\bfseries}{\thechapter\quad}{0pt}{}
+\titlespacing*{\chapter}{0pt}{3.5ex plus 1ex minus .2ex}{2ex plus .2ex}
 \usepackage[nottoc]{tocbibind} % lists of figures and tables in the table of contents
 \usepackage{tocbasic}           % list of open questions
 

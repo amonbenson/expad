@@ -52,6 +52,10 @@ page, a bibliography, page numbers) are omitted.
 7. Appendix: one chapter, sections per item (listings, tables of design values).
 8. Bibliography, list of figures, list of tables.
 
+Length: when the course sets a page limit (here 10 pages for chapters 1 to 7, figures included,
+appendix excluded), chapters run on without page breaks, raw data and secondary plots move to the
+appendix, and each section is planned with a word budget (about 600 words per page of text).
+
 ## 3. Chapters
 
 ### 3.1 Notice on the Use of AI Tools

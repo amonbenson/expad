@@ -1,0 +1,30 @@
+% !TEX root = ../main.tex
+
+\section{Requirement Review}
+\label{sec:results-requirements}
+
+\scaffold{
+  One sentence introducing \cref{tab:requirements}, which checks the proposal \cite{benson2026proposal} and the evaluation plan of milestone~1 against the results; no further prose.
+}
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \titledcaption{Requirements and Results}{\scaffoldinline{P: proposal, M: evaluation plan of milestone~1; status met, partly met or not met.}}
+  \label{tab:requirements}
+  \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}p{0.34\linewidth} >{\raggedright\arraybackslash}X l@{}}
+    \toprule
+    & \textbf{Requirement} & \textbf{Result} & \textbf{Status} \\
+    \midrule
+    P & Detect presence and wiring automatically & all available pedal types and both wirings & met \\
+    P & Real time, no perceptible latency & 188 updates/s, recognition \qty{0.1}{\second} (\qty{0.3}{\second} worst case) & met \\
+    P & Value linear to the pedal angle & ratiometric wiper reading, drive curve; linearity not measured & partly \\
+    P & One to four TRS jacks, class-compliant USB MIDI & four jacks, USB MIDI 1.0 & met \\
+    P & Calibration and filtering of the channels & rail measurement, MIDI hysteresis & met \\
+    P & Optional DIN MIDI output & -- & not met \\
+    M & Supply, SPI, self-test & \cref{sec:results-board} & met \\
+    M & Known networks, accuracy, linearity & real pedals and ohmmeter only & partly \\
+    M & End-to-end latency & estimated, not measured & partly \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

@@ -4,17 +4,11 @@
 \label{ch:conclusion}
 
 \scaffold{
-  Writing guide, section 3.7: one limited step of the project and how to extend it, a second extension, one closing sentence; no new facts about the project.
-}
+  Budget: about 150 words, no new facts (writing guide, section 3.7).
 
-\scaffold{
-  \textbf{Paragraph 1, measurement front end.} The pull resistance of \qty{1}{\kilo\ohm} was chosen for position resolution; \qty{4.7}{\kilo\ohm} would multiply the current signal of high-value pedals by four to five while still resolving the position of a \qty{10}{\kilo\ohm} pedal far below a MIDI step (\cref{tab:pull-resistance}), which would make the identified totals of 250 to \qty{500}{\kilo\ohm} pedals accurate. The rails could be refreshed in the background while a jack is empty, removing the \qty{214}{\milli\second} from the worst-case recognition time.
-}
+  \textbf{Paragraph 1, measurement.} The planned sweep with precision resistors and the settling series would complete the evaluation and settle the deviation of the EV-30 with its minimum knob in a fixed position. Pull resistors of about \qty{4.7}{\kilo\ohm} would raise the current signal of high-value pedals four- to fivefold while keeping the position resolution (\cref{tab:pull-resistance}), and measuring the rails in the background while a jack is empty would remove them from the recognition time.
 
-\scaffold{
-  \textbf{Paragraph 2, output and use.} The measurement resolves about 29 times finer than a 7-bit MIDI step; high-resolution control changes, which pair a controller with its least significant byte (controller 43 for expression \cite{midi2026controlchange}), or MIDI~2.0 would pass this resolution on to the host. For live use, settings should persist in flash, a hardware interface (buttons, a small display) should replace the web interface on stage, and the DIN MIDI output of the proposal \cite{benson2026proposal} would connect the device to instruments without a computer.
-}
+  \textbf{Paragraph 2, use.} High-resolution control changes, which pair a controller with its least significant byte (controller 43 for expression \cite{midi2026controlchange}), would pass on the resolution the measurement already has. Settings stored in flash, a hardware interface instead of the web interface on stage, a more robust WiFi link, the DIN MIDI output of the proposal \cite{benson2026proposal}, and a rectifier for both supply polarities that adds no noise are the steps towards a device for live use.
 
-\scaffold{
-  \textbf{Closing sentence.} \enquote{Overall, this work demonstrates that \ldots}: an expression pedal of unknown wiring can be identified electrically within a tenth of a second (a third of a second in the worst case) and followed fast and precisely enough for live performance, with a measurement front end that consists only of switches, two resistors per jack and a shared reference.
+  \textbf{Closing sentence.} \enquote{Overall, this work demonstrates that \ldots}: an expression pedal of unknown wiring can be identified electrically within a tenth of a second and followed fast and precisely enough for live performance, with a front end of switches, two resistors per jack and a shared reference.
 }
