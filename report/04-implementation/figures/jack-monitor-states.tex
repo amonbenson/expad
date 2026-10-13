@@ -4,30 +4,32 @@
 % only name states and conditions; the caption and the appendix text explain them.
 %
 % Columns: Detect Plug, Identify Network (decision and Other, then the states), Follow (two pedal
-% columns, fed by a bus in the gap before it); the outer margins hold the start dot and the unplug
-% lane on the left and the re-identify lane on the right. Rows: four rows of states at a fixed
-% pitch; the re-identify lane runs above the groups, the unplug lane and Output below them.
+% columns, fed by a bus in the gap before it); every box has the same width. The outer margins hold
+% the start dot and the unplug lane on the left and the re-identify lane on the right. Rows: three
+% rows of states at a fixed pitch, each pedal group's header above its row; the re-identify lane
+% runs above the groups, the lanes out of Confirm Plug below the last row, the unplug lane and
+% Output below the groups. Two edges on one side of a box attach symmetrically about its center.
 
 \begin{tikzpicture}[diagram, diagram title font=\scriptsize,
     diagram name font=\fontsize{7}{8.4}\selectfont, diagram text font=\tiny]
   % ---------------------------------------------------------------- grid
   \pgfmathsetlengthmacro\outerMargin{6mm}
-  \pgfmathsetlengthmacro\groupGap{8mm}
-  \pgfmathsetlengthmacro\groupMargin{2.5mm}
-  \pgfmathsetlengthmacro\decisionWidth{11mm}  % the decision and Other
-  \pgfmathsetlengthmacro\branchGap{10mm}      % between them and the identify states
+  \pgfmathsetlengthmacro\groupGap{7mm}
+  \pgfmathsetlengthmacro\groupMargin{2mm}
+  \pgfmathsetlengthmacro\branchGap{9mm}       % between the decision column and the identify states
   \pgfmathsetlengthmacro\loopGap{5mm}         % right of Solve, for its loop
-  \pgfmathsetlengthmacro\pedalGap{11mm}       % between the two pedal columns
-  % Four state columns share what is left: one per group, two in Follow.
+  \pgfmathsetlengthmacro\pedalGap{9mm}        % between the two pedal columns
+  % Five state columns share what is left: Detect Plug, two in Identify Network, two in Follow.
   \pgfmathsetlengthmacro\boxWidth{(\linewidth - 2*\outerMargin - 2*\groupGap - 8*\groupMargin
-    - \decisionWidth - \branchGap - \loopGap - \pedalGap) / 4}
+    - \branchGap - \loopGap - \pedalGap) / 5}
   \pgfmathsetlengthmacro\boxHeight{10mm}
-  \pgfmathsetlengthmacro\rowPitch{24mm}
-  \pgfmathsetlengthmacro\titleSpace{5mm}
   \pgfmathsetlengthmacro\headerSpace{7mm}     % a pedal group's title and info line
+  \pgfmathsetlengthmacro\subgroupGap{2mm}     % between the two pedal groups
+  \pgfmathsetlengthmacro\rowPitch{\boxHeight + \groupMargin + \subgroupGap + \headerSpace}
+  \pgfmathsetlengthmacro\titleSpace{5mm}
   \pgfmathsetlengthmacro\laneSpace{5mm}
   \pgfmathsetlengthmacro\labelSpace{4mm}      % one line of edge label next to a lane
-  \pgfmathsetlengthmacro\pairOffset{1.5mm}    % two edges between the same boxes
+  \pgfmathsetlengthmacro\pairOffset{1.5mm}    % two edges on one side of a box
   \pgfmathsetlengthmacro\loopSize{2mm}
   \pgfmathsetlengthmacro\outputHeight{5mm}    % one output
   \pgfmathsetlengthmacro\outputGap{2mm}
@@ -37,8 +39,8 @@
   \coordinate (detect) at ($(detect west) + ({\groupMargin + \boxWidth/2}, 0)$);
   \coordinate (detect east) at ($(detect) + ({\boxWidth/2 + \groupMargin}, 0)$);
   \coordinate (identify west) at ($(detect east) + (\groupGap, 0)$);
-  \coordinate (decide) at ($(identify west) + ({\groupMargin + \decisionWidth/2}, 0)$);
-  \coordinate (identify) at ($(decide) + ({\decisionWidth/2 + \branchGap + \boxWidth/2}, 0)$);
+  \coordinate (decide) at ($(identify west) + ({\groupMargin + \boxWidth/2}, 0)$);
+  \coordinate (identify) at ($(decide) + ({\boxWidth + \branchGap}, 0)$);
   \coordinate (identify east) at ($(identify) + ({\boxWidth/2 + \loopGap + \groupMargin}, 0)$);
   \coordinate (follow west) at ($(identify east) + (\groupGap, 0)$);
   \coordinate (pedal west) at ($(follow west) + (\groupMargin, 0)$);
@@ -52,32 +54,32 @@
   \coordinate (reidentify lane) at ($(follow east) + (\outerMargin/2, 0)$);
 
   % Rows, top to bottom.
-  \foreach \row in {1, ..., 4}
+  \foreach \row in {1, 2, 3}
     \coordinate (row \row) at (0, {-\row*\rowPitch});
   \coordinate (box top) at ($(row 1) + (0, \boxHeight/2)$);
-  \coordinate (group top) at ($(box top) + (0, \titleSpace)$);
-  \coordinate (group bottom) at ($(row 4) - (0, {\boxHeight/2 + \groupMargin})$);
+  \coordinate (header top) at ($(box top) + (0, \headerSpace)$);
+  \coordinate (group top) at ($(header top) + (0, \titleSpace)$);
+  \coordinate (box bottom) at ($(row 3) - (0, \boxHeight/2)$);
+  \coordinate (all open lane) at ($(box bottom) - (0, \groupMargin + \pairOffset)$);
+  \coordinate (plug in lane) at ($(all open lane) - (0, \labelSpace)$);
+  \coordinate (group bottom) at ($(plug in lane) - (0, {\labelSpace + \groupMargin})$);
   \coordinate (reidentify top) at ($(group top) + (0, \laneSpace)$);
   \coordinate (unplug bottom) at ($(group bottom) - (0, \laneSpace)$);
   \coordinate (output top) at ($(unplug bottom) - (0, \labelSpace)$);
-  \coordinate (lost track lane) at ($(row 1)!0.5!(row 2)$);
-  \coordinate (end stop lane) at ($(row 3)!0.5!(row 4)$);
+  \coordinate (unplug merge) at ($(row 2)!0.5!(row 3)$);
 
   % ---------------------------------------------------------------- groups
   \foreach \stage/\west/\east/\title in {detect/detect west/detect east/Detect Plug,
       identify/identify west/identify east/Identify Network, follow/follow west/follow east/Follow} {
     \node[group=\stage, fit={(\west |- group top) (\east |- group bottom)}] (\stage\space group) {};
-    \node[group title=\stage, anchor=west] at ($(\west |- group top)!0.5!(\west |- box top) + (\groupMargin, 0)$)
+    \node[group title=\stage, anchor=west] at ($(\west |- group top)!0.5!(\west |- header top) + (\groupMargin, 0)$)
       {\title};
   }
-  % \node[mode chip=identify, anchor=east]
-  %   at ($(identify east |- group top)!0.5!(identify east |- box top) - (\groupMargin, 0)$) {identifying};
 
-  % Pedal groups: the potentiometer's frame starts level with the top boxes.
-  \node[subgroup=follow, fit={(pedal west |- box top)
-    ([yshift=-\boxHeight/2 - \groupMargin] pedal east |- row 2)}] (potentiometer group) {};
-  \node[subgroup=follow, fit={([yshift=\boxHeight/2 + \headerSpace] pedal west |- row 3)
-    ([yshift=-\boxHeight/2 - \groupMargin] pedal east |- row 3)}] (element group) {};
+  % Pedal groups: a header above their row of boxes.
+  \foreach \pedal/\row in {potentiometer/row 1, element/row 2}
+    \node[subgroup=follow, fit={([yshift=\boxHeight/2 + \headerSpace] pedal west |- \row)
+      ([yshift=-\boxHeight/2 - \groupMargin] pedal east |- \row)}] (\pedal\space group) {};
   \foreach \pedal/\title/\info in {
       potentiometer/Potentiometer/{start\pulldown{} end\pullup{}, read wiper},
       element/{Switch / Rheostat}/{\pullup{T} \pulldown{S} (\pulldown{R}), read T}} {
@@ -85,31 +87,36 @@
       at ($(\pedal\space group.north west) + (\groupMargin, -\groupMargin/2)$) {\title};
     \node[info, below=0.6mm of \pedal\space title.south west, anchor=north west] {\info};
   }
-  % \node[mode chip=follow, anchor=west, xshift=2mm] at (potentiometer title.east) {tracking};
 
-  % ---------------------------------------------------------------- detect plug
+  % ---------------------------------------------------------------- states
   \node[start] (start) at (unplug lane |- row 1) {};
   \node[block=detect, cell={detect}{row 1}] (rails) {\statename{Measure Rails}\\ all \pullup{}, all \pulldown{}};
   \node[block=detect, cell={detect}{row 2}] (empty) {\statename{Empty}\\ \pulldown{T} \pullup{TN}, read TN};
-  \node[block=detect, cell={detect}{row 4}] (confirm) {\statename{Confirm Plug}\\ \pulldown{T} \pullup{TN}, read TN};
+  \node[block=detect, cell={detect}{row 3}] (confirm) {\statename{Confirm Plug}\\ \pulldown{T} \pullup{TN}, read TN};
 
+  \node[block=identify, cell={identify}{row 1}] (refresh) {\statename{Refresh Rails}\\ all \pullup{}, all \pulldown{}};
+  \node[decision=identify, minimum size=4mm, cell={decide}{row 2}] (fresh) {};
+  \node[block=identify, cell={identify}{row 2}] (solve)
+    {\statename{Solve}\\ \pullup{T}\pulldown{R}, \pullup{T}\pulldown{S},\\ (\pullup{R}\pulldown{S})};
+  \node[block=other, cell={decide}{row 3}] (other) {\statename{Other}\\ no MIDI};
+  \node[block=identify, cell={identify}{row 3}] (classify) {\statename{Classify}\\ match network};
+
+  \node[block=follow, cell={follow first}{row 1}] (ends) {\statename{Read Ends}\\ one at a time};
+  \node[block=follow, cell={follow second}{row 1}] (wiper) {\statename{Read Wiper}\\ $\rightarrow$ position};
+  \node[block=follow, cell={follow first}{row 2}] (switch) {\statename{Switch}\\ closed 1, open 0};
+  \node[block=follow, cell={follow second}{row 2}] (rheostat) {\statename{Rheostat}\\ $\rightarrow$ position};
+  \node[block=follow, cell={follow first}{row 3}] (open) {\statename{Open}\\ nothing conducts};
+
+  % ---------------------------------------------------------------- detect plug
   \draw[flow] (start) -- (rails);
   \draw[flow] (rails) -- (empty);
-  \node[junction=unplug] (unplug merge) at (detect |- row 3) {};
+  \node[junction=unplug] (unplug junction) at (detect |- unplug merge) {};
   \draw[cancel] (confirm) -- (empty) node[edge label, text=unplug, pos=0.25, right] {no plug};
 
   % ---------------------------------------------------------------- identify network
   \node[junction] (entry) at (detect gap |- row 2) {};
   \draw[flow] (empty) -- (entry);
   \node[edge label, below] at (entry.south) {plug in};
-  \node[decision=identify, minimum size=4mm, cell={decide}{row 2}] (fresh) {};
-  \node[block=identify, cell={identify}{row 1}] (refresh) {\statename{Refresh Rails}\\ all \pullup{}, all \pulldown{}};
-  \node[block=identify, cell={identify}{row 2}] (solve)
-    {\statename{Solve}\\ \pullup{T}\pulldown{R}, \pullup{T}\pulldown{S},\\ (\pullup{R}\pulldown{S})};
-  \node[block=identify, cell={identify}{row 3}] (classify) {\statename{Classify}\\ match network};
-  \node[state=other, box width=\decisionWidth, minimum height=\boxHeight, cell={decide}{row 3}] (other)
-    {\statename{Other}\\ no MIDI};
-
   \draw[flow] (entry) -- (fresh);
   \draw[flow] (fresh) |- (refresh) node[edge label, pos=0.25, left] {$\geq$\,30\,s};
   \draw[flow] (fresh) -- (solve) node[edge label, midway, above] {$<$\,30\,s};
@@ -119,44 +126,45 @@
   \draw[flow] (solve) -- (classify) node[edge label, midway, left] {solved};
   \draw[flow] (classify) -- (other) node[edge label, midway, above] {unknown};
   \draw[flow] (other) -- (fresh);
-  \draw[flow] (classify) |- ([yshift=\pairOffset] confirm.east) node[edge label, pos=0.75, above] {all open};
+
+  % Below the last row: into Confirm Plug on the right of its south side, out on the left.
+  \draw[flow] (classify) |- ([xshift=\pairOffset] confirm.south |- all open lane)
+    -- ([xshift=\pairOffset] confirm.south);
+  \node[edge label, below] at (decide |- all open lane) {all open};
+  \draw[flow] ([xshift=-\pairOffset] confirm.south) |- (open |- plug in lane) -- (open);
+  \node[edge label, below] at (decide |- plug in lane) {plug in};
 
   % ---------------------------------------------------------------- follow
-  \node[block=follow, cell={follow first}{row 2}] (ends) {\statename{Read Ends}\\ one at a time};
-  \node[block=follow, cell={follow second}{row 2}] (wiper) {\statename{Read Wiper}\\ $\rightarrow$ position};
-  \node[block=follow, cell={follow first}{row 3}] (switch) {\statename{Switch}\\ closed 1, open 0};
-  \node[block=follow, cell={follow second}{row 3}] (rheostat) {\statename{Rheostat}\\ $\rightarrow$ position};
-  \node[block=follow, cell={follow first}{row 4}] (open) {\statename{Open}\\ nothing conducts};
-
-  \node[junction] (split) at (follow bus |- classify) {};
+  \coordinate (split) at (follow bus |- classify);
   \draw[bus] (classify) -- (split);
   \draw[flow] (split) |- (ends);
-  \draw[flow] (split) -- (switch);
-  \draw[flow] (split) |- (end stop lane -| rheostat) -- (rheostat);
-  \node[edge label, anchor=south] at ($(follow bus |- end stop lane)!0.5!(follow second |- end stop lane)$) {end stop};
+  \node[junction] at (follow bus |- switch) {};
+  \draw[flow] (follow bus |- switch) -- (switch);
+  \coordinate (end stop lane) at ($(element group.south)!0.5!(open.north)$);
+  \node[junction] at (follow bus |- end stop lane) {};
+  \draw[flow] (follow bus |- end stop lane) -| (rheostat);
+  \node[edge label, anchor=north] at (switch |- end stop lane) {end stop};
   \draw[flow] ([yshift=\pairOffset] ends.east) -- ([yshift=\pairOffset] wiper.west)
     node[edge label, midway, above] {both read};
   \draw[flow] ([yshift=-\pairOffset] wiper.west) -- ([yshift=-\pairOffset] ends.east)
     node[edge label, midway, below] {25\,ms};
-  \draw[flow] (switch) -- (rheostat) node[edge label, midway, above] {3 readings};
-  \coordinate (identify center) at ($(identify west)!0.5!(identify east)$);
-  \draw[flow] (confirm) -- (open);
-  \node[edge label, below] at (identify center |- row 4) {plug in};
+  \draw[flow] (switch) -- (rheostat) node[edge label, midway, above] {3 reads};
 
   % ---------------------------------------------------------------- ways back
   % Re-identify: every exit joins the right lane, which runs along the top into the entry.
   \draw[back] (open) -| (reidentify lane |- reidentify top) -| (entry)
     node[edge label, pos=0.25, above] {re-identify};
   \node[edge label, below] at ($(open.east)!0.5!(open.east -| pedal east)$) {contact or 1\,s};
-  \draw[back, -] (potentiometer group.east |- lost track lane) -- (reidentify lane |- lost track lane);
-  \node[edge label, anchor=south east] at (potentiometer group.east |- lost track lane) {lost track};
-  \draw[back, -] (element group.east |- element title) -- (reidentify lane |- element title);
-  \node[edge label, anchor=east] at ([xshift=-\groupMargin] element group.east |- element title) {ring changed};
+  \foreach \pedal/\label in {potentiometer/lost track, element/ring changed} {
+    \draw[back, -] (\pedal\space group.east) -- (reidentify lane |- \pedal\space group.east);
+    \node[edge label, anchor=north east, inner sep=0pt] at ($(\pedal\space group.north east)
+      + (-\groupMargin, -\groupMargin/2)$) {\label};
+  }
 
   % Unplugged: from Follow along the bottom into the line from Confirm Plug to Empty.
   \draw[cancel, -] (pedal west |- group bottom) |- (unplug lane |- unplug bottom)
     node[edge label, text=unplug, pos=0.75, below] {unplugged}
-    |- (unplug merge);
+    |- (unplug junction);
 
   % ---------------------------------------------------------------- output
   % Below Follow, right of the unplug exit: Map Value under the first pedal column, the outputs
