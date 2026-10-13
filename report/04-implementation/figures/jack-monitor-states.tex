@@ -70,8 +70,8 @@
     \node[group title=\stage, anchor=west] at ($(\west |- group top)!0.5!(\west |- box top) + (\groupMargin, 0)$)
       {\title};
   }
-  \node[mode chip=identify, anchor=east]
-    at ($(identify east |- group top)!0.5!(identify east |- box top) - (\groupMargin, 0)$) {identifying};
+  % \node[mode chip=identify, anchor=east]
+  %   at ($(identify east |- group top)!0.5!(identify east |- box top) - (\groupMargin, 0)$) {identifying};
 
   % Pedal groups: the potentiometer's frame starts level with the top boxes.
   \node[subgroup=follow, fit={(pedal west |- box top)
@@ -85,7 +85,7 @@
       at ($(\pedal\space group.north west) + (\groupMargin, -\groupMargin/2)$) {\title};
     \node[info, below=0.6mm of \pedal\space title.south west, anchor=north west] {\info};
   }
-  \node[mode chip=follow, anchor=west, xshift=2mm] at (potentiometer title.east) {tracking};
+  % \node[mode chip=follow, anchor=west, xshift=2mm] at (potentiometer title.east) {tracking};
 
   % ---------------------------------------------------------------- detect plug
   \node[start] (start) at (unplug lane |- row 1) {};
@@ -125,7 +125,7 @@
   \node[block=follow, cell={follow first}{row 2}] (ends) {\statename{Read Ends}\\ one at a time};
   \node[block=follow, cell={follow second}{row 2}] (wiper) {\statename{Read Wiper}\\ $\rightarrow$ position};
   \node[block=follow, cell={follow first}{row 3}] (switch) {\statename{Switch}\\ closed 1, open 0};
-  \node[block=follow, cell={follow second}{row 3}] (rheostat) {\statename{Rheostat}\\ drop $\rightarrow$ position};
+  \node[block=follow, cell={follow second}{row 3}] (rheostat) {\statename{Rheostat}\\ $\rightarrow$ position};
   \node[block=follow, cell={follow first}{row 4}] (open) {\statename{Open}\\ nothing conducts};
 
   \node[junction] (split) at (follow bus |- classify) {};
