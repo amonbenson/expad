@@ -9,10 +9,8 @@
 
 \begin{figure}[htbp]
   \centering
-  \placeholderfigure{
-    \textbf{Content.} Block diagram, left to right: 4 jacks (T, R, S, tip switch) $\rightarrow$ per jack 74HC595 + 2$\times$TMUX1511 + shared \qty{1}{\kilo\ohm} pull-up to \qty{2.5}{\volt} and pull-down to GND $\rightarrow$ RC filters $\rightarrow$ 2$\times$AD7718 (SPI0) $\rightarrow$ Pico~2~W (shift registers on SPI1) $\rightarrow$ USB MIDI, 4 LEDs, WiFi web interface; power below: barrel jack $\rightarrow$ protection $\rightarrow$ LDOs \qty{5}{\volt}, \qty{3.3}{\volt}, \qty{2.5}{\volt}. Mark the \qty{2.5}{\volt} rail as pull-up rail and ADC reference; highlight the measurement path of one jack, collapse the other three. Draw in TikZ in the style of \code{docs/diagrams/}; keep it to about a third of a page.
-  }
-  \titledcaption{System Block Diagram}{\scaffoldinline{One sentence per block group and the meaning of the highlighted path.}}
+  \input{04-implementation/figures/system-block-diagram}
+  \titledcaption{System Block Diagram}{\scaffoldinline{One sentence per block group and the meaning of the highlighted path. Explain the notation: the thick blue line is the measurement path of one jack; the stacked frames and the tabs ($\times$\,4, $\times$\,2) mark blocks that exist once per jack and once per ADC; a slashed number counts the lines of a bus; the red and blue tags are the \qty{2.5}{\volt} rail (pull-up rail and ADC reference) and ground; T tip, R ring, S sleeve, TN tip switch. Source: \code{report/04-implementation/figures/system-block-diagram.tex}.}}
   \label{fig:block-diagram}
 \end{figure}
 

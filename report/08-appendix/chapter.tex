@@ -6,9 +6,29 @@
 \section{Hardware}
 \label{sec:appendix-hardware}
 
-\placeholderfigure{
-  \textbf{Content.} The complete schematic, one landscape page per sheet. \textbf{How to obtain.} \code{kicad-cli sch export pdf hardware/ExpressionController.kicad\_sch}, included with \code{\textbackslash includepdf} (package \code{pdfpages}, already loaded).
+% Schematic sheets, one landscape page each, from figures/schematic.pdf:
+% kicad-cli sch export pdf --no-background-color --exclude-pdf-property-popups
+%   -o report/08-appendix/figures/schematic.pdf hardware/ExpressionController.kicad_sch
+% Page 1 of the export is the root sheet, which only holds the sheet symbols.
+\NewDocumentCommand\schematicsheet{m m m m}{%
+  \begin{figure}[p]
+    \centering
+    \includegraphics[page=#1, width=\linewidth, height=\textheight-18mm, keepaspectratio]{08-appendix/figures/schematic}
+    \titledcaption{#2}{#4}
+    \label{fig:schematic-#3}
+  \end{figure}%
 }
+
+\begin{landscape}
+  \schematicsheet{2}{Schematic: Microcontroller}{microcontroller}{\scaffoldinline{Pico~2~W (A1) with the \qty{47}{\ohm} series resistors of SPI0 (ADCs, R3--R6) and SPI1 (shift registers, R46--R49), R58 holding the shift-register outputs disabled until the first write, and test points TP1--TP11 on both buses.}}
+  \schematicsheet{3}{Schematic: Analog Front End}{analog-frontend}{\scaffoldinline{Jacks J2--J5, one channel sheet per jack, and the two AD7718 (U4, U5) with their crystals; each ADC reads two jacks, AIN6 grounded and AIN10 on the \qty{2.5}{\volt} rail for the self-test.}}
+  \schematicsheet{4}{Schematic: Channel of Jack J2}{channel-j2}{\scaffoldinline{74HC595 (U6) selecting the switches of U15 (pull-up, R50 to \qty{2.5}{\volt}) and U19 (pull-down, R54 to ground); R15--R18 with \qty{10}{\nano\farad} form the input filters. JACK1 to JACK4 are tip, ring, sleeve and tip switch. The channels of J3 to J5 (\cref{fig:schematic-channel-j3,fig:schematic-channel-j4,fig:schematic-channel-j5}) are identical.}}
+  \schematicsheet{5}{Schematic: Channel of Jack J3}{channel-j3}{\scaffoldinline{As \cref{fig:schematic-channel-j2}: U8, U16, U20, R23--R26, R51, R55.}}
+  \schematicsheet{6}{Schematic: Channel of Jack J4}{channel-j4}{\scaffoldinline{As \cref{fig:schematic-channel-j2}: U10, U17, U21, R31--R34, R52, R56.}}
+  \schematicsheet{7}{Schematic: Channel of Jack J5}{channel-j5}{\scaffoldinline{As \cref{fig:schematic-channel-j2}: U12, U18, U22, R39--R42, R53, R57.}}
+  \schematicsheet{8}{Schematic: Power}{power}{\scaffoldinline{Barrel jack J1 (center negative), polyfuse F1, TVS diode D1, P-channel MOSFET Q1 against reverse polarity with gate clamp D2; ADP7142 LDOs for \qty{5}{\volt} (U2: LEDs, Pico through D3), \qty{3.3}{\volt} (U1: ADCs, switches, shift registers) and \qty{2.5}{\volt} (U3, from \qty{3.3}{\volt}: pull-up rail and ADC reference), each behind a solder jumper and a test point.}}
+  \schematicsheet{9}{Schematic: LEDs}{leds}{\scaffoldinline{Four WS2812B (D4--D7) on \qty{5}{\volt}, their data line shifted from \qty{3.3}{\volt} by U14 (74AHCT1G125) through R43.}}
+\end{landscape}
 
 \begin{figure}[htbp]
   \centering

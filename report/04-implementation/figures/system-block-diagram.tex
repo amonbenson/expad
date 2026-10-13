@@ -1,0 +1,181 @@
+% !TEX root = ../../main.tex
+% Block diagram of the board (hardware/, src/board.rs): one jack's channel with its measurement
+% path highlighted, the ADCs, the microcontroller and its outputs, the power supply below. Spans
+% \linewidth; every position follows from the grid below.
+%
+% Columns: the jack channel (jack and pull switches, filter and shift register), then the ADCs,
+% the microcontroller and the outputs in equal columns. Rows: the measurement path and the pull
+% switches, the SPI1 lane below the groups, then the power supply.
+
+\begin{tikzpicture}[diagram, diagram title font=\scriptsize,
+    diagram name font=\fontsize{7}{8.4}\selectfont, diagram text font=\tiny]
+  \sisetup{mode=text, reset-text-family=false, reset-text-series=false}  % units in the diagram font
+  % ---------------------------------------------------------------- grid
+  % The frames' lines stay inside \linewidth.
+  \pgfmathsetlengthmacro\frameWidth{0.8pt}
+  \pgfmathsetlengthmacro\figureWidth{\linewidth - \frameWidth}
+  \pgfmathsetlengthmacro\groupGap{7mm}
+  \pgfmathsetlengthmacro\groupMargin{2.5mm}
+  \pgfmathsetlengthmacro\jackWidth{13mm}
+  \pgfmathsetlengthmacro\railSpace{16mm}     % left of the switches: resistors and rail tags
+  \pgfmathsetlengthmacro\switchWidth{16mm}
+  \pgfmathsetlengthmacro\registerGap{9mm}
+  \pgfmathsetlengthmacro\registerWidth{14mm}
+  \pgfmathsetlengthmacro\channelWidth{2*\groupMargin + \railSpace + \switchWidth + \registerGap
+    + \registerWidth}
+  % The ADCs, the microcontroller and the outputs share what is left.
+  \pgfmathsetlengthmacro\columnWidth{(\figureWidth - \channelWidth - 3*\groupGap) / 3}
+  \pgfmathsetlengthmacro\boxWidth{\columnWidth - 2*\groupMargin}
+  \pgfmathsetlengthmacro\boxHeight{10mm}
+  \pgfmathsetlengthmacro\rowPitch{14mm}
+  \pgfmathsetlengthmacro\headerSpace{10mm}   % a group's title and info line
+  \pgfmathsetlengthmacro\titleSpace{7mm}     % a group's title only
+  \pgfmathsetlengthmacro\laneSpace{4mm}
+  \pgfmathsetlengthmacro\pairOffset{2.5mm}   % the two pull lines of the switches
+  \pgfmathsetlengthmacro\stackOffset{1mm}    % the copies behind a block that exists more than once
+  \pgfmathsetlengthmacro\outputGap{2mm}
+  \pgfmathsetlengthmacro\powerGap{6mm}
+  \pgfmathsetlengthmacro\powerWidth{(\figureWidth - 2*\groupMargin - 4*\powerGap) / 5}
+
+  % Columns, left to right.
+  \coordinate (channel west) at (\frameWidth/2, 0);
+  \coordinate (jack) at ($(channel west) + ({\groupMargin + \jackWidth/2}, 0)$);
+  \coordinate (switches) at ($(channel west) + ({\groupMargin + \railSpace + \switchWidth/2}, 0)$);
+  \coordinate (register) at ($(switches) + ({\switchWidth/2 + \registerGap + \registerWidth/2}, 0)$);
+  \coordinate (channel east) at ($(channel west) + (\channelWidth, 0)$);
+  \foreach \group [count=\column from 0] in {adc, controller, outputs}
+    \coordinate (\group) at ($(channel east) + ({\groupGap + \columnWidth/2 + \column*(\columnWidth + \groupGap)}, 0)$);
+
+  % Rows, top to bottom.
+  \coordinate (row 0) at (0, 0);
+  \coordinate (row 1) at (0, -\rowPitch);
+  \coordinate (box top) at (0, \boxHeight/2);
+  \coordinate (group top) at ($(box top) + (0, \headerSpace)$);
+  \coordinate (group bottom) at ($(row 1) - (0, {\boxHeight/2 + \groupMargin})$);
+  \coordinate (spi lane) at ($(group bottom) - (0, \laneSpace)$);
+  \coordinate (power top) at ($(spi lane) - (0, \laneSpace)$);
+  \coordinate (power row) at ($(power top) - (0, {\titleSpace + \boxHeight/2})$);
+  \coordinate (power lane) at ($(power row) - (0, {\boxHeight/2 + \laneSpace/2})$);
+  \coordinate (power bottom) at ($(power lane) - (0, \groupMargin)$);
+
+  \tikzset{
+    block/.style={state=#1, box width=\boxWidth, minimum height=\boxHeight},
+    % The measurement path of the jack shown.
+    measure/.style={flow, draw=detect, line width=1.2pt},
+    % A rail as a tag, red for the pull-up rail, blue for ground.
+    rail tag/.style={fill=#1!10, draw=#1, text=#1, line width=0.5pt, rounded corners=1pt,
+      inner xsep=1.5pt, inner ysep=1pt, font=\diagramTextFont\bfseries},
+    resistor/.style={draw=wire, fill=white, line width=0.6pt, minimum width=4mm,
+      minimum height=1.5mm, inner sep=0pt},
+    value/.style={edge label, inner sep=0.8pt},
+  }
+  % The number of lines a bus carries: a tick across it, the count beside.
+  \NewDocumentCommand\busCount{O{above right} m m}{%
+    \draw[wire, line width=0.5pt] ($(#2) + (-0.6mm, -0.9mm)$) -- ++(1.2mm, 1.8mm);
+    \node[value, #1=0.3mm] at (#2) {#3};
+  }
+
+  % ---------------------------------------------------------------- groups
+  % The jack channel exists once per jack: three copies behind the one shown.
+  \foreach \copy in {3, 2, 1}
+    \draw[subgroup=detect] ($(channel west |- group top) + \copy*(\stackOffset, \stackOffset)$)
+      rectangle ($(channel east |- group bottom) + \copy*(\stackOffset, \stackOffset)$);
+  \node[group=detect, fit={(channel west |- group top) (channel east |- group bottom)}] (channel group) {};
+  \foreach \group/\hue in {adc/detect, controller/identify, outputs/output}
+    \node[group=\hue, fit={([xshift=-\columnWidth/2] \group |- group top)
+      ([xshift=\columnWidth/2] \group |- group bottom)}] (\group\space group) {};
+  \node[group=other, fit={(channel west |- power top) ([xshift=\columnWidth/2] outputs |- power bottom)}]
+    (power group) {};
+
+  \foreach \group/\hue/\title/\info in {channel/detect/Jack Channel/{one per jack, J2 to J5},
+      adc/detect/ADCs/{two jacks each}, controller/identify/Microcontroller/{},
+      outputs/output/Outputs/{}, power/other/Power/{}} {
+    \node[group title=\hue, anchor=north west] (\group\space title)
+      at ($(\group\space group.north west) + (\groupMargin, -\groupMargin)$) {\title};
+    \node[info, below=0.6mm of \group\space title.south west, anchor=north west] {\info};
+  }
+  \node[mode chip=detect, anchor=north east]
+    at ($(channel group.north east) + (-\groupMargin, -\groupMargin)$) {$\times$\,4};
+  \node[mode chip=detect, anchor=north east]
+    at ($(adc group.north east) + (-\groupMargin, -\groupMargin)$) {$\times$\,2};
+
+  % ---------------------------------------------------------------- jack channel
+  \node[block=detect, box width=\jackWidth, cell={jack}{row 0}] (jack) {\statename{Jack}\\ T, R, S, TN};
+  \node[block=detect, box width=\registerWidth, cell={register}{row 0}] (filter)
+    {\statename{RC Filter}\\ \qty{10}{\kilo\ohm}, \qty{10}{\nano\farad}};
+  \node[block=detect, box width=\switchWidth, cell={switches}{row 1}] (switches)
+    {\statename{Switches}\\ 2\,$\times$ TMUX1511};
+  \node[block=detect, box width=\registerWidth, cell={register}{row 1}] (register)
+    {\statename{Shift}\\ \statename{Register}\\ 74HC595};
+
+  \node[junction=detect, minimum size=4pt] (contacts) at (switches |- row 0) {};
+  \draw[measure, -] (jack) -- (contacts);
+  \draw[measure] (contacts) -- (filter);
+  \busCount{$(jack.east)!0.5!(contacts)$}{4}
+  \draw[flow] (contacts) -- (switches);
+  \busCount[right]{$(contacts)!0.5!(switches.north)$}{4}
+  \draw[flow] (register) -- (switches) node[edge label, midway, above] {select};
+  \busCount[below]{$(switches.east)!0.5!(register.west)$}{8}
+
+  % Each switch chip connects the selected contacts to one resistor: pull-up above, pull-down below.
+  \foreach \rail/\side/\anchor/\offset in {up/above/north/1, down/below/south/-1} {
+    \coordinate (pull \rail) at ([yshift=\offset*\pairOffset] switches.west);
+    \node[resistor] (resistor \rail) at ($(pull \rail) - (5mm, 0)$) {};
+    \node[value, \side] at (resistor \rail.\anchor) {\qty{1}{\kilo\ohm}};
+    \draw[bus] (pull \rail) -- (resistor \rail);
+  }
+  \node[rail tag=railHigh, anchor=east] (tag up) at ($(resistor up.west) - (1.5mm, 0)$) {2.5\,V};
+  \node[rail tag=railLow, anchor=east] (tag down) at ($(resistor down.west) - (1.5mm, 0)$) {GND};
+  \draw[bus] (tag up) -- (resistor up);
+  \draw[bus] (tag down) -- (resistor down);
+
+  % ---------------------------------------------------------------- ADCs, microcontroller, outputs
+  \draw[state=detect] ($(adc) + ({-\boxWidth/2 + \stackOffset}, {-\boxHeight/2 + \stackOffset})$)
+    rectangle ($(adc) + ({\boxWidth/2 + \stackOffset}, {\boxHeight/2 + \stackOffset})$);
+  \node[block=detect, cell={adc}{row 0}] (adc) {\statename{AD7718}\\ 24 bit, 10 inputs};
+  \node[rail tag=railHigh] (reference) at (adc |- row 1) {2.5\,V};
+  \draw[flow] (reference) -- (adc) node[edge label, midway, right] {reference};
+  \draw[measure] (filter) -- (adc);
+  \busCount{$(filter.east)!0.5!(adc.west)$}{4}
+
+  % The microcontroller and the outputs fill both rows.
+  \coordinate (both rows) at ($(row 0)!0.5!(row 1)$);
+  \node[state=identify, box width=\boxWidth, minimum height=\rowPitch + \boxHeight,
+    cell={controller}{both rows}] (controller)
+    {\statename{Pico 2 W}\\ RP2350,\\ solver and\\ jack monitors,\\ CYW43439 WiFi};
+  \draw[measure] (adc) -- (adc -| controller.west) node[edge label, midway, above] {SPI0};
+
+  \pgfmathsetlengthmacro\outputHeight{(\rowPitch + \boxHeight - 2*\outputGap) / 3}
+  \foreach \name/\title/\info [count=\index from 0] in {midi/USB MIDI/control changes,
+      led/LEDs/4\,$\times$ WS2812B, web/Web Interface/WiFi access point}
+    \node[state=output, box width=\boxWidth, minimum height=\outputHeight, anchor=north] (\name)
+      at ($(outputs |- box top) - (0, {\index*(\outputHeight + \outputGap)})$)
+      {\statename{\title}\\ \info};
+  \coordinate (output bus) at ($(controller.east)!0.5!(outputs group.west)$);
+  \draw[bus] (controller.east |- led) -- (output bus |- led);
+  \draw[bus] (output bus |- midi) -- (output bus |- web);
+  \foreach \name in {midi, led, web}
+    \draw[flow] (output bus |- \name) -- (\name);
+
+  % SPI1 runs below the groups back to the shift registers.
+  \draw[flow] (controller.south) -- (controller.south |- spi lane) -| (register.south)
+    node[edge label, pos=0.25, below] {SPI1};
+
+  % ---------------------------------------------------------------- power
+  \foreach \name [count=\index from 0] in {barrel, protection, ldo5, ldo33, ldo25}
+    \coordinate (\name) at ($(channel west |- power row) + ({\groupMargin + \powerWidth/2 + \index*(\powerWidth + \powerGap)}, 0)$);
+  \tikzset{supply/.style={state=other, box width=\powerWidth, minimum height=\boxHeight}}
+  \node[supply, cell={barrel}{power row}] (barrel) {\statename{Barrel Jack}\\ 9 to 12\,V, center negative};
+  \node[supply, cell={protection}{power row}] (protection) {\statename{Protection}\\ fuse, TVS diode,\\ P-MOSFET};
+  \node[supply, cell={ldo5}{power row}] (ldo5) {\statename{LDO 5\,V}\\ LEDs, Pico};
+  \node[supply, cell={ldo33}{power row}] (ldo33) {\statename{LDO 3.3\,V}\\ ADCs, switches,\\ shift registers};
+  \node[supply, cell={ldo25}{power row}] (ldo25) {\statename{LDO 2.5\,V}\\ pull-up rail,\\ ADC reference};
+  \node[rail tag=railHigh, anchor=south east] at ([xshift=-1mm] ldo25.north east) {2.5\,V};
+
+  \draw[flow] (barrel) -- (protection);
+  \draw[flow] (protection) -- (ldo5);
+  \coordinate (supply split) at ($(protection.east)!0.5!(ldo5.west)$);
+  \node[junction] at (supply split) {};
+  \draw[flow] (supply split) -- (supply split |- power lane) -| (ldo33);
+  \draw[flow] (ldo33) -- (ldo25);
+\end{tikzpicture}
