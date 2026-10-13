@@ -1,0 +1,82 @@
+% !TEX root = ../../main.tex
+% Overview of one jack's JackMonitor (topology/src/monitor.rs) and the output stage: the four
+% stages as equal columns, the two ways back above and below them. Spans \linewidth; every
+% position follows from the grid below. Details: jack-monitor-states.tex.
+
+\begin{tikzpicture}[diagram]
+  % Grid: four equal columns between equal outer margins (the start dot sits in the left one),
+  % three rows of equal boxes; the stages with two states use the half rows between them.
+  \pgfmathsetlengthmacro\outerMargin{6mm}
+  \pgfmathsetlengthmacro\columnGap{8mm}
+  \pgfmathsetlengthmacro\groupMargin{3mm}
+  \pgfmathsetlengthmacro\titleSpace{7mm}
+  \pgfmathsetlengthmacro\laneSpace{4mm}
+  \pgfmathsetlengthmacro\boxHeight{12mm}
+  \pgfmathsetlengthmacro\boxGap{4mm}
+  \pgfmathsetlengthmacro\columnWidth{(\linewidth - 2*\outerMargin - 3*\columnGap) / 4}
+  \pgfmathsetlengthmacro\boxWidth{\columnWidth - 2*\groupMargin}
+  \pgfmathsetlengthmacro\rowPitch{\boxHeight + \boxGap}
+  % The three outputs, each below a box gap, fill the two rows under the mapping.
+  \pgfmathsetlengthmacro\outputIndent{4mm}
+  \pgfmathsetlengthmacro\outputHeight{(2*\rowPitch - 3*\boxGap) / 3}
+
+  \foreach \stage [count=\column from 0] in {detect, identify, follow, output}
+    \coordinate (\stage) at ({\outerMargin + \columnWidth/2 + \column*(\columnWidth + \columnGap)}, 0);
+  \foreach \row in {0, 1, 2}
+    \coordinate (row \row) at (0, {-\row*\rowPitch});
+  \coordinate (upper row) at ($(row 0)!0.5!(row 1)$);
+  \coordinate (lower row) at ($(row 1)!0.5!(row 2)$);
+  \coordinate (box top) at (0, \boxHeight/2);
+  \coordinate (group top) at ($(box top) + (0, \titleSpace)$);
+  \coordinate (group bottom) at ($(row 2) - (0, {\boxHeight/2 + \groupMargin})$);
+
+  \tikzset{stage box/.style={state=#1, box width=\boxWidth, minimum height=\boxHeight}}
+
+  % ---------------------------------------------------------------- groups
+  \foreach \stage/\title in {detect/Detect Plug, identify/Identify Network, follow/Follow, output/Output} {
+    \node[group=\stage, fit={([xshift=-\columnWidth/2] \stage |- group top)
+      ([xshift=\columnWidth/2] \stage |- group bottom)}] (\stage\space group) {};
+    \node[group title=\stage] at ($(\stage |- group top)!0.5!(\stage |- box top)$) {\title};
+  }
+
+  % ---------------------------------------------------------------- states
+  \node[start] (start) at (\outerMargin/2, 0 |- upper row) {};
+  \node[stage box=detect, cell={detect}{upper row}] (rails) {\statename{Measure Rails}\\ reference levels};
+  \node[stage box=detect, cell={detect}{lower row}] (empty) {\statename{Empty}\\ poll tip switch};
+
+  \node[stage box=identify, cell={identify}{upper row}] (solve) {\statename{Solve}\\ drive arm pairs,\\ read all taps};
+  \node[stage box=identify, cell={identify}{lower row}] (classify) {\statename{Classify}\\ match a known\\ network};
+
+  \node[stage box=follow, cell={follow}{row 0}] (potentiometer) {\statename{Potentiometer}\\ read wiper};
+  \node[stage box=follow, cell={follow}{row 1}] (element) {\statename{Switch /}\\ \statename{Rheostat}\\ read tip};
+  \node[stage box=follow, cell={follow}{row 2}] (open) {\statename{Open}\\ wait for contact};
+
+  \node[stage box=output, cell={output}{row 0}] (map) {\statename{Map Value}\\ range, invert,\\ drive curve};
+  \foreach \name/\title [count=\index] in {midi/USB MIDI, led/LED, web/Web Interface}
+    \node[stage box=output, box width=\boxWidth - \outputIndent, minimum height=\outputHeight,
+      anchor=north east] (\name) at ([yshift={-\index*\boxGap - (\index - 1)*\outputHeight}] map.south east)
+      {\statename{\title}};
+
+  % ---------------------------------------------------------------- transitions
+  \draw[flow] (start) -- (rails);
+  \draw[flow] (rails) -- (empty);
+  \draw[flow] (empty) to[jog] (solve);
+  \draw[flow] (solve) -- (classify);
+
+  \coordinate (follow bus) at ($(identify)!0.5!(follow)$);
+  \foreach \state in {potentiometer, element, open}
+    \draw[flow] (classify) to[jog via=follow bus] (\state);
+  \node[junction] at (follow bus |- classify) {};
+
+  \draw[flow] (follow group.east |- map) -- (map);
+  \coordinate (output bus) at ([xshift=\outputIndent/2] map.south west);
+  \draw[bus] (output bus) -- (output bus |- web);
+  \foreach \name in {midi, led, web}
+    \draw[flow] (output bus |- \name) -- (\name);
+
+  % ---------------------------------------------------------------- ways back
+  \draw[back] (follow group.north) -- ++(0, \laneSpace) -| (identify group.north)
+    node[edge label, pos=0.25, above] {no longer matches: identify again};
+  \draw[back] (follow group.south) -- ++(0, -\laneSpace) -| (detect group.south)
+    node[edge label, pos=0.25, below] {plug pulled: back to plug detection};
+\end{tikzpicture}

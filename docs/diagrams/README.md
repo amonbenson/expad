@@ -35,6 +35,8 @@ pdftocairo -png -r 600 -singlefile $name.pdf $name
 
 - **LaTeX**: `\includegraphics[width=\linewidth]{jack-monitor-states.pdf}` (it suits a landscape
   page or the full text width).
+  The report draws its own versions, restyled for the page (report/04-implementation/figures/*.tex,
+  shared styles in report/diagram-styles.tex); carry content changes over to them.
 - **PowerPoint**: *Insert > Pictures* with the SVG. It stays sharp at any size; *Convert to Shape*
   makes its parts editable, but the text stays outlines - edit the `.tex` source for wording.
 - **Slides**: the overview is 32 cm wide, about a 16:9 slide, so at that width its type keeps its

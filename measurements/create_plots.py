@@ -53,15 +53,16 @@ SCOPE_NOISE_FLOOR_RMS = 0.33952e-3
 
 # Largest rail noise the MIDI output tolerates. The ADC reference is the 2.5 V rail
 # (board::REFERENCE_VOLTAGE) and a MIDI control change carries 7 bits (MIDI_MAX_VALUE = 127), so a
-# full-scale reading splits into 2^7 steps. Gaussian noise stays within +-3 sigma 99.7 % of the time,
-# a peak-to-peak span of 6 sigma, and must fit inside one step to not move the sent value:
+# full-scale reading spans 127 steps between the values 0 and 127. Gaussian noise stays within
+# +-3 sigma 99.7 % of the time, a peak-to-peak span of 6 sigma, and must fit inside one step to not
+# move the sent value:
 #
-#   V_step    = V_ref / 2^7         = 2.5 V / 128 = 19.5 mV
-#   V_rms,max = V_step / 6          = V_ref / (6 * 2^7) = 3.26 mV
+#   V_step    = V_ref / 127         = 2.5 V / 127 = 19.7 mV
+#   V_rms,max = V_step / 6          = V_ref / (6 * 127) = 3.28 mV
 REFERENCE_VOLTAGE = 2.5
-MIDI_BITS = 7
+MIDI_MAX_VALUE = 127
 PEAK_TO_PEAK_PER_RMS = 6
-MIDI_STEP_VOLTAGE = REFERENCE_VOLTAGE / 2**MIDI_BITS
+MIDI_STEP_VOLTAGE = REFERENCE_VOLTAGE / MIDI_MAX_VALUE
 MIDI_TOLERABLE_NOISE_RMS = MIDI_STEP_VOLTAGE / PEAK_TO_PEAK_PER_RMS
 
 RAW_DATA = HERE / "raw_data"

@@ -1,0 +1,81 @@
+% !TEX root = main.tex
+% Shared look of the TikZ diagrams (04-implementation/figures/*.tex): font, palette, text commands
+% and styles. A figure only sets its grid (named lengths and coordinates) and its font sizes, and
+% draws with these styles.
+
+\usetikzlibrary{arrows.meta, calc, fit, positioning, shapes.geometric}
+
+% Helvetica, as the standalone diagrams in docs/diagrams/ (helvet, scaled).
+\newfontfamily\diagramfont{TeX Gyre Heros}[Scale=0.95, Ligatures=TeX]
+
+% Tailwind palette: one hue per stage of the jack monitor (600 for frames and titles, 50 for the
+% group fill, 100 for mode chips), slate for text and lines, the rails in the web interface's red
+% and blue. Unplugging is the only colored edge.
+\definecolor{detect}{HTML}{0284C7}   \definecolor{detectFill}{HTML}{F0F9FF}   \definecolor{detectTint}{HTML}{E0F2FE}
+\definecolor{identify}{HTML}{7C3AED} \definecolor{identifyFill}{HTML}{F5F3FF} \definecolor{identifyTint}{HTML}{EDE9FE}
+\definecolor{follow}{HTML}{059669}   \definecolor{followFill}{HTML}{ECFDF5}   \definecolor{followTint}{HTML}{D1FAE5}
+\definecolor{output}{HTML}{D97706}   \definecolor{outputFill}{HTML}{FFFBEB}   \definecolor{outputTint}{HTML}{FEF3C7}
+\definecolor{other}{HTML}{64748B}    \definecolor{otherFill}{HTML}{F8FAFC}    \definecolor{otherTint}{HTML}{F1F5F9}
+\definecolor{unplug}{HTML}{E11D48}
+\definecolor{ink}{HTML}{1E293B}
+\definecolor{muted}{HTML}{475569}
+\definecolor{wire}{HTML}{334155}
+\definecolor{railHigh}{HTML}{FB2C36}
+\definecolor{railLow}{HTML}{2B7FFF}
+
+% A state's name, above its description.
+\NewDocumentCommand\statename{m}{{\diagramNameFont\bfseries\color{ink}#1}}
+% A contact pulled up or down through its pull resistor: amssymb's \blacktriangle and
+% \blacktriangledown, taken from its font (Latin Modern Math has no such glyphs).
+\NewDocumentCommand\pullup{m}{#1\kern0.5pt{\color{railHigh}\usefont{U}{msa}{m}{n}\char"4E}}
+\NewDocumentCommand\pulldown{m}{#1\kern0.5pt{\color{railLow}\usefont{U}{msa}{m}{n}\char"48}}
+
+
+\tikzset{
+  % Font sizes, set per figure: group titles, state names, everything else.
+  diagram title font/.store in=\diagramTitleFont,
+  diagram name font/.store in=\diagramNameFont,
+  diagram text font/.store in=\diagramTextFont,
+  diagram title font=\footnotesize,
+  diagram name font=\scriptsize,
+  diagram text font=\scriptsize,
+  diagram/.style={
+    execute at begin picture={\diagramfont\hyphenpenalty=10000\exhyphenpenalty=10000\relax},
+    font=\diagramTextFont,
+    every node/.append style={text=ink},
+    >={Stealth[length=4pt, width=3.2pt]},
+  },
+  % Place a node at a column's x and a row's y (two coordinates).
+  cell/.style 2 args={at={(#1 |- #2)}},
+  % Frames: a stage's group and a group inside it.
+  group/.style={draw=#1, fill=#1Fill, line width=0.8pt, rounded corners=4pt, inner sep=0pt},
+  subgroup/.style={draw=#1, fill=white!55!#1Fill, line width=0.6pt, rounded corners=3pt,
+    inner sep=0pt},
+  % Titles with the same height and depth, so they line up whatever their letters.
+  group title/.style={font=\diagramTitleFont\bfseries, text=#1, inner sep=0pt, text height=0.75em,
+    text depth=0.2em},
+  subgroup title/.style={font=\diagramNameFont\bfseries, text=#1, inner sep=0pt},
+  info/.style={text=muted, align=left, inner sep=0pt},
+  % Boxes: a state's lines are broken by hand, `box width` keeps the boxes of a column equal.
+  box width/.style={minimum width=#1},
+  state/.style={draw=#1, fill=white, line width=0.8pt, rounded corners=2pt, align=center,
+    text=muted, inner xsep=1mm, inner ysep=2pt},
+  decision/.style={diamond, aspect=2, draw=#1, fill=white, line width=0.8pt, align=center,
+    inner sep=0.5pt},
+  % A state's mode, as a tab on its top right corner.
+  mode chip/.style={fill=#1Tint, text=#1, rounded corners=1.5pt, inner xsep=2pt, inner ysep=1pt,
+    anchor=south east},
+  start/.style={circle, fill=ink, inner sep=0pt, minimum size=10pt},
+  junction/.style={circle, fill=#1, inner sep=0pt, minimum size=3pt},
+  junction/.default=wire,
+  % Edges: a transition, a way back (dashed) and unplugging (red, dashed).
+  bus/.style={draw=wire, line width=0.7pt},
+  flow/.style={bus, ->},
+  back/.style={flow, dash pattern=on 3pt off 2pt},
+  cancel/.style={back, draw=unplug},
+  edge label/.style={text=muted, align=center, inner sep=1.5pt},
+  % Orthogonal routing: horizontal, vertical halfway between both ends, horizontal; or the vertical
+  % at the x of a given coordinate (a bus).
+  jog/.style={to path={-| ($(\tikztostart)!0.5!(\tikztotarget)$) |- (\tikztotarget) \tikztonodes}},
+  jog via/.style={to path={-- (\tikztostart -| #1) |- (\tikztotarget) \tikztonodes}},
+}

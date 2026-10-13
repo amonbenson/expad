@@ -2,7 +2,7 @@
 
 Content and language rules for a project report at TU Berlin, Chair of Sensor and Actuator Systems.
 Derived from the accepted report *Simulation of a Percussive Synthesizer with Macro Controls*
-(drumsynth-report). The rules are independent of the writing tool. Generic rules (a report has a title
+(drumsynth-report) and extended while drafting the expad report. The rules are independent of the writing tool. Generic rules (a report has a title
 page, a bibliography, page numbers) are omitted.
 
 ## 0. Index
@@ -49,12 +49,16 @@ page, a bibliography, page numbers) are omitted.
 5. Table of contents.
 6. Numbered chapters: Introduction, Related Work, (Theory), Implementation, (Results), Discussion,
    Conclusion and Outlook. Chapters in parentheses are optional; their content may live in Implementation.
-7. Appendix: one chapter, sections per item (listings, tables of design values).
+   A project with its own measurements has a Results chapter.
+7. Appendix: one chapter, sections per item (listings, tables of design values, raw measurements).
 8. Bibliography, list of figures, list of tables.
 
 Length: when the course sets a page limit (here 10 pages for chapters 1 to 7, figures included,
-appendix excluded), chapters run on without page breaks, raw data and secondary plots move to the
-appendix, and each section is planned with a word budget (about 600 words per page of text).
+appendix excluded), chapters run on without page breaks and each section is planned with a word budget
+(about 600 words per page of text). Raw data and secondary plots move to the appendix; the body keeps
+the summary value and references the appendix table. Under the limit, the paragraph counts of section 3
+shrink and related-work groups become paragraphs instead of sections. The appendix holds what a reader
+needs to check a result, not everything that was recorded.
 
 ## 3. Chapters
 
@@ -98,29 +102,50 @@ appendix, and each section is planned with a word budget (about 600 words per pa
   them. One sentence per block.
 - Then one sentence on how blocks were developed and tested individually.
 - Then one section per block, in signal-flow order (see [4](#4-sections-and-paragraphs)).
+- A target the design must meet (a rate, a resolution, a latency) is stated with its source where it first
+  constrains the design. Results checks every stated target.
 - A development observation that changed the method (e.g. simulation too slow, so intermediate signals are
   cached) is reported where it occurred, with its consequence.
-- Last section: `Results`. It describes the assembled system, the test that was run (conditions in the
-  caption), and what the output shows. Results are statements about the figure, not interpretation.
+- A replaced design is a design decision, not a footnote. State what was used first, what failed and why,
+  what replaced it and why the replacement fits. Several such decisions go into one table with the
+  columns block, choice, alternative, reason and source.
+- Without a Results chapter, the last section is `Results`: the assembled system, the test that was run
+  (conditions in the caption), and what the output shows, as statements about the figure, not interpretation.
 
-### 3.6 Discussion
+### 3.6 Results
+
+- Opens with the test setup: instruments by manufacturer and model, probe and supply settings. These are
+  named once; captions repeat only what differs.
+- One section per question the project must answer (does the hardware work, is the output correct, is it
+  fast enough), in that order.
+- Each measurement gives its conditions, the number of runs, the result as a range or mean with spread,
+  and the expected value or target it is compared with ("190.6 µs against 194 µs from Equation 3.4").
+- A quantity that was not measured is stated as not measured, with an estimate or bound and its basis.
+- A deviation with a plausible cause is reported with that cause, marked as possible ("possibly because
+  ..."). A deviation without one is stated as open. An observation that may be a fault of the measurement
+  or the firmware is checked before it is reported, not reported as a property of the design.
+- Closes with a table of the targets against the measured values.
+
+### 3.7 Discussion
 
 - No new results, no figures.
 - Paragraph order: (1) what was shown, in one or two sentences, and its limit (e.g. linear only);
   (2) evaluation of the method or tool: what worked, what failed, how the failure was mitigated;
-  (3) limitations of the current design, each with the known remedy and a source.
-- Prose only, compact paragraphs.
+  (3) limitations of the current design, each with its cause and the known remedy, with a source where
+  the remedy is external.
+- Prose only, compact paragraphs; the limitations form one paragraph of continuous prose.
 
-### 3.7 Conclusion and Outlook
+### 3.8 Conclusion and Outlook
 
 - Paragraph order: (1) one manual or limited step of the project and how it could be automated or
   extended, with sources for the methods; (2) a second extension; (3) one closing sentence beginning
   "Overall, this work demonstrates that ...".
 - No new facts about the project.
 
-### 3.8 Appendix
+### 3.9 Appendix
 
-- Material referenced from the text but too long for it: listings, full tables of design values, scripts.
+- Material referenced from the text but too long for it: listings, full tables of design values, raw
+  measurement tables, schematics, scripts.
 - Each item is a section with a label so the text can reference it.
 
 ## 4. Sections and Paragraphs
@@ -143,6 +168,8 @@ appendix, and each section is planned with a word budget (about 600 words per pa
 - A simulation or measurement artefact is named as such and separated from the property of the circuit
   ("... is a simulation artifact of ... rather than a property of the circuit").
 - Body text contains no bullet lists. Enumerations are written as sentences.
+- A fact learned late is worked into the section it belongs to, rewriting that section where needed. It
+  is never appended as a separate note or block.
 
 ## 5. Voice and Tense
 
@@ -154,7 +181,8 @@ appendix, and each section is planned with a word budget (about 600 words per pa
 - Present passive for the method as a procedure ("A dedicated test circuit is then used ...").
 - Past tense for events of the project and for findings ("It was shown that ...", "LTspice proved ...",
   "During development, it became clear that ...", "the weights were determined by hand").
-- Results chapter and captions describe the figure in present tense ("The first hit blends ...").
+- Results: past tense for what was measured ("the pedal was followed 65 ms to 95 ms after insertion"),
+  present tense for what a figure or table shows ("The first hit blends ...").
 
 ## 6. Sentences
 
@@ -228,6 +256,9 @@ appendix, and each section is planned with a word budget (about 600 words per pa
   (≈ 4.8 kHz).
 - Dimensionless values to three significant digits in tables.
 - Equal precision within one table column.
+- One quantity has one definition and one value in text, figures and tables. When a definition changes
+  (e.g. a 7-bit value spans 127 steps, not 128), every plot using it is regenerated.
+- A measured value is given with the instrument or method it came from when two methods disagree.
 
 ## 11. Tone
 
@@ -249,4 +280,9 @@ appendix, and each section is planned with a word budget (about 600 words per pa
 - [ ] Each float referenced in text; each caption has title, description, label definitions, conditions.
 - [ ] Each symbol defined; each formula applied to a value with units.
 - [ ] One term per concept; abbreviations defined at first use.
+- [ ] Each replaced design explained: what failed, what replaced it, why.
+- [ ] Each target stated with a source and checked in Results; unmeasured quantities marked with a bound.
+- [ ] Each measurement with conditions, runs and comparison value; deviations with their possible cause.
+- [ ] Same value and definition in text, figures and tables.
+- [ ] Page limit kept; raw data in the appendix, summarized in the body.
 - [ ] Discussion and Conclusion contain no new results.
