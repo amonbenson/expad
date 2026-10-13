@@ -63,8 +63,6 @@
   \coordinate (lost track lane) at ($(row 1)!0.5!(row 2)$);
   \coordinate (end stop lane) at ($(row 3)!0.5!(row 4)$);
 
-  \tikzset{stage box/.style={state=#1, box width=\boxWidth, minimum height=\boxHeight}}
-
   % ---------------------------------------------------------------- groups
   \foreach \stage/\west/\east/\title in {detect/detect west/detect east/Detect Plug,
       identify/identify west/identify east/Identify Network, follow/follow west/follow east/Follow} {
@@ -91,9 +89,9 @@
 
   % ---------------------------------------------------------------- detect plug
   \node[start] (start) at (unplug lane |- row 1) {};
-  \node[stage box=detect, cell={detect}{row 1}] (rails) {\statename{Measure Rails}\\ all \pullup{}, all \pulldown{}};
-  \node[stage box=detect, cell={detect}{row 2}] (empty) {\statename{Empty}\\ \pulldown{T} \pullup{TN}, read TN};
-  \node[stage box=detect, cell={detect}{row 4}] (confirm) {\statename{Confirm Plug}\\ \pulldown{T} \pullup{TN}, read TN};
+  \node[block=detect, cell={detect}{row 1}] (rails) {\statename{Measure Rails}\\ all \pullup{}, all \pulldown{}};
+  \node[block=detect, cell={detect}{row 2}] (empty) {\statename{Empty}\\ \pulldown{T} \pullup{TN}, read TN};
+  \node[block=detect, cell={detect}{row 4}] (confirm) {\statename{Confirm Plug}\\ \pulldown{T} \pullup{TN}, read TN};
 
   \draw[flow] (start) -- (rails);
   \draw[flow] (rails) -- (empty);
@@ -105,10 +103,10 @@
   \draw[flow] (empty) -- (entry);
   \node[edge label, below] at (entry.south) {plug in};
   \node[decision=identify, minimum size=4mm, cell={decide}{row 2}] (fresh) {};
-  \node[stage box=identify, cell={identify}{row 1}] (refresh) {\statename{Refresh Rails}\\ all \pullup{}, all \pulldown{}};
-  \node[stage box=identify, cell={identify}{row 2}] (solve)
+  \node[block=identify, cell={identify}{row 1}] (refresh) {\statename{Refresh Rails}\\ all \pullup{}, all \pulldown{}};
+  \node[block=identify, cell={identify}{row 2}] (solve)
     {\statename{Solve}\\ \pullup{T}\pulldown{R}, \pullup{T}\pulldown{S},\\ (\pullup{R}\pulldown{S})};
-  \node[stage box=identify, cell={identify}{row 3}] (classify) {\statename{Classify}\\ match network};
+  \node[block=identify, cell={identify}{row 3}] (classify) {\statename{Classify}\\ match network};
   \node[state=other, box width=\decisionWidth, minimum height=\boxHeight, cell={decide}{row 3}] (other)
     {\statename{Other}\\ no MIDI};
 
@@ -124,11 +122,11 @@
   \draw[flow] (classify) |- ([yshift=\pairOffset] confirm.east) node[edge label, pos=0.75, above] {all open};
 
   % ---------------------------------------------------------------- follow
-  \node[stage box=follow, cell={follow first}{row 2}] (ends) {\statename{Read Ends}\\ one at a time};
-  \node[stage box=follow, cell={follow second}{row 2}] (wiper) {\statename{Read Wiper}\\ $\rightarrow$ position};
-  \node[stage box=follow, cell={follow first}{row 3}] (switch) {\statename{Switch}\\ closed 1, open 0};
-  \node[stage box=follow, cell={follow second}{row 3}] (rheostat) {\statename{Rheostat}\\ drop $\rightarrow$ position};
-  \node[stage box=follow, cell={follow first}{row 4}] (open) {\statename{Open}\\ nothing conducts};
+  \node[block=follow, cell={follow first}{row 2}] (ends) {\statename{Read Ends}\\ one at a time};
+  \node[block=follow, cell={follow second}{row 2}] (wiper) {\statename{Read Wiper}\\ $\rightarrow$ position};
+  \node[block=follow, cell={follow first}{row 3}] (switch) {\statename{Switch}\\ closed 1, open 0};
+  \node[block=follow, cell={follow second}{row 3}] (rheostat) {\statename{Rheostat}\\ drop $\rightarrow$ position};
+  \node[block=follow, cell={follow first}{row 4}] (open) {\statename{Open}\\ nothing conducts};
 
   \node[junction] (split) at (follow bus |- classify) {};
   \draw[bus] (classify) -- (split);
@@ -172,7 +170,7 @@
   \foreach \name/\title [count=\index from 0] in {midi/USB MIDI, led/LED, web/Web Interface}
     \node[state=output, box width=\boxWidth, minimum height=\outputHeight]
       (\name) at ($(follow second |- output first) - \index*(output pitch)$) {\statename{\title}};
-  \node[stage box=output, cell={follow first}{led}] (map) {\statename{Map Value}\\ range, invert, curve};
+  \node[block=output, cell={follow first}{led}] (map) {\statename{Map Value}\\ range, invert, curve};
   \coordinate (output bus) at ($(map.east)!0.5!(led.west)$);
   \draw[bus] (map) -- (output bus);
   \draw[bus] (output bus |- midi) -- (output bus |- web);

@@ -1,9 +1,10 @@
 % !TEX root = main.tex
 % Shared look of the TikZ diagrams (04-implementation/figures/*.tex): font, palette, text commands
 % and styles. A figure only sets its grid (named lengths and coordinates) and its font sizes, and
-% draws with these styles.
+% draws with these styles; `block` and `instances` read the grid's \boxWidth, \boxHeight and
+% \groupMargin.
 
-\usetikzlibrary{arrows.meta, calc, fit, positioning, shapes.geometric}
+\usetikzlibrary{arrows.meta, calc, fit, positioning, shadows, shapes.geometric}
 
 % Helvetica, as the standalone diagrams in docs/diagrams/ (helvet, scaled).
 \newfontfamily\diagramfont{TeX Gyre Heros}[Scale=0.95, Ligatures=TeX]
@@ -20,8 +21,8 @@
 \definecolor{ink}{HTML}{1E293B}
 \definecolor{muted}{HTML}{475569}
 \definecolor{wire}{HTML}{334155}
-\definecolor{railHigh}{HTML}{FB2C36}
-\definecolor{railLow}{HTML}{2B7FFF}
+\definecolor{railHigh}{HTML}{E11D48}
+\definecolor{railLow}{HTML}{0284C7}
 
 % A state's name, above its description.
 \NewDocumentCommand\statename{m}{{\diagramNameFont\bfseries\color{ink}#1}}
@@ -48,9 +49,41 @@
   % Place a node at a column's x and a row's y (two coordinates).
   cell/.style 2 args={at={(#1 |- #2)}},
   % Frames: a stage's group and a group inside it.
-  group/.style={draw=#1, fill=#1Fill, line width=0.8pt, rounded corners=4pt, inner sep=0pt},
-  subgroup/.style={draw=#1, fill=white!55!#1Fill, line width=0.6pt, rounded corners=3pt,
+  group/.style={draw=#1, fill=#1Fill, line width=0.8pt, inner sep=0pt,
+    /utils/exec={\def\diagramGroupHue{#1}}},
+  subgroup/.style={draw=#1, fill=white!55!#1Fill, line width=0.6pt,
     inner sep=0pt},
+  % A group that exists more than once, e.g. `group=detect, instances=4` (after `group`): a copy of
+  % its frame behind it for each further one, each `stack offset` further up and right, and the
+  % count on its top right corner, inset by the figure's \groupMargin. One instance draws the plain
+  % group.
+  stack offset/.store in=\diagramStackOffset,
+  stack offset=1mm,
+  instances/.code={%
+    \ifnum#1>1
+      \pgfmathtruncatemacro\diagramGroupCopies{#1 - 1}%
+      \edef\diagramGroupStack{{\diagramGroupHue}{\diagramGroupCopies}{#1}}%
+      \pgfkeysalso{group stack/.expand once=\diagramGroupStack}%
+    \fi
+  },
+  % {<hue>}{<copies>}{<instances>}. The copies are drawn on a shifted canvas, which the bounding
+  % box ignores, so the farthest one's corner is added to it.
+  group stack/.style n args={3}{group copies={#1}{#2}, group count={#1}{#3},
+    append after command={([shift={(#2*\diagramStackOffset, #2*\diagramStackOffset)}]
+      \tikzlastnode.north east)}},
+  % {<hue>}{<copies>}: from the farthest to the nearest, so the nearest lies on top.
+  group copies/.code 2 args={%
+    \ifnum#2>0
+      \pgfmathtruncatemacro\diagramGroupNearerCopies{#2 - 1}%
+      \edef\diagramGroupNearerCopies{{#1}{\diagramGroupNearerCopies}}%
+      \pgfkeysalso{general shadow={subgroup=#1, shadow scale=1,
+          shadow xshift=#2*\diagramStackOffset, shadow yshift=#2*\diagramStackOffset},
+        group copies/.expand once=\diagramGroupNearerCopies}%
+    \fi
+  },
+  % {<hue>}{<instances>}
+  group count/.style 2 args={label={[mode chip=#1, anchor=north east, xshift=-\groupMargin,
+    yshift=-\groupMargin]north east:$\times$\,#2}},
   % Titles with the same height and depth, so they line up whatever their letters.
   group title/.style={font=\diagramTitleFont\bfseries, text=#1, inner sep=0pt, text height=0.75em,
     text depth=0.2em},
@@ -58,12 +91,14 @@
   info/.style={text=muted, align=left, inner sep=0pt},
   % Boxes: a state's lines are broken by hand, `box width` keeps the boxes of a column equal.
   box width/.style={minimum width=#1},
-  state/.style={draw=#1, fill=white, line width=0.8pt, rounded corners=2pt, align=center,
+  state/.style={draw=#1, fill=white, line width=0.8pt, align=center,
     text=muted, inner xsep=1mm, inner ysep=2pt},
+  % A state at the figure's \boxWidth and \boxHeight.
+  block/.style={state=#1, box width=\boxWidth, minimum height=\boxHeight},
   decision/.style={diamond, aspect=2, draw=#1, fill=white, line width=0.8pt, align=center,
     inner sep=0.5pt},
   % A state's mode, as a tab on its top right corner.
-  mode chip/.style={fill=#1Tint, text=#1, rounded corners=1.5pt, inner xsep=2pt, inner ysep=1pt,
+  mode chip/.style={fill=#1Tint, text=#1, inner xsep=2pt, inner ysep=1pt,
     anchor=south east},
   start/.style={circle, fill=ink, inner sep=0pt, minimum size=10pt},
   junction/.style={circle, fill=#1, inner sep=0pt, minimum size=3pt},

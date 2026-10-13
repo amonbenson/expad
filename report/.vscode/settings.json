@@ -18,6 +18,8 @@
     }
   ],
   "latex-workshop.latex.recipe.default": "first",
+  // Without this, the `% !TEX program = lualatex` magic comment in main.tex bypasses latexmk
+  "latex-workshop.latex.build.enableMagicComments": false,
   "latex-workshop.latex.rootFile.doNotPrompt": true,
   "latex-workshop.latex.outDir": "%DIR%/build",
   "latex-workshop.latex.autoBuild.run": "onSave",
