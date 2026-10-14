@@ -1414,7 +1414,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "Analog filter secion: around 1.6 kHz Cutoff\nUse low-tolerance components"
+	(text "Analog filter section: around 1.6 kHz Cutoff\nUse low-tolerance components"
 		(exclude_from_sim no)
 		(at 193.04 24.13 0)
 		(effects

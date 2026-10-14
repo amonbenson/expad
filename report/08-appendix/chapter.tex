@@ -19,33 +19,7 @@
   \end{figure}%
 }
 
-\clearpage
-% LuaTeX takes the page size from \pagewidth/\pageheight; the text block is set by hand
-% so that the header stays on top of the (truly landscape) page.
-\newlength\portraitwidth \newlength\portraitheight
-\newlength\portraittextwidth \newlength\portraittextheight
-\newlength\portraitoddmargin \newlength\portraitevenmargin \newlength\portraittopmargin \newlength\portraitcolumnwidth
-\setlength\portraitwidth\pagewidth \setlength\portraitheight\pageheight
-\setlength\portraittextwidth\textwidth \setlength\portraittextheight\textheight
-\setlength\portraitoddmargin\oddsidemargin \setlength\portraitevenmargin\evensidemargin
-\setlength\portraittopmargin\topmargin \setlength\portraitcolumnwidth\columnwidth
-\pagewidth=297mm \pageheight=210mm
-\setlength\textwidth{247mm} \setlength\columnwidth\textwidth \setlength\linewidth\textwidth \setlength\headwidth\textwidth \setlength\textheight{150mm} \makeatletter\global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight\makeatother
-\setlength\oddsidemargin{\dimexpr 25mm-1in\relax} \setlength\evensidemargin\oddsidemargin
-\setlength\topmargin{\dimexpr 30mm-1in-\headheight-\headsep\relax}
-  \schematicsheet{2}{Schematic: Microcontroller}{microcontroller}{Pico~2~W (A1) with the \qty{47}{\ohm} series resistors of SPI0 (ADCs, R3 to R6) and SPI1 (shift registers, R46 to R49), R58, which holds the shift-register outputs disabled until the first write, and the test points TP1 to TP11 on both buses.}
-  \schematicsheet{3}{Schematic: Analog Front End}{analog-frontend}{Jacks J2 to J5, one channel sheet per jack, and the two AD7718 (U4, U5) with their crystals. Each ADC reads two jacks. AIN6 is grounded and AIN10 is tied to the \qty{2.5}{\volt} rail for the self-test.}
-  \schematicsheet{4}{Schematic: Jack Channel}{channel-j2}{Channel of jack J2: the 74HC595 (U6) selects the switches of U15 (pull-up, R50 to \qty{2.5}{\volt}) and U19 (pull-down, R54 to ground). R15 to R18 with C23 to C26 (\qty{10}{\nano\farad}) form the input filters. JACK1 to JACK4 are tip, ring, sleeve and tip switch. The channel sheets of J3 to J5 are identical apart from the designators and are not reproduced.}
-  \schematicsheet{8}{Schematic: Power}{power}{Barrel jack J1 (center negative), polyfuse F1, TVS diode D1 and P-channel MOSFET Q1 against reverse polarity with the gate clamp D2. ADP7142 LDOs \cite{adi2025adp7142} generate \qty{5}{\volt} (U2: LEDs, Pico through D3), \qty{3.3}{\volt} (U1: ADCs, switches, shift registers) and \qty{2.5}{\volt} (U3, from \qty{3.3}{\volt}: pull-up rail and ADC reference), each behind a solder jumper and a test point.}
-  \schematicsheet{9}{Schematic: LEDs}{leds}{Four WS2812B LEDs (D4 to D7) on \qty{5}{\volt}. U14 (74AHCT1G125) shifts the data line from \qty{3.3}{\volt} to \qty{5}{\volt}.}
-\clearpage
-\pagewidth=\portraitwidth \pageheight=\portraitheight
-\setlength\textwidth\portraittextwidth \setlength\textheight\portraittextheight \makeatletter\global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight\makeatother
-\setlength\oddsidemargin\portraitoddmargin \setlength\evensidemargin\portraitevenmargin
-\setlength\topmargin\portraittopmargin
-\setlength\columnwidth\portraitcolumnwidth \setlength\linewidth\columnwidth \setlength\headwidth\textwidth
-
-\begin{figure}[htbp]
+\begin{figure}[!ht]
   \centering
   \begin{subfigure}[b]{0.49\linewidth}
     \centering
@@ -71,6 +45,32 @@
   \titledcaption{PCB}{Two-layer board of \qtyproduct{88.65 x 69.85}{\milli\metre}, manufactured by Aisler. Copper is colored by net: ground in blue, \qty{5}{\volt} in purple, \qty{3.3}{\volt} analog in red, the \qty{2.5}{\volt} reference in orange, the external supply in yellow (a darker shade for each rail's \texttt{\_RAW} net) and every signal in gray, with ground and supply pours drawn lighter. (a)~Top layer: the Pico~2~W (A1) along the top edge, the power input (J1, F1, Q1) and the regulators top right, the two AD7718 (U4, U5) with their input filters in the middle, and the jacks J2 to J5 along the bottom edge. (b)~Bottom layer, mirrored as seen from below: the TMUX1511 switches (U15 to U22) above each jack, the LEDs (D4 to D7) along the bottom edge and the labeled test points. (c)~Assembled board, side with the shift registers, the TMUX1511 switches, the LEDs and the color-coded test points for the rails and bus signals.}
   \label{fig:pcb}
 \end{figure}
+
+\clearpage
+% LuaTeX takes the page size from \pagewidth/\pageheight; the text block is set by hand
+% so that the header stays on top of the (truly landscape) page.
+\newlength\portraitwidth \newlength\portraitheight
+\newlength\portraittextwidth \newlength\portraittextheight
+\newlength\portraitoddmargin \newlength\portraitevenmargin \newlength\portraittopmargin \newlength\portraitcolumnwidth
+\setlength\portraitwidth\pagewidth \setlength\portraitheight\pageheight
+\setlength\portraittextwidth\textwidth \setlength\portraittextheight\textheight
+\setlength\portraitoddmargin\oddsidemargin \setlength\portraitevenmargin\evensidemargin
+\setlength\portraittopmargin\topmargin \setlength\portraitcolumnwidth\columnwidth
+\pagewidth=297mm \pageheight=210mm
+\setlength\textwidth{247mm} \setlength\columnwidth\textwidth \setlength\linewidth\textwidth \setlength\headwidth\textwidth \setlength\textheight{150mm} \makeatletter\global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight\makeatother
+\setlength\oddsidemargin{\dimexpr 25mm-1in\relax} \setlength\evensidemargin\oddsidemargin
+\setlength\topmargin{\dimexpr 30mm-1in-\headheight-\headsep\relax}
+  \schematicsheet{2}{Schematic: Microcontroller}{microcontroller}{Pico~2~W (A1) with the \qty{47}{\ohm} series resistors of SPI0 (ADCs, R3 to R6) and SPI1 (shift registers, R46 to R49), R58, which holds the shift-register outputs disabled until the first write, and the test points TP1 to TP11 on both buses.}
+  \schematicsheet{3}{Schematic: Analog Front End}{analog-frontend}{Jacks J2 to J5, one channel sheet per jack, and the two AD7718 (U4, U5) with their crystals. Each ADC reads two jacks. AIN6 is grounded and AIN10 is tied to the \qty{2.5}{\volt} rail for the self-test.}
+  \schematicsheet{4}{Schematic: Jack Channel}{channel-j2}{Channel of jack J2: the 74HC595 (U6) selects the switches of U15 (pull-up, R50 to \qty{2.5}{\volt}) and U19 (pull-down, R54 to ground). R15 to R18 with C23 to C26 (\qty{10}{\nano\farad}) form the input filters. JACK1 to JACK4 are tip, ring, sleeve and tip switch. The channel sheets of J3 to J5 are identical apart from the designators and are not reproduced.}
+  \schematicsheet{8}{Schematic: Power}{power}{Barrel jack J1 (center negative), polyfuse F1, TVS diode D1 and P-channel MOSFET Q1 against reverse polarity with the gate clamp D2. ADP7142 LDOs \cite{adi2025adp7142} generate \qty{5}{\volt} (U2: LEDs, Pico through D3), \qty{3.3}{\volt} (U1: ADCs, switches, shift registers) and \qty{2.5}{\volt} (U3, from \qty{3.3}{\volt}: pull-up rail and ADC reference), each behind a solder jumper and a test point.}
+  \schematicsheet{9}{Schematic: LEDs}{leds}{Four WS2812B LEDs (D4 to D7) on \qty{5}{\volt}. U14 (74AHCT1G125) shifts the data line from \qty{3.3}{\volt} to \qty{5}{\volt}.}
+\clearpage
+\pagewidth=\portraitwidth \pageheight=\portraitheight
+\setlength\textwidth\portraittextwidth \setlength\textheight\portraittextheight \makeatletter\global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight\makeatother
+\setlength\oddsidemargin\portraitoddmargin \setlength\evensidemargin\portraitevenmargin
+\setlength\topmargin\portraittopmargin
+\setlength\columnwidth\portraitcolumnwidth \setlength\linewidth\columnwidth \setlength\headwidth\textwidth
 
 \section{Firmware}
 \label{sec:appendix-firmware}
@@ -127,7 +127,7 @@ In \emph{Output}, Map Value applies the range, inversion and drive curve of \cre
     \qty{1}{\kilo\ohm} & \qty{2.08}{\volt} / \qty{208}{\milli\volt} & \qty{2.45}{\volt} / \qty{24}{\milli\volt} & \qty{2.49}{\volt} / \qty{5}{\milli\volt} \\
     \qty{2.2}{\kilo\ohm} & \qty{1.74}{\volt} / \qty{382}{\milli\volt} & \qty{2.40}{\volt} / \qty{53}{\milli\volt} & \qty{2.48}{\volt} / \qty{11}{\milli\volt} \\
     \qty{4.7}{\kilo\ohm} & \qty{1.29}{\volt} / \qty{606}{\milli\volt} & \qty{2.29}{\volt} / \qty{107}{\milli\volt} & \qty{2.45}{\volt} / \qty{23}{\milli\volt} \\
-    \qty{10}{\kilo\ohm} & \qty{0.83}{\volt} / \qty{833}{\milli\volt} & \qty{2.08}{\volt} / \qty{208}{\milli\volt} & \qty{2.45}{\volt} / \qty{49}{\milli\volt} \\
+    \qty{10}{\kilo\ohm} & \qty{0.83}{\volt} / \qty{833}{\milli\volt} & \qty{2.08}{\volt} / \qty{208}{\milli\volt} & \qty{2.40}{\volt} / \qty{48}{\milli\volt} \\
     \bottomrule
   \end{tabular}
 \end{table}

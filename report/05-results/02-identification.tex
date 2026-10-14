@@ -17,11 +17,11 @@ With a working signal chain, every pedal at hand was identified with the correct
     Boss EV-30, wiper on tip & stereo & potentiometer & \qty{10.85}{\kilo\ohm} & \qty{9.81}{\kilo\ohm} \\
     M-Audio EX-P, wiper on ring & stereo & potentiometer (near end) & \qty{11.40}{\kilo\ohm} & \qty{11.39}{\kilo\ohm} \\
     Boss FS-5U, closed & mono & footswitch & $\leq \qty{0.2}{\kilo\ohm}$ & \qty{8.7}{\ohm} \\
-    \qty{100}{\kilo\ohm} potentiometer, tip to sleeve & mono & rheostat & -- & -- \\
+    \qty{100}{\kilo\ohm} potentiometer, tip to sleeve & mono & rheostat & \qty{100.15}{\kilo\ohm} & \qty{99.98}{\kilo\ohm} \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-The total resistance only sets the settling time and the scale of a rheostat, whereas the position depends on voltage ratios alone. For the EX-P, the solver total agrees with the ohmmeter within \qty{0.1}{\percent}. The EV-30 was solved \qty{11}{\percent} high at bring-up, still at \qty{315}{\hertz}, and at about \qty{9.4}{\kilo\ohm} from the voltage levels of a later oscilloscope capture. The EV-30 has a knob that sets the minimum of its range and adds resistance to its network, and this knob was set differently between the measurements, which may explain the difference.
+The total resistance only sets the settling time and the scale of a rheostat, whereas the position depends on voltage ratios alone. For the EX-P and the rheostat, the solver total agrees with the ohmmeter within \qty{0.1}{\percent} and \qty{0.2}{\percent}. The EV-30 was solved \qty{11}{\percent} high at bring-up, still at \qty{315}{\hertz}, and at about \qty{9.4}{\kilo\ohm} from the voltage levels of a later oscilloscope capture. The EV-30 has a knob that sets the minimum of its range and adds resistance to its network, and this knob was set differently between the measurements, which may explain the difference.
 
 With the EV-30 held still at \qty{819}{\hertz}, the solved position had a standard deviation of \num{274}~ppm of the travel over repeated solves, and a single wiper reading one of \num{203}~ppm (\cref{tab:adc-characterization}). One MIDI step is \num{7874}~ppm, so the spread stays below 1/28 of a step, and with the hysteresis of 0.6 steps, the sent value does not change.
