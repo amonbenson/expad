@@ -34,6 +34,7 @@
 \usepackage{graphicx}
 \usepackage[labelfont=bf, font=small]{caption}
 \usepackage{subcaption}
+\usepackage{placeins} % \FloatBarrier keeps the floats of a section ahead of the next heading
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{longtable}
@@ -76,6 +77,10 @@
 % --- Bibliography --------------------------------------------------------------------------
 \usepackage[backend=biber, style=ieee, sorting=nyt]{biblatex}
 \addbibresource{bibliography.bib}
+% Long URLs may break after any letter or digit instead of running into the margin.
+\setcounter{biburlnumpenalty}{100}
+\setcounter{biburlucpenalty}{100}
+\setcounter{biburllcpenalty}{100}
 
 % --- Cross references (load last) ----------------------------------------------------------
 \usepackage[hidelinks]{hyperref}
