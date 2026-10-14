@@ -19,7 +19,7 @@ The hardware evolved from the proposal \cite{benson2026proposal} over the circui
     Supply, ground & separate analog supply, star point & one \qty{3.3}{\volt} rail, \qty{2.5}{\volt} pull-up rail and reference, one ground & small two-layer board; switches and ADCs join digital and analog pins, so a split would enlarge the board and lengthen the SPI lines \cite{kester2009mt031}; low-noise LDOs \cite{adi2025adp7142} \\
     Input filter & \qty{1}{\kilo\ohm}, \qty{100}{\nano\farad} & \qty{10}{\kilo\ohm}, \qty{10}{\nano\farad} & same corner (\qty{1.6}{\kilo\hertz}), a tenth of the capacitance to charge; \qty{26}{\decibel} at the \qty{32.768}{\kilo\hertz} modulator rate, which the digital filter passes; buffered inputs \cite{adi2001ad7718, andrews2015deltasigma} \\
     Input protection & LM74700 ideal-diode controller & fuse, suppressor diode, P-channel MOSFET; \qty{9}{\volt} center negative & LM74700 is an automotive battery controller \cite{ti2020lm74700}; minimal circuit for \qtyrange{9}{12}{\volt} pedal supplies and their polarity \cite{roland2026psas}; no rectifier, to avoid complexity and noise \\
-    Micro\-controller & STM32G4 or RP2040 & Raspberry Pi Pico~2~W & tested module with USB, crystal and flash; two SPI buses, debug probe, WiFi \cite{rpi2026pico2w, rpi2026rp2350} \\
+    Micro\-controller & STM32G4 or RP2040 & Raspberry Pi Pico~2~W (RP2350) & tested module with USB, crystal and flash; two SPI buses, debug probe, WiFi \cite{rpi2026pico2w, rpi2026rp2350} \\
     \bottomrule
   \end{tabularx}
 \end{table}
@@ -33,7 +33,7 @@ bounded to \qtyrange{1}{400}{\milli\second}. A \qty{100}{\kilo\ohm} pedal gives 
 
 \begin{figure}[tb]
   \centering
-  \includegraphics[width=0.66\linewidth]{04-implementation/figures/frontend-final}
+  \includegraphics[width=\linewidth]{04-implementation/figures/frontend-final}
   \titledcaption{Analog Front End of One Jack}{JACK1 to JACK4 are tip, ring, sleeve and tip switch. The shift register U6 selects, per contact, a switch of U15 to the pull-up resistor R50 on the \qty{2.5}{\volt} rail or a switch of U19 to the pull-down resistor R54 on ground. R15 to R18 with C23 to C26 filter each contact before its ADC input (ADC1 to ADC4).}
   \label{fig:frontend-final}
 \end{figure}

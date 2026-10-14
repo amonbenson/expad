@@ -3,7 +3,7 @@
 \section{Firmware}
 \label{sec:firmware}
 
-The firmware decides which drives the hardware applies and what the readings mean. It is written in Rust \cite{rust2026} on the asynchronous Embassy framework \cite{embassy2026}, so measurement, USB and WiFi run as concurrent tasks on the RP2350 of the Pico~2~W \cite{rpi2026rp2350, benson2026expad}. On the host computer, 52 tests drive the hardware-independent library against a simulated star network and a simulated jack in simulated time; they caught, for example, swapped high and low drives in the port from the simulator \cite{benson2026topologysim} before the code ran on the hardware.
+The firmware decides which drives the hardware applies and interprets the readings. It is written in Rust \cite{rust2026} on the asynchronous Embassy framework \cite{embassy2026}, so measurement, USB and WiFi run as concurrent tasks on the RP2350 of the Pico~2~W \cite{rpi2026rp2350, benson2026expad}. On the host computer, unit tests drive the hardware-independent library against a simulated star network.
 
 One \emph{jack monitor} per jack runs the stages of \cref{fig:firmware-overview}: rail measurement and plug detection, identification by solves, and following, with two ways back. The monitor never touches the hardware: it hands out one reading at a time, as drives and the contact to read, and takes the voltage back, so a scheduler can interleave the jacks of both ADCs. \Cref{fig:jack-monitor-states} shows the full state diagram, explained in \cref{sec:appendix-firmware}.
 
