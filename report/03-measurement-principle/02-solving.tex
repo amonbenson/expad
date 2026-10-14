@@ -1,9 +1,11 @@
 % !TEX root = ../main.tex
 
-\section{Pair Measurement and Solve}
+\section{Solving and Classification}
 \label{sec:pair-measurement}
 
-The arms are inferred from contact voltages under known drives (\cref{fig:principle}, right). Each contact is pulled up or down through a pull resistance $R_\mathrm{p}$ or left floating, which is called its \emph{drive}, and is read by the ADC; one settled result is a \emph{reading}. The \emph{rail voltages} $V_{\mathrm{H},i}$ and $V_{\mathrm{L},i}$ are the readings of contact $i$ while all arms are driven to the same rail, so that no current flows; they cancel the offset of the ADC and the drops across the switches. A \emph{pair measurement} drives arm $h$ high and arm $l$ low, while the third contact $f$ floats. A reading on the third contact therefore yields the voltage at the star point. From the readings $V_h$, $V_l$ and $V_f$ follow the loop current $I$, read on both sides, the pair resistance and the share of the low arm:
+The arms are inferred from contact voltages (\cref{fig:principle}, right). Each contact is pulled up or down through a pull resistance $R_\mathrm{p}$ or left floating, and this state is its \emph{drive}. The ADC reads the contact, and one settled result is a \emph{reading}. The \emph{rail voltages} $V_{\mathrm{H},i}$ and $V_{\mathrm{L},i}$ are the readings of contact $i$ while all arms are driven to the same rail, so that no current flows. They cancel the offset of the ADC and the drops across the switches. Taking them is the \emph{rail measurement}.
+
+A \emph{pair measurement} drives arm $h$ high and arm $l$ low, while the third contact $f$ floats. The floating arm carries no current, so its reading $V_f$ is the voltage at the star point. From the readings $V_h$, $V_l$ and $V_f$ follow the loop current $I$, read on both sides, the pair resistance and the share of the low arm:
 \begin{equation}
   I = \frac{1}{2}\left(\frac{V_{\mathrm{H},h} - V_h}{R_\mathrm{p}} + \frac{V_l - V_{\mathrm{L},l}}{R_\mathrm{p}}\right),
   \qquad
@@ -12,7 +14,7 @@ The arms are inferred from contact voltages under known drives (\cref{fig:princi
   \frac{r_l}{r_h + r_l} = \frac{V_f - V_l}{V_h - V_l}.
   \label{eq:pair}
 \end{equation}
-For a \qty{10}{\kilo\ohm} pedal, $R_\mathrm{p} = \qty{1}{\kilo\ohm}$ and a \qty{2.5}{\volt} rail, $I = \qty{2.5}{\volt}/\qty{12}{\kilo\ohm} \approx \qty{0.21}{\milli\ampere}$ drops \qty{208}{\milli\volt} across each pull resistor and leaves \qty{2.08}{\volt} across the pedal. The share therefore spans most of the rail and is precise, whereas the current relies on the small drops across $R_\mathrm{p}$. The currents on both sides must agree, which helps to detect errors such as a miscalibrated ADC or a pedal that moved during the measurement.
+For a \qty{10}{\kilo\ohm} pedal, $R_\mathrm{p} = \qty{1}{\kilo\ohm}$ and a \qty{2.5}{\volt} rail, $I = \qty{2.5}{\volt}/\qty{12}{\kilo\ohm} \approx \qty{0.21}{\milli\ampere}$ drops \qty{208}{\milli\volt} across each pull resistor and leaves \qty{2.08}{\volt} across the pedal. The share therefore spans most of the rail and is precise, whereas the current relies on the small drops across $R_\mathrm{p}$. The currents on both sides must agree, which detects errors such as a miscalibrated ADC or a pedal that moved during the measurement.
 
 A \emph{solve} measures the pairs (tip high, ring low), (tip high, sleeve low), and, if needed, (ring high, sleeve low). Two pairs that share the arm $s$ give its shares $\rho_1 = r_s/(r_s + r_a)$ and $\rho_2 = r_s/(r_s + r_b)$ from \cref{eq:pair}, where $a$ and $b$ are the other arms. \Cref{eq:ratios} turns them into unnormalized arms $x_i$ and the relative arms $q_i$:
 \begin{equation}
@@ -20,6 +22,8 @@ A \emph{solve} measures the pairs (tip high, ring low), (tip high, sleeve low), 
   q_i = \frac{x_i}{c},\quad c = \sum_j x_j.
   \label{eq:ratios}
 \end{equation}
-The sum $c$, the \emph{conditioning}, approaches 0 when the shared arm approaches \qty{0}{\ohm}, as for a wiper on the tip, and amplifies the noise of the shares by about $1/c$. For the Boss EV-30, whose wiper is on the tip, $c$ lies between 0.03 and 0.1, a 10- to 30-fold amplification; below $c = 0.5$, the third pair is therefore measured as well. The total is the mean of the totals the pairs imply, weighted by their squared signal-to-noise ratio; disagreeing totals reject the solve.
+The sum $c$, called the \emph{conditioning}, approaches 0 when the shared arm approaches \qty{0}{\ohm}, as for a wiper on the tip, and amplifies the noise of the shares by about $1/c$. For the Boss EV-30, whose wiper is on the tip, $c$ lies between 0.03 and 0.1, a 10- to 30-fold amplification. Below $c = 0.5$, the third pair is therefore measured as well. The total is the mean of the totals the pairs imply, weighted by their squared signal-to-noise ratio, and the solve is rejected when these totals disagree.
 
-Every threshold used in the detection process is a multiple of the noise $\sigma_V$ of one reading, propagated to the checked quantity; for a current, $\sigma_V/R_\mathrm{p} = \qty{0.5}{\milli\volt}/\qty{1}{\kilo\ohm} = \qty{0.5}{\micro\ampere}$. A pedal of high resistance, whose currents are small and noisy, thus gets wider tolerances instead of being rejected. A pair conducts when its current exceeds $3\sigma$; \cref{tab:constants} lists the remaining thresholds.
+Every threshold of the solver and the jack monitor is a multiple of the noise $\sigma_V$ of one reading, derived in \cref{sec:firmware}, propagated to the checked quantity and then written $\sigma$. For a current, $\sigma = \sigma_V/R_\mathrm{p} = \qty{0.5}{\milli\volt}/\qty{1}{\kilo\ohm} = \qty{0.5}{\micro\ampere}$. A pedal of high resistance, whose currents are small and noisy, thus gets wider tolerances instead of being rejected. A pair conducts when its current exceeds $3\sigma$. \Cref{tab:constants} lists the remaining thresholds.
+
+The relative arms then decide the class of the network. A \emph{potentiometer} has exactly one arm below \qty{25}{\percent} of the total, the wiper. An \emph{end stop} or \emph{near end} has two small arms, because the wiper rests on a track end or, with a resistive wiper lead, near it. Since either small arm could be the wiper, the wiper contact is taken from the settings of the jack or from the last wiper seen on it. A \emph{tip-sleeve element} is a footswitch or a rheostat, an \emph{open} plug has nothing behind it, and \emph{other} matches no known pedal.

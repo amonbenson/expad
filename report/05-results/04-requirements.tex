@@ -15,13 +15,13 @@
     & \textbf{Requirement} & \textbf{Result} & \textbf{Status} \\
     \midrule
     P & Detect presence and wiring & all available pedal types, both wirings & met \\
-    P & Real time, no perceptible latency & 188 updates per second, \qty{0.1}{\second} to recognize & met \\
+    P & Real time, no perceptible latency & 95 to 188 updates per second, at most \qty{11.5}{\milli\second}; \qtyrange{0.1}{0.3}{\second} to identify & partly met \\
     P & Value linear to the pedal angle & ratiometric reading; linearity not measured & partly met \\
     P & 1 to 4 TRS jacks, USB MIDI class & four jacks, USB MIDI 1.0 & met \\
     P & Calibration and filtering of the channels & rail measurement, MIDI hysteresis & met \\
     P & Optional DIN MIDI output & -- & not met \\
     M & Supply, SPI, self-test & \cref{sec:results-board} & met \\
-    M & Known networks, accuracy & real pedals, ohmmeter comparison & met \\
+    M & Known networks, accuracy & real pedals, ohmmeter comparison; no precision resistors & partly met \\
     M & End-to-end latency & estimated, not measured & partly met \\
     \bottomrule
   \end{tabularx}

@@ -30,9 +30,9 @@ TIMEBASE = "10 ms"
 
 SETUPS = {  # worksheet name -> slide label, in order of increasing load
     "no Microcontroller": "No MCU",
-    "Idle/Detecting": "Idle / detecting",
-    "Tracking Jack 1": "Tracking",
-    "Tracking Jack 1 + WiFi": "Tracking + WiFi",
+    "Idle/Detecting": "Empty jacks",
+    "Tracking Jack 1": "Following",
+    "Tracking Jack 1 + WiFi": "Following + WiFi",
 }
 RAILS = {  # worksheet net -> axis label, in regulator chain order
     "Vext": "Vext\n(input)",
@@ -72,7 +72,7 @@ RAW_DATA = HERE / "raw_data"
 # leaves and it closes. Each capture is (CSV, plotted time range in ms, what the tip switch does at
 # 0 ms, phases); each phase is (start in ms, label, inferred). Measured starts are latch edges on the
 # ring or tip switch. Inferred ones, drawn dashed, change no drive the two probes can see and are
-# one pair's length after the previous latch: Tracking keeps the last pair's drives (14.6 ms), and
+# one pair's length after the previous latch: Following keeps the last pair's drives (14.6 ms), and
 # without a plug the tip-sleeve pair only swaps the ring from driven low to floating, both at 0 V
 # (13.4 ms, settling for the known pedal).
 TIMING_CAPTURES = {
@@ -88,7 +88,7 @@ TIMING_CAPTURES = {
             (263.2, "Pair tip-ring", False),
             (277.9, "Pair tip-sleeve", False),
             (292.7, "Pair ring-sleeve", False),
-            (307.3, "Tracking", True),
+            (307.3, "Following", True),
         ],
     ),
     "plugin_timing_fresh_rails.png": (
@@ -101,7 +101,7 @@ TIMING_CAPTURES = {
             (35.5, "Pair tip-ring", False),
             (54.3, "Pair tip-sleeve", False),
             (68.9, "Pair ring-sleeve", False),
-            (83.5, "Tracking", True),
+            (83.5, "Following", True),
         ],
     ),
     "unplug_timing.png": (
@@ -109,7 +109,7 @@ TIMING_CAPTURES = {
         (-20, 320),
         "closes",
         [
-            (-20, "Tracking", False),
+            (-20, "Following", False),
             (1.8, "Rails:\nall arms high", False),
             (108.8, "Rails:\nall arms low", False),
             (215.8, "Pair tip-ring", False),

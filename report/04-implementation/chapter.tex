@@ -3,12 +3,12 @@
 \chapter{Implementation}
 \label{ch:implementation}
 
-The adapter realizes the measurement principle in the blocks of \cref{fig:block-diagram}. Per jack, a shift register and two analog switches connect each of the four contacts -- tip, ring, sleeve and tip switch -- to a shared pull-up or pull-down resistor. Two 24-bit ADCs read the contacts, two jacks each, and a Raspberry Pi Pico~2~W \cite{rpi2026pico2w} runs the firmware, which sends MIDI over USB, drives one indicator LED per jack and serves a web interface over WiFi. The solver and the per-jack state machine form a library without hardware dependency, which was developed and tested on a host computer before it ran on the board.
+The adapter realizes the measurement principle in the blocks of \cref{fig:block-diagram}. Per jack, a shift register and two analog switches connect each of the four contacts -- tip, ring, sleeve and tip switch -- to a shared pull-up or pull-down resistor. Two 24-bit ADCs read the contacts, two jacks each, and a Raspberry Pi Pico~2~W \cite{rpi2026pico2w} runs the firmware, which sends MIDI over USB, drives one indicator LED per jack and serves a web interface over WiFi.
 
 \begin{figure}[tb]
   \centering
   \input{04-implementation/figures/system-block-diagram}
-  \titledcaption{System Block Diagram}{Per jack, two TMUX1511 switches, selected by a 74HC595 shift register over the Serial Peripheral Interface (SPI) bus SPI1, connect the contacts tip (T), ring (R), sleeve (S) and tip switch (TN) to the shared \qty{1}{\kilo\ohm} pull resistors, and RC filters pass them to an AD7718 ADC, which the Pico~2~W reads over SPI0. The thick blue line is the measurement path of one jack; tabs ($\times$\,4, $\times$\,2) mark blocks that exist once per jack or ADC, and a slashed number counts the lines of a bus. Red tags mark the \qty{2.5}{\volt} rail (pull-up rail and ADC reference), blue tags ground; LDO denotes a low-dropout regulator.}
+  \titledcaption{System Block Diagram}{Per jack, two TMUX1511 switches, selected by a 74HC595 shift register over the Serial Peripheral Interface (SPI) bus SPI1, connect the contacts tip (T), ring (R), sleeve (S) and tip switch (TN) to the shared \qty{1}{\kilo\ohm} pull resistors, and RC filters pass them to an AD7718 ADC, which the Pico~2~W reads over SPI0. The thick blue line is the measurement path of one jack. Tabs ($\times$\,4, $\times$\,2) mark blocks that exist once per jack or ADC, and a slashed number counts the lines of a bus. Red tags mark the \qty{2.5}{\volt} rail (pull-up rail and ADC reference), blue tags ground, and LDO denotes a low-dropout regulator.}
   \label{fig:block-diagram}
 \end{figure}
 

@@ -82,7 +82,7 @@
       ([yshift=-\boxHeight/2 - \groupMargin] pedal east |- \row)}] (\pedal\space group) {};
   \foreach \pedal/\title/\info in {
       potentiometer/Potentiometer/{start\pulldown{} end\pullup{}, read wiper},
-      element/{Switch / Rheostat}/{\pullup{T} \pulldown{S} (\pulldown{R}), read T}} {
+      element/{Footswitch / Rheostat}/{\pullup{T} \pulldown{S} (\pulldown{R}), read T}} {
     \node[subgroup title=follow, anchor=north west] (\pedal\space title)
       at ($(\pedal\space group.north west) + (\groupMargin, -\groupMargin/2)$) {\title};
     \node[info, below=0.6mm of \pedal\space title.south west, anchor=north west] {\info};
@@ -94,7 +94,7 @@
   \node[block=detect, cell={detect}{row 2}] (empty) {\statename{Empty}\\ \pulldown{T} \pullup{TN}, read TN};
   \node[block=detect, cell={detect}{row 3}] (confirm) {\statename{Confirm Plug}\\ \pulldown{T} \pullup{TN}, read TN};
 
-  \node[block=identify, cell={identify}{row 1}] (refresh) {\statename{Refresh Rails}\\ all \pullup{}, all \pulldown{}};
+  \node[block=identify, cell={identify}{row 1}] (refresh) {\statename{Remeasure Rails}\\ all \pullup{}, all \pulldown{}};
   \node[decision=identify, minimum size=4mm, cell={decide}{row 2}] (fresh) {};
   \node[block=identify, cell={identify}{row 2}] (solve)
     {\statename{Solve}\\ \pullup{T}\pulldown{R}, \pullup{T}\pulldown{S},\\ (\pullup{R}\pulldown{S})};
@@ -103,7 +103,7 @@
 
   \node[block=follow, cell={follow first}{row 1}] (ends) {\statename{Read Ends}\\ one at a time};
   \node[block=follow, cell={follow second}{row 1}] (wiper) {\statename{Read Wiper}\\ $\rightarrow$ position};
-  \node[block=follow, cell={follow first}{row 2}] (switch) {\statename{Switch}\\ closed 1, open 0};
+  \node[block=follow, cell={follow first}{row 2}] (switch) {\statename{Footswitch}\\ closed 1, open 0};
   \node[block=follow, cell={follow second}{row 2}] (rheostat) {\statename{Rheostat}\\ $\rightarrow$ position};
   \node[block=follow, cell={follow first}{row 3}] (open) {\statename{Open}\\ nothing conducts};
 
