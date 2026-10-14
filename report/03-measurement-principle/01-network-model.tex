@@ -3,36 +3,13 @@
 \section{Pedal Networks}
 \label{sec:network-model}
 
-\scaffold{
-  Budget: about 180 words and \cref{fig:principle}.
+The left of \cref{fig:principle} shows four ways to wire a potentiometer to a stereo plug. In the two common wirings at the top, the wiper sits on the ring or on the tip, and the sleeve is the grounded track end \cite{mission2014expression, nonlinearlabs2026pedals}; less often, the wiper sits on the sleeve. Two-wire pedals connect only tip and sleeve, with the wiper tied to one track end. A mono plug additionally shorts the ring of the jack to its sleeve. For a wiper on the tip, this puts the two track halves in parallel, so a track of resistance $R$ at relative travel $x$ shows $R\,x(1-x)$, which rises and falls again. Potentiometer pedals therefore need a stereo cable.
 
-  \textbf{Paragraph 1, wirings and plugs.} Show the common wirings in \cref{fig:pedal-wirings}: wiper on the tip with ring as reference and sleeve as ground, wiper on the ring with tip as reference \cite{mission2014expression, nonlinearlabs2026pedals}, and the two-wire variants. The sleeve is a track end in both three-wire wirings, which the position convention in \cref{sec:following} uses. A mono (TS) plug additionally shorts the jack's ring to its sleeve; for a potentiometer pedal this puts the two track halves in parallel, $R\,x(1-x)$ at travel $x$, which rises and falls again, so potentiometers need a stereo cable whatever the interface does.
+Any passive resistive network between three terminals is externally equivalent to three resistors meeting in an inaccessible star point (\cref{fig:principle}, center) \cite{kennelly1899equivalence}, and only this equivalent can be recovered from the terminals \cite{borcea2012resistor}. The resistance from one contact to the star point is called an \emph{arm}: $r_\mathrm{T}$, $r_\mathrm{R}$ and $r_\mathrm{S}$ for tip, ring and sleeve. A potentiometer has exactly one arm near \qty{0}{\ohm}, the wiper, and the ratio of the other two arms is its position; a two-wire pedal has one isolated arm. The solver reports the relative arm resistances $q_i = r_i/R_\mathrm{tot}$ with respect to the total resistance $R_\mathrm{tot} = r_\mathrm{T} + r_\mathrm{R} + r_\mathrm{S}$.
 
-  \textbf{Paragraph 2, the star model.} Any passive network between three terminals is externally equivalent to three resistors meeting in an inaccessible star point (\cref{fig:star-network}) \cite{kennelly1899equivalence}; only this equivalent can be recovered from the terminals \cite{borcea2012resistor}. Define the term \emph{arm}: the resistance from one contact to the star point, $r_\mathrm{T}$, $r_\mathrm{R}$, $r_\mathrm{S}$. A potentiometer is the case with exactly one arm near \qty{0}{\ohm}, the wiper, and the ratio of the other two is the position; a two-wire pedal has an isolated arm. The solver reports relative arms $q_i = r_i/R_\mathrm{tot}$ and the total $R_\mathrm{tot}$.
-}
-
-\begin{figure}[htbp]
+\begin{figure}[tb]
   \centering
-  \begin{subfigure}[b]{0.46\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{03-measurement-principle/figures/pedal-wirings}
-    \caption{Pedal Wirings}
-    \label{fig:pedal-wirings}
-  \end{subfigure}%
-  \hfill%
-  \begin{subfigure}[b]{0.2\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{03-measurement-principle/figures/star-network}
-    \caption{Star Model}
-    \label{fig:star-network}
-  \end{subfigure}%
-  \hfill%
-  \begin{subfigure}[b]{0.3\linewidth}
-    \centering
-    \includegraphics[width=\linewidth]{03-measurement-principle/figures/pull-matrix}
-    \caption{Pull Matrix}
-    \label{fig:pull-matrix}
-  \end{subfigure}
-  \titledcaption{Measurement Principle}{\scaffoldinline{(a) the four wirings (which contact carries the wiper, which variant is two-wire); (b) the three arms meeting in the star point, ideally relabelled with $r_\mathrm{T}$, $r_\mathrm{R}$, $r_\mathrm{S}$; (c) every contact switchable to the high or the low rail through a resistor or left floating, each read by the ADC; the highlighted example drives contact~2 high and contact~3 low while contact~1 floats.}}
+  \input{03-measurement-principle/figures/measurement-principle}
+  \titledcaption{Measurement Principle}{Left, four pedals wire a potentiometer to the tip (T), ring (R) and sleeve (S) of a stereo plug. Center, each of them is equivalent to the arms $r_\mathrm{T}$, $r_\mathrm{R}$ and $r_\mathrm{S}$ meeting in the star point. Right, the pull matrix of one jack: per contact, one switch of the upper row (drive) connects it through the pull resistor $R_\mathrm{p}$ to the \qty{2.5}{\volt} rail, one of the lower row to ground, and the ADC reads it; the dotted links close when the plug is inserted. Highlighted, a pair measurement with the tip high, the ring low and the sleeve floating, which reads the star point.}
   \label{fig:principle}
 \end{figure}

@@ -3,45 +3,39 @@
 \section{Hardware}
 \label{sec:hardware}
 
-\scaffold{
-  \textbf{Paragraph 1, design decisions} (about 80 words). The hardware went through the proposal \cite{benson2026proposal}, the circuit of milestone~1, a breadboard prototype with an AD7718 and SN74LVC126A buffers, and the final PCB. \Cref{tab:design-decisions} lists what changed and why; the text only adds what the table cannot hold. Two points deserve a sentence each: the move from tristate buffers to analog switches was the deliberate change that cost a new schematic and layout, because the current in \cref{eq:pair} needs a known pull resistance; and the shared resistor per rail means only one contact per rail can be driven at a time, which is exactly the one-high-one-low pattern of \cref{sec:pair-measurement}. The fourth channel of each switch chip was free and went to the tip switch.
-}
+The hardware evolved from the proposal \cite{benson2026proposal} over the circuit of milestone~1 and a breadboard prototype with an AD7718 ADC and SN74LVC126A buffers to the final printed circuit board (PCB), as listed in \cref{tab:design-decisions}. The return from tristate buffers to analog switches, which required a new schematic and layout, was made deliberately: the current in \cref{eq:pair} needs a known pull resistance, whereas the output impedance of a buffer is specified only as a voltage-dependent range \cite{ti2026sn74lvc126a}. The contacts of a jack share one resistor per rail, so only one contact per rail can be driven at a time, which is exactly the pattern of \cref{sec:pair-measurement}; the free fourth switch channel connects the tip switch.
 
-\begin{table}[htbp]
+\begin{table}[tb]
   \centering
   \footnotesize
-  \titledcaption{Design Decisions}{\scaffoldinline{Explain the columns: what the proposal and milestone~1 planned, what the final PCB uses, and why. Keep the cells as short as they are now.}}
+  \titledcaption{Design Decisions}{Components planned in the proposal and at milestone~1 against those on the final PCB, with the reason for each change. The breadboard prototype already used the AD7718 and the SN74LVC126A buffers.}
   \label{tab:design-decisions}
-  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.13\linewidth} >{\raggedright\arraybackslash}p{0.2\linewidth} >{\raggedright\arraybackslash}p{0.2\linewidth} >{\raggedright\arraybackslash}X@{}}
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.12\linewidth} >{\raggedright\arraybackslash}p{0.19\linewidth} >{\raggedright\arraybackslash}p{0.19\linewidth} >{\raggedright\arraybackslash}X@{}}
     \toprule
-    & \textbf{Planned} & \textbf{Final PCB} & \textbf{Reason} \\
+    \textbf{Block} & \textbf{Planned} & \textbf{Final PCB} & \textbf{Reason} \\
     \midrule
-    ADC & ADS8688 (proposal), AD7124-8 (milestone~1) & 2$\times$ AD7718, also on the breadboard & ADS8688 oversized: 500 kSPS, ranges up to \qty{+-10.24}{\volt}, \qty{5}{\volt} analog supply \cite{ti2015ads8688}; AD7124-8 only in a 32-lead LFCSP \cite{adi2026ad7124}; ADS1241 at most 15 samples per second (30 with a faster crystal) \cite{ti2013ads1241}; AD7718: 24 bit, \qtyrange{2.7}{3.6}{\volt} supply, up to \qty{1365}{\hertz}, ten inputs, SOIC-28 \cite{adi2001ad7718}; price secondary \\
-    Pull switching & SPDT switches (proposal), SN74LVC126A buffers (milestone~1, breadboard) & 2$\times$ TMUX1511 per jack, one \qty{1}{\kilo\ohm} \qty{0.1}{\percent} resistor per rail & buffer output impedance only given as a range and voltage dependent \cite{ti2026sn74lvc126a}; switch on-resistance \qty{2}{\ohm} \cite{ti2025tmux1511}; 74HC125-type buffers not available in the required package \\
-    Supply, ground & separate analog supply, star point & one \qty{3.3}{\volt} rail, \qty{2.5}{\volt} LDO as pull-up rail and reference, one ground on both layers & small two-layer board (\qtyproduct{88.65 x 69.85}{\milli\metre}); all eight switches and both ADCs join digital and analog pins in one package, so a split would enlarge the board and lengthen the SPI lines \cite{kester2009mt031} \\
-    Input filter & \qty{1}{\kilo\ohm}, \qty{100}{\nano\farad} & \qty{10}{\kilo\ohm}, \qty{10}{\nano\farad} & same corner (\qty{1.6}{\kilo\hertz}) with a tenth of the capacitance to charge; \qty{26}{\decibel} at the \qty{32.768}{\kilo\hertz} modulator rate, which the digital filter does not reject \cite{adi2001ad7718, andrews2015deltasigma}; buffered inputs allow the RC \cite{adi2001ad7718} \\
-    Input protection & LM74700 ideal-diode controller & fuse, TVS diode, P-channel MOSFET; \qty{9}{\volt} center negative & LM74700 is a \qtyrange{3.2}{65}{\volt} automotive battery controller \cite{ti2020lm74700}; minimal circuit for \qtyrange{9}{12}{\volt} pedal-board supplies, polarity as common pedal adapters \cite{roland2026psas}; rectifier bridge left out to avoid complexity and noise \\
-    Micro\-controller & STM32G4 or RP2040 & Raspberry Pi Pico~2~W & tested module with USB, crystal and flash; two SPI buses, debug probe, WiFi for a test interface \cite{rpi2026pico2w} \\
+    ADC & ADS8688 (proposal), AD7124-8 (milestone~1) & 2$\times$ AD7718 & ADS8688 oversized (\num{500000} samples per second, \qty{+-10.24}{\volt}, \qty{5}{\volt} supply) \cite{ti2015ads8688}; AD7124-8 only as 32-lead LFCSP \cite{adi2026ad7124}; ADS1241 at most 15 samples per second \cite{ti2013ads1241}; AD7718: 24 bit, \qtyrange{2.7}{3.6}{\volt}, up to \qty{1365}{\hertz}, ten inputs, SOIC-28 \cite{adi2001ad7718} \\
+    Pull switching & TS5A23157 switches \cite{ti2026ts5a23157} (proposal), SN74LVC126A (milestone~1) & 2$\times$ TMUX1511 per jack, \qty{1}{\kilo\ohm} \qty{0.1}{\percent} per rail & buffer output impedance only given as a voltage-dependent range \cite{ti2026sn74lvc126a}; switch on-resistance \qty{2}{\ohm} \cite{ti2025tmux1511}; 74HC125-type buffers not available in the required package \\
+    Supply, ground & separate analog supply, star point & one \qty{3.3}{\volt} rail, \qty{2.5}{\volt} pull-up rail and reference, one ground & small two-layer board; switches and ADCs join digital and analog pins, so a split would enlarge the board and lengthen the SPI lines \cite{kester2009mt031}; low-noise LDOs \cite{adi2025adp7142} \\
+    Input filter & \qty{1}{\kilo\ohm}, \qty{100}{\nano\farad} & \qty{10}{\kilo\ohm}, \qty{10}{\nano\farad} & same corner (\qty{1.6}{\kilo\hertz}), a tenth of the capacitance to charge; \qty{26}{\decibel} at the \qty{32.768}{\kilo\hertz} modulator rate, which the digital filter passes; buffered inputs \cite{adi2001ad7718, andrews2015deltasigma} \\
+    Input protection & LM74700 ideal-diode controller & fuse, suppressor diode, P-channel MOSFET; \qty{9}{\volt} center negative & LM74700 is an automotive battery controller \cite{ti2020lm74700}; minimal circuit for \qtyrange{9}{12}{\volt} pedal supplies and their polarity \cite{roland2026psas}; no rectifier, to avoid complexity and noise \\
+    Micro\-controller & STM32G4 or RP2040 & Raspberry Pi Pico~2~W & tested module with USB, crystal and flash; two SPI buses, debug probe, WiFi \cite{rpi2026pico2w, rpi2026rp2350} \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-\scaffold{
-  \textbf{Paragraph 2, the front end} (about 130 words, \cref{fig:frontend-final}). Walk through one jack: the 74HC595 latches the drive pattern and selects the switches of U15 (to R50 and the \qty{2.5}{\volt} rail) and U19 (to R54 and ground); each contact reaches its ADC input through \qty{10}{\kilo\ohm} and \qty{10}{\nano\farad}. The \qty{2.5}{\volt} rail is also the reference of both ADCs, so every reading is ratiometric. The pull resistance was chosen from the extremes of a \qty{10}{\kilo\ohm} and a \qty{500}{\kilo\ohm} pedal: with \qty{1}{\kilo\ohm} the current-carrying drop is \qty{208}{\milli\volt} and \qty{5}{\milli\volt}, still ten times the reading noise, while the position uses the span of more than \qty{2}{\volt} in both cases (full series in \cref{tab:pull-resistance}). When a drive changes, a floating contact charges through the network and the filter, and the firmware waits \cref{eq:settling}, between \qty{1}{\milli\second} and \qty{400}{\milli\second}.
-}
-
+\Cref{fig:frontend-final} shows the front end of one jack. The 74HC595 shift register U6 \cite{ti2026sn74hc595} latches the drive pattern and closes the switches of the TMUX1511 U15 \cite{ti2025tmux1511} to R50 and the \qty{2.5}{\volt} rail, or those of U19 to R54 and ground. Each contact reaches its ADC input through a low-pass filter of \qty{10}{\kilo\ohm} and \qty{10}{\nano\farad}. The \qty{2.5}{\volt} rail is also the reference of both ADCs, so every reading is ratiometric. The pull resistance was chosen from the extremes of a \qty{10}{\kilo\ohm} and a \qty{500}{\kilo\ohm} pedal: with \qty{1}{\kilo\ohm}, the drop across a pull resistor is \qty{208}{\milli\volt} and \qty{5}{\milli\volt}, still ten times the noise of a reading, while the position uses a span of more than \qty{2}{\volt} in both cases (\cref{tab:pull-resistance}). When a drive changes, a floating contact charges its filter capacitor $C_\mathrm{f}$ through the pedal of total resistance $R_\mathrm{net}$ and the filter resistor $R_\mathrm{f}$ \cite{horowitz2015art}, so the firmware waits two time constants,
 \begin{equation}
-  t_\mathrm{settle} = 2\,(R_\mathrm{net} + R_\mathrm{f})\,C_\mathrm{f}
+  t_\mathrm{settle} = 2\,(R_\mathrm{net} + R_\mathrm{f})\,C_\mathrm{f},
   \label{eq:settling}
 \end{equation}
+bounded to \qtyrange{1}{400}{\milli\second}. A \qty{100}{\kilo\ohm} pedal gives $t_\mathrm{settle} = 2 \cdot \qty{110}{\kilo\ohm} \cdot \qty{10}{\nano\farad} = \qty{2.2}{\milli\second}$; for a \qty{10}{\kilo\ohm} pedal, the lower bound applies.
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
   \centering
-  \includegraphics[width=0.7\linewidth]{04-implementation/figures/frontend-final}
-  \titledcaption{Analog Front End of One Jack}{\scaffoldinline{Name U6, U15, U19, R50, R54 and the RC filters; JACK1--JACK4 are the four contacts of one jack (check their order against \code{src/board.rs}).}}
+  \includegraphics[width=0.66\linewidth]{04-implementation/figures/frontend-final}
+  \titledcaption{Analog Front End of One Jack}{JACK1 to JACK4 are tip, ring, sleeve and tip switch. The shift register U6 selects, per contact, a switch of U15 to the pull-up resistor R50 on the \qty{2.5}{\volt} rail or a switch of U19 to the pull-down resistor R54 on ground. R15 to R18 with C23 to C26 filter each contact before its ADC input (ADC1 to ADC4).}
   \label{fig:frontend-final}
 \end{figure}
 
-\scaffold{
-  \textbf{Paragraph 3, ADCs, SPI and board} (about 100 words). Both AD7718 run in ten-channel mode, each reading two jacks; AIN6 is grounded and AIN10 tied to the \qty{2.5}{\volt} rail on both, which makes a self-test of the conversion path. Every SPI and shift-register line has a \qty{47}{\ohm} damping resistor at its driver: following \cite{ti1998scaa031}, driver output impedance and series resistor together should match the line, which removes overshoot and reduces emission (TI's example uses \qty{56}{\ohm} on a \qty{75}{\ohm} line). The \qty{5}{\volt} LDO also supplies the four LEDs, whose brightness the firmware limits to 10 of 255, about \qty{4}{\percent}, because the bare LEDs without diffuser are bright enough. The PCB was manufactured by Aisler and assembled by hand; 15 test points carry the signals of \cref{ch:results} (schematics and photos in \cref{sec:appendix-hardware}).
-}
+Both AD7718 ADCs \cite{adi2001ad7718} run in ten-channel mode and read two jacks each; on both, AIN6 is grounded and AIN10 is tied to the \qty{2.5}{\volt} rail for a self-test of the conversion path. Every SPI and shift-register line has a \qty{47}{\ohm} series resistor at its driver, so that driver and resistor together approach the line impedance, which removes overshoot and reduces emission \cite{ti1998scaa031}. The \qty{5}{\volt} regulator also supplies the four WS2812B LEDs \cite{worldsemi2026ws2812b}, whose brightness the firmware limits to 10 of 255, about \qty{4}{\percent}, because the bare LEDs without a diffuser are already bright at that level. The schematics (\cref{fig:schematic-microcontroller,fig:schematic-analog-frontend,fig:schematic-channel-j2,fig:schematic-power,fig:schematic-leds}) became a two-layer PCB (\cref{fig:pcb}), manufactured by Aisler (layout in \cref{fig:pcb-layout}) and assembled by hand with 15 test points (\cref{fig:assembly-complete}).

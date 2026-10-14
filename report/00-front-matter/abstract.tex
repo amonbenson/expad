@@ -2,14 +2,4 @@
 
 \chapter*{Abstract}
 
-\scaffold{
-  One paragraph, about 170 words, no citations, abbreviations written out (writing guide, section 3.2). Write it last. Sentence order:
-  (1) expression pedals are passive potentiometers operated by foot to change a sound parameter while the hands stay on the instrument;
-  (2) no wiring standard exists, so a pedal on a mismatched input reads reversed, nonlinear or not at all;
-  (3) this project presents a four-jack adapter that identifies what is plugged in electrically and sends its position as a MIDI control change over USB;
-  (4) its parts, in one sentence: analog switches that pull every jack contact up or down through \qty{1}{\kilo\ohm} resistors, two 24-bit sigma-delta analog-to-digital converters referenced to the same \qty{2.5}{\volt} rail, and a Raspberry Pi Pico~2~W running firmware in Rust;
-  (5) each pedal is modelled as a three-terminal star network whose arm resistances follow from voltages measured while one contact is driven high, one low and the third floats;
-  (6) an identified potentiometer is followed with one conversion of its wiper;
-  (7) results: about 188 position updates per second for one pedal, recognition within \qty{0.1}{\second} (about \qty{0.3}{\second} when reference levels are re-measured first), position noise of 1/29 of a MIDI step, and potentiometer, switch and rheostat pedals of both common wirings identified on the hardware;
-  (8) concluding sentence: an unknown passive pedal can be identified in place with switchable pull resistors and a slow high-resolution converter, and followed fast enough for live use.
-}
+TODO

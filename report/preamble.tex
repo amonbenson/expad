@@ -16,7 +16,6 @@
 \titleformat{\chapter}[hang]{\normalfont\LARGE\bfseries}{\thechapter\quad}{0pt}{}
 \titlespacing*{\chapter}{0pt}{3.5ex plus 1ex minus .2ex}{2ex plus .2ex}
 \usepackage[nottoc]{tocbibind} % lists of figures and tables in the table of contents
-\usepackage{tocbasic}           % list of open questions
 
 % --- Language and fonts --------------------------------------------------------------------
 \usepackage{polyglossia}
@@ -47,6 +46,15 @@
 \usepackage{xcolor}
 \usepackage[most]{tcolorbox}
 
+% Floats may fill more of a text page, so that no float page is left half empty under the page
+% limit.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.8}
+\setlength{\floatsep}{10pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{12pt plus 2pt minus 2pt}
+
 % TikZ diagrams (04-implementation/figures/*.tex) share font, palette and styles.
 \usepackage{tikz}
 \input{diagram-styles}
@@ -56,10 +64,12 @@
 \setlength{\headheight}{15pt}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\nouppercase{\leftmark}}
+\fancyhead[L]{\nouppercase{\rightmark}}
 \fancyhead[R]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\chaptermark}[1]{\markboth{\thechapter\quad #1}{}}
+% The head names the first chapter on the page (\rightmark is the first mark of the page).
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter\quad #1}{\thechapter\quad #1}}
+\renewcommand{\sectionmark}[1]{}
 
 % --- Bibliography --------------------------------------------------------------------------
 \usepackage[backend=biber, style=ieee, sorting=nyt]{biblatex}
@@ -81,49 +91,10 @@
 \NewDocumentCommand\code{m}{\texttt{#1}}
 \NewDocumentCommand\net{m}{\texttt{#1}}
 
-% --- Scaffold commands (remove together with every use once the report is written) ----------
+% --- Placeholders ---------------------------------------------------------------------------
+% Data still missing from the author (metadata.tex); remove together with every use once known.
 \definecolor{scaffold}{HTML}{1F4E79}
-\definecolor{openquestion}{HTML}{9C1C1C}
-
-% What a paragraph has to convey.
-\newtcolorbox{scaffoldbox}{
-  breakable, enhanced,
-  colback=scaffold!5, colframe=scaffold!70, boxrule=0.4pt, arc=1pt,
-  left=4pt, right=4pt, top=3pt, bottom=3pt,
-  fontupper=\small\sffamily\color{scaffold!90!black},
-}
-\NewDocumentCommand\scaffold{+m}{\begin{scaffoldbox}#1\end{scaffoldbox}}
-
-% Scaffold text inside captions, table cells and other places where a box does not fit.
 \NewDocumentCommand\scaffoldinline{m}{{\sffamily\color{scaffold}[#1]}}
-
-% A figure that does not exist yet: what it shows and how to obtain it.
-\NewDocumentCommand\placeholderfigure{O{0.9\linewidth} +m}{%
-  \begin{tcolorbox}[
-    width=#1, enhanced, center,
-    colback=black!4, colframe=black!45, boxrule=0.4pt, sharp corners,
-    borderline={0.4pt}{2pt}{black!45, dashed},
-    title={Figure to be created}, coltitle=black, colbacktitle=black!12,
-    fonttitle=\small\sffamily\bfseries, fontupper=\small\sffamily,
-  ]#2\end{tcolorbox}%
-}
-
-% Information or a reason that is missing and has to come from the author. The first argument
-% is the short form for the list of open questions.
-\newcounter{openquestion}
-\crefname{openquestion}{open question}{open questions}
-\DeclareNewTOC[listname={List of Open Questions}]{loq}
-\NewDocumentCommand\openquestion{m +m}{%
-  \refstepcounter{openquestion}%
-  \addcontentsline{loq}{figure}{\protect\numberline{\theopenquestion}#1}%
-  \begin{tcolorbox}[
-    breakable, enhanced,
-    colback=openquestion!5, colframe=openquestion!75, boxrule=0.6pt, arc=1pt,
-    left=4pt, right=4pt, top=3pt, bottom=3pt,
-    title={Open question \theopenquestion: #1}, fonttitle=\small\sffamily\bfseries,
-    fontupper=\small\sffamily,
-  ]#2\end{tcolorbox}%
-}
 
 % --- Document data -------------------------------------------------------------------------
 \input{00-front-matter/metadata}

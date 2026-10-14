@@ -3,17 +3,13 @@
 \section{Plug Detection and Following}
 \label{sec:following}
 
-\scaffold{
-  Budget: about 180 words plus \cref{eq:position}.
+A solve cannot tell an empty jack from a plugged cable with nothing behind it. The jacks therefore have a \emph{tip switch}, a fourth contact that touches the tip until a plug lifts it off \cite{neutrik2026nmj6hfd2}. The \emph{plug check} drives the tip low and the tip switch high: without a plug, the two pull resistors divide the rail to \qty{1.25}{\volt}; with a plug, the tip switch reads its rail, \qty{2.5}{\volt}. A reading above three quarters of the span counts as a plug. No current flows through the pedal, so the check works for any wiring and position.
 
-  \textbf{Paragraph 1, plug detection.} A solve cannot tell an empty jack from a plugged cable with nothing behind it. The jacks have a \emph{tip switch}, a contact that touches the tip until a plug lifts it \cite{neutrik2026nmj6hfd2}. The plug check drives the tip low and the tip switch high: without a plug the pulls divide the rail (\qty{1.25}{\volt}), with one the tip switch reads its rail (\qty{2.5}{\volt}); above three quarters of the span counts as a plug. No current flows through the pedal, so the check works for any wiring and position.
+After a solve, the arms decide what follows. A \emph{potentiometer} has exactly one arm within \qty{25}{\percent} of the total, the wiper. An \emph{end stop} or \emph{near end} has two small arms, because the wiper rests on a track end or, with a resistive wiper lead, near it; the wiper is then taken from the settings or from the last wiper seen on the jack. A \emph{tip-sleeve element} is a switch or a rheostat, an \emph{open} plug has nothing behind it, and \emph{other} matches no known pedal.
 
-  \textbf{Paragraph 2, classification.} After a solve, the arms decide what follows: a \emph{potentiometer} (exactly one arm within \qty{25}{\percent} of the total, the wiper), an \emph{end stop} or \emph{near end} (two small arms: the wiper rests on, or with a resistive lead near, a track end; the wiper is then taken from the per-jack setting or the wiper remembered for the jack), a \emph{tip-sleeve element} (switch or rheostat), nothing, or \emph{other}.
-
-  \textbf{Paragraph 3, following.} An identified potentiometer is followed with one reading: the track ends are driven and only the wiper is read, which carries no current, so its contact resistance does not enter \cref{eq:position}. The track start is the sleeve whenever the sleeve is a track end, so the position rises away from the sleeve as in both common wirings. Every \qty{25}{\milli\second} one track end is re-read; if its drop changes or the wiper leaves the span, the jack is identified again. Switches and rheostats are followed through the tip (tip high, sleeve low); at most \qty{0.2}{\kilo\ohm} reads as closed, three readings between open and closed make a rheostat.
-}
-
+An identified potentiometer is followed with one reading per update: the track ends are driven, and only the wiper is read. The wiper carries no current, so its contact resistance does not enter the position
 \begin{equation}
-  p = \frac{V_\mathrm{w} - V_\mathrm{s}}{V_\mathrm{e} - V_\mathrm{s}}, \qquad 0 \leq p \leq 1
+  p = \frac{V_\mathrm{w} - V_\mathrm{start}}{V_\mathrm{end} - V_\mathrm{start}}, \qquad 0 \leq p \leq 1,
   \label{eq:position}
 \end{equation}
+where $V_\mathrm{w}$ is the wiper reading and $V_\mathrm{start}$ and $V_\mathrm{end}$ are the readings of the track ends, driven low and high. The track starts at the sleeve whenever the sleeve is a track end, so the position rises away from the sleeve in both common wirings. Every \qty{25}{\milli\second}, one track end is read again; if the drop across its pull resistor changes or the wiper leaves the span, the jack is identified again. Switches and rheostats are followed through the tip, with the tip high and the sleeve low: at most \qty{0.2}{\kilo\ohm} reads as closed, and three consecutive readings between open and closed mark a rheostat.

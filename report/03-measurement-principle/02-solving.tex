@@ -3,31 +3,23 @@
 \section{Pair Measurement and Solve}
 \label{sec:pair-measurement}
 
-\scaffold{
-  Budget: about 250 words plus \cref{eq:pair,eq:ratios}.
-
-  \textbf{Paragraph 1, the pair.} Each contact can be pulled up or down through $R_\mathrm{p}$ or left floating (the \emph{drive}), and is read by the ADC (one settled result is a \emph{reading}). The \emph{rail voltages} $V_{\mathrm{H},i}$, $V_{\mathrm{L},i}$ are what contact $i$ reads when all arms are driven to the same rail, so no current flows; measuring them cancels the ADC offset and the switch drops. A \emph{pair measurement} drives arm $h$ high and $l$ low; the floating contact $f$ carries no current and reads the star point. Present \cref{eq:pair}: the loop current, read on both sides, the pair resistance, and the share of the low arm. The ratio uses voltages spanning most of the rail and is precise; the current relies on the small drops across $R_\mathrm{p}$, so the total is less precise. The two currents must agree, which catches a pedal moved during the measurement.
-}
-
+The arms are inferred from contact voltages under known drives (\cref{fig:principle}, right). Each contact is pulled up or down through a pull resistance $R_\mathrm{p}$ or left floating, which is called its \emph{drive}, and is read by the ADC; one settled result is a \emph{reading}. The \emph{rail voltages} $V_{\mathrm{H},i}$ and $V_{\mathrm{L},i}$ are the readings of contact $i$ while all arms are driven to the same rail, so that no current flows; they cancel the offset of the ADC and the drops across the switches. A \emph{pair measurement} drives arm $h$ high and arm $l$ low, while the third contact $f$ floats. A reading on the third contact therefore yields the voltage at the star point. From the readings $V_h$, $V_l$ and $V_f$ follow the loop current $I$, read on both sides, the pair resistance and the share of the low arm:
 \begin{equation}
   I = \frac{1}{2}\left(\frac{V_{\mathrm{H},h} - V_h}{R_\mathrm{p}} + \frac{V_l - V_{\mathrm{L},l}}{R_\mathrm{p}}\right),
   \qquad
   r_h + r_l = \frac{V_h - V_l}{I},
   \qquad
-  \frac{r_l}{r_h + r_l} = \frac{V_f - V_l}{V_h - V_l}
+  \frac{r_l}{r_h + r_l} = \frac{V_f - V_l}{V_h - V_l}.
   \label{eq:pair}
 \end{equation}
+For a \qty{10}{\kilo\ohm} pedal, $R_\mathrm{p} = \qty{1}{\kilo\ohm}$ and a \qty{2.5}{\volt} rail, $I = \qty{2.5}{\volt}/\qty{12}{\kilo\ohm} \approx \qty{0.21}{\milli\ampere}$ drops \qty{208}{\milli\volt} across each pull resistor and leaves \qty{2.08}{\volt} across the pedal. The share therefore spans most of the rail and is precise, whereas the current relies on the small drops across $R_\mathrm{p}$. The currents on both sides must agree, which helps to detect errors such as a miscalibrated ADC or a pedal that moved during the measurement.
 
-\scaffold{
-  \textbf{Paragraph 2, the solve.} A \emph{solve} measures (tip high, ring low), (tip high, sleeve low) and only if needed (ring high, sleeve low). Two pairs sharing arm $s$ give its shares $\sigma_1$, $\sigma_2$; \cref{eq:ratios} turns them into the relative arms, normalized by the \emph{conditioning} $c$. $c$ approaches 0 when the shared arm approaches \qty{0}{\ohm}, i.e. a wiper on the tip, and noise is amplified by about $1/c$; below $c = 0.5$ the third pair is measured. The total is the mean of the totals the pairs imply, weighted by their squared signal-to-noise ratio, and pairs that disagree reject the solve.
-}
-
+A \emph{solve} measures the pairs (tip high, ring low) and (tip high, sleeve low), and, if needed, (ring high, sleeve low). Two pairs that share the arm $s$ give its shares $\rho_1 = r_s/(r_s + r_a)$ and $\rho_2 = r_s/(r_s + r_b)$ from \cref{eq:pair}, where $a$ and $b$ are the other arms. \Cref{eq:ratios} turns them into unnormalized arms $x_i$ and the relative arms $q_i$:
 \begin{equation}
-  x_s = \sigma_1 \sigma_2,\quad x_a = (1 - \sigma_1)\,\sigma_2,\quad x_b = (1 - \sigma_2)\,\sigma_1,\qquad
-  q_i = \frac{x_i}{c},\quad c = \sum_j x_j
+  x_s = \rho_1 \rho_2,\quad x_a = (1 - \rho_1)\,\rho_2,\quad x_b = (1 - \rho_2)\,\rho_1,\qquad
+  q_i = \frac{x_i}{c},\quad c = \sum_j x_j.
   \label{eq:ratios}
 \end{equation}
+The sum $c$, the \emph{conditioning}, approaches 0 when the shared arm approaches \qty{0}{\ohm}, as for a wiper on the tip, and amplifies the noise of the shares by about $1/c$. For the Boss EV-30, whose wiper is on the tip, $c$ lies between 0.03 and 0.1, a 10- to 30-fold amplification; below $c = 0.5$, the third pair is therefore measured as well. The total is the mean of the totals the pairs imply, weighted by their squared signal-to-noise ratio; disagreeing totals reject the solve.
 
-\scaffold{
-  \textbf{Paragraph 3, tolerances.} Every threshold is a multiple of the noise $\sigma_V$ of one reading, propagated to the checked quantity (for a current, $\sigma_V/R_\mathrm{p}$): a high-value pedal with small, noisy currents gets wider tolerances instead of being rejected. Name the conduction threshold ($3\sigma$) and refer to \cref{tab:constants} in the appendix for the rest.
-}
+Every threshold is a multiple of the noise $\sigma_V$ of one reading, propagated to the checked quantity; for a current, $\sigma_V/R_\mathrm{p} = \qty{0.5}{\milli\volt}/\qty{1}{\kilo\ohm} = \qty{0.5}{\micro\ampere}$. A pedal of high resistance, whose currents are small and noisy, thus gets wider tolerances instead of being rejected. A pair conducts when its current exceeds $3\sigma$; \cref{tab:constants} lists the remaining thresholds.

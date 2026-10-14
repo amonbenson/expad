@@ -1,10 +1,10 @@
 % !TEX root = main.tex
-% Shared look of the TikZ diagrams (04-implementation/figures/*.tex): font, palette, text commands
+% Shared look of the TikZ diagrams (<chapter>/figures/*.tex): font, palette, text commands
 % and styles. A figure only sets its grid (named lengths and coordinates) and its font sizes, and
 % draws with these styles; `block` and `instances` read the grid's \boxWidth, \boxHeight and
 % \groupMargin.
 
-\usetikzlibrary{arrows.meta, calc, fit, positioning, shadows, shapes.geometric}
+\usetikzlibrary{arrows.meta, backgrounds, calc, fit, positioning, shadows, shapes.geometric}
 
 % Helvetica, as the standalone diagrams in docs/diagrams/ (helvet, scaled).
 \newfontfamily\diagramfont{TeX Gyre Heros}[Scale=0.95, Ligatures=TeX]
@@ -113,4 +113,29 @@
   % at the x of a given coordinate (a bus).
   jog/.style={to path={-| ($(\tikztostart)!0.5!(\tikztotarget)$) |- (\tikztotarget) \tikztonodes}},
   jog via/.style={to path={-- (\tikztostart -| #1) |- (\tikztotarget) \tikztonodes}},
+  % Circuits. A resistor lies on its wire, which is drawn first; a jack contact; a rail as a tag,
+  % red for the pull-up rail, blue for ground.
+  resistor/.style={draw=wire, fill=white, line width=0.6pt, minimum width=4mm,
+    minimum height=1.5mm, inner sep=0pt},
+  resistor vertical/.style={resistor, minimum width=1.5mm, minimum height=4mm},
+  terminal/.style={circle, draw=wire, fill=white, line width=0.6pt, inner sep=0pt,
+    minimum size=3pt},
+  rail tag/.style={fill=#1!10, draw=#1, text=#1, line width=0.5pt,
+    inner xsep=1.5pt, inner ysep=1pt, font=\diagramTextFont\bfseries},
+  % The path a current or a reading takes, under the wires (on the background layer).
+  highlight/.style={draw=#1!25, line width=3pt, line cap=round, line join=round},
+  % A connection that only exists once a plug is inserted.
+  link/.style={draw=other!70, line width=0.7pt, dash pattern=on 1pt off 1.5pt},
+  % The mechanical link that sets a row of switches.
+  actuator/.style={draw=muted, line width=0.4pt, dash pattern=on 2pt off 1pt},
+  % A switch from its pivot at (0, -reach) to its contact at (0, reach); `yscale=-1` turns it
+  % over. An open lever ends `switch reach` to the right, so the lever midpoints of a row of
+  % switches, open or closed, lie on the line its actuator takes.
+  switch reach/.store in=\diagramSwitchReach,
+  switch reach=1.5mm,
+  pics/switch/.style={code={
+    \draw[bus] (0, -\diagramSwitchReach) -- (#1, \diagramSwitchReach);
+  }},
+  pics/switch open/.style={code={\pic {switch=\diagramSwitchReach};}},
+  pics/switch closed/.style={code={\pic {switch=0pt};}},
 }

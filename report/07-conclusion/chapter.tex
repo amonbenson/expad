@@ -3,12 +3,8 @@
 \chapter{Conclusion and Outlook}
 \label{ch:conclusion}
 
-\scaffold{
-  Budget: about 150 words, no new facts (writing guide, section 3.8).
+The evaluation is the first step to complete: the planned sweep with precision resistors and the settling series would measure accuracy, linearity and the settling model at its limit, and settle the deviation of the EV-30 with its minimum knob fixed. On the hardware side, pull resistors of about \qty{4.7}{\kilo\ohm} would raise the current signal of high-resistance pedals four- to fivefold while keeping a position span of more than \qty{1.2}{\volt} (\cref{tab:pull-resistance}). Measuring the rails in the background while a jack is empty would shorten the recognition.
 
-  \textbf{Paragraph 1, measurement.} The planned sweep with precision resistors and the settling series would complete the evaluation and settle the deviation of the EV-30 with its minimum knob in a fixed position. Pull resistors of about \qty{4.7}{\kilo\ohm} would raise the current signal of high-value pedals four- to fivefold while keeping the position resolution (\cref{tab:pull-resistance}), and measuring the rails in the background while a jack is empty would remove them from the recognition time.
+The second step is the use on stage. High-resolution control changes, which add a controller for the least significant bits, controller 43 for expression \cite{midi2026controlchange}, would pass on the resolution the measurement already has. Settings in flash memory, controls on the device, a more robust WiFi link, the DIN MIDI output of the proposal \cite{benson2026proposal} and a low-noise rectifier for both supply polarities would complete a device for live performance.
 
-  \textbf{Paragraph 2, use.} High-resolution control changes, which pair a controller with its least significant byte (controller 43 for expression \cite{midi2026controlchange}), would pass on the resolution the measurement already has. Settings stored in flash, a hardware interface instead of the web interface on stage, a more robust WiFi link, the DIN MIDI output of the proposal \cite{benson2026proposal}, and a rectifier for both supply polarities that adds no noise are the steps towards a device for live use.
-
-  \textbf{Closing sentence.} \enquote{Overall, this work demonstrates that \ldots}: an expression pedal of unknown wiring can be identified electrically within a tenth of a second and followed fast and precisely enough for live performance, with a front end of switches, two resistors per jack and a shared reference.
-}
+Overall, this work demonstrates that an expression pedal of unknown wiring can be identified electrically within a tenth of a second and followed fast and precisely enough for live performance, using analog switches, two shared resistors per jack and a common reference.

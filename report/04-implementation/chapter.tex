@@ -3,14 +3,12 @@
 \chapter{Implementation}
 \label{ch:implementation}
 
-\scaffold{
-  Budget for the chapter: about 810 words, \cref{fig:block-diagram,fig:frontend-final,fig:firmware-overview} and \cref{tab:design-decisions}. Overview paragraph (about 60 words, writing guide, section 3.5): name the blocks of \cref{fig:block-diagram} in signal-flow order, one clause each: four jacks with four switched contacts each (tip, ring, sleeve, tip switch); per jack a shift register and two analog switches that connect each contact to a shared pull-up or pull-down resistor; two 24-bit ADCs, each reading two jacks; the Raspberry Pi Pico~2~W; USB MIDI, an LED per jack and a WiFi access point. Then one sentence: the solver and the per-jack state machine form a hardware-independent library that is tested on the host.
-}
+The adapter realizes the measurement principle in the blocks of \cref{fig:block-diagram}. Per jack, a shift register and two analog switches connect each of the four contacts – tip, ring, sleeve and tip switch – to a shared pull-up or pull-down resistor. Two 24-bit ADCs read the contacts, two jacks each, and a Raspberry Pi Pico~2~W \cite{rpi2026pico2w} runs the firmware, which sends MIDI over USB, colors one light-emitting diode (LED) per jack and serves a web interface over WiFi. The solver and the per-jack state machine form a library without hardware dependency, which was developed and tested on a host computer before it ran on the board.
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
   \centering
   \input{04-implementation/figures/system-block-diagram}
-  \titledcaption{System Block Diagram}{\scaffoldinline{One sentence per block group and the meaning of the highlighted path. Explain the notation: the thick blue line is the measurement path of one jack; the stacked frames and the tabs ($\times$\,4, $\times$\,2) mark blocks that exist once per jack and once per ADC; a slashed number counts the lines of a bus; the red and blue tags are the \qty{2.5}{\volt} rail (pull-up rail and ADC reference) and ground; T tip, R ring, S sleeve, TN tip switch. Source: \code{report/04-implementation/figures/system-block-diagram.tex}.}}
+  \titledcaption{System Block Diagram}{Per jack, two TMUX1511 switches, selected by a 74HC595 shift register over the Serial Peripheral Interface (SPI) bus SPI1, connect the contacts tip (T), ring (R), sleeve (S) and tip switch (TN) to the shared \qty{1}{\kilo\ohm} pull resistors, and RC filters pass them to an AD7718 ADC, which the Pico~2~W reads over SPI0. The thick blue line is the measurement path of one jack; tabs ($\times$\,4, $\times$\,2) mark blocks that exist once per jack or ADC, and a slashed number counts the lines of a bus. Red tags mark the \qty{2.5}{\volt} rail (pull-up rail and ADC reference), blue tags ground; LDO denotes a low-dropout regulator.}
   \label{fig:block-diagram}
 \end{figure}
 

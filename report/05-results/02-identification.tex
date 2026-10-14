@@ -3,32 +3,26 @@
 \section{Identification and Position}
 \label{sec:results-identification}
 
-\scaffold{
-  \textbf{Paragraph 1, pedals} (about 120 words, \cref{tab:pedals}). Every pedal at hand was identified as its type and wiring. The M-Audio EX-P carries 8 to \qty{15}{\percent} of its total in its wiper lead; with the original wiper limit of \qty{10}{\percent} it was classified as \enquote{other} over most of its travel, which led to the \qty{25}{\percent} limit and the near-end class. No two-wire rheostat pedal was available; a bare \qty{100}{\kilo\ohm} potentiometer between tip and sleeve stood in for one. Several sustain pedals behaved like the Boss FS-5U. No plug-cycle test was made; occasional misdetections occurred, most often a footswitch taken for a rheostat when plugged in slowly or when the jack was turned during operation, and the firmware recovered on its own within a few seconds.
-}
+With a working signal chain, every pedal at hand was identified as its type and wiring (\cref{tab:pedals}). The M-Audio EX-P carries 8 to \qty{15}{\percent} of its total resistance in its wiper lead; with the original wiper limit of \qty{10}{\percent}, it was classified as other over most of its travel, which led to the limit of \qty{25}{\percent} and the near-end class. A bare \qty{100}{\kilo\ohm} potentiometer between tip and sleeve stood in for a rheostat pedal, which was not available, and several sustain pedals behaved like the Boss FS-5U. No systematic plug-cycle test was made. Occasional misdetections occurred, most often a footswitch taken for a rheostat when it was plugged in slowly or turned in the jack, and the firmware recovered on its own within a few seconds.
 
-\begin{table}[htbp]
+\begin{table}[tb]
   \centering
   \footnotesize
-  \titledcaption{Identified Pedals}{\scaffoldinline{Identified resistance: the solver's total for potentiometers (track and wiper lead), compared with an ohmmeter across the track; for the switch the closed resistance against the \qty{0.2}{\kilo\ohm} threshold.}}
+  \titledcaption{Identified Pedals}{Classification of the available pedals. Identified: total resistance from the solver, including the wiper lead, against the track measured with an ohmmeter; for the switch, the closed resistance against the threshold.}
   \label{tab:pedals}
   \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l l r r@{}}
     \toprule
     \textbf{Pedal} & \textbf{Cable} & \textbf{Identified as} & \textbf{Identified} & \textbf{Ohmmeter} \\
     \midrule
-    Boss EV-30, wiper on tip & stereo & expression pedal & \qty{10.85}{\kilo\ohm} & \qty{9.81}{\kilo\ohm} \\
-    M-Audio EX-P, wiper on ring & stereo & expression pedal (near end) & \qty{11.4}{\kilo\ohm} & \qty{11.39}{\kilo\ohm} \\
+    Boss EV-30, wiper on tip & stereo & potentiometer & \qty{10.85}{\kilo\ohm} & \qty{9.81}{\kilo\ohm} \\
+    M-Audio EX-P, wiper on ring & stereo & potentiometer (near end) & \qty{11.40}{\kilo\ohm} & \qty{11.39}{\kilo\ohm} \\
     Boss FS-5U, closed & mono & switch & $\leq \qty{0.2}{\kilo\ohm}$ & \qty{8.7}{\ohm} \\
-    \qty{100}{\kilo\ohm} potentiometer, two wires & mono & rheostat & -- & -- \\
-    Potentiometer pedal & mono & not usable (track halves in parallel) & -- & -- \\
+    \qty{100}{\kilo\ohm} potentiometer & mono & rheostat & -- & -- \\
+    Pedal with wiper on tip & mono & not usable (halves in parallel) & -- & -- \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-\scaffold{
-  \textbf{Paragraph 2, accuracy} (about 70 words). A sweep of precision resistors, planned for accuracy and linearity, was not made for lack of time. The ohmmeter comparison of \cref{tab:pedals} stands in: the EX-P track agrees within \qty{0.1}{\percent}; the EV-30 was solved \qty{11}{\percent} high at bring-up (at \qty{315}{\hertz}) and at about \qty{9.4}{\kilo\ohm} from the voltage levels of an oscilloscope capture; the EV-30's minimum knob, set differently between these measurements, is a possible explanation. The total only sets the settling time and the rheostat scale; the position depends on voltage ratios alone.
-}
+A sweep of precision resistors, planned to measure accuracy and linearity, was not made for lack of time; the ohmmeter comparison in \cref{tab:pedals} stands in for it. The track of the EX-P agrees within \qty{0.1}{\percent}. The EV-30 was solved \qty{11}{\percent} high at bring-up, still at \qty{315}{\hertz}, and at about \qty{9.4}{\kilo\ohm} from the voltage levels of an oscilloscope capture; its minimum knob, set differently between these measurements, is a possible explanation. The total resistance only sets the settling time and the scale of a rheostat, whereas the position depends on voltage ratios alone.
 
-\scaffold{
-  \textbf{Paragraph 3, position noise} (about 40 words). With the EV-30 held still, solved positions scatter by \num{274} parts per million of travel and single wiper readings by \num{203} parts per million (\cref{tab:adc-characterization}); one MIDI step is \num{7874} parts per million, so the jitter stays below 1/29 of a step and the sent value does not change.
-}
+With the EV-30 held still, solved positions scattered by \num{274} parts per million (ppm) of the travel and single wiper readings by \num{203}~ppm (\cref{tab:adc-characterization}). One MIDI step is \num{7874}~ppm, so the jitter stays at or below about 1/29 of a step, and the sent value does not change.

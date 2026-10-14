@@ -1,0 +1,204 @@
+% !TEX root = ../../main.tex
+% Measurement principle (sec:network-model, sec:pair-measurement): four pedals, their star
+% equivalent and the pull matrix of one jack, with the paths of one pair measurement highlighted
+% (tip high, ring low, sleeve floating and read). Spans \linewidth; every position follows from the
+% grid below.
+%
+% Columns: the pedals (potentiometer, two jogs for its wires, plug), the star (sleeve end, star
+% point, ring end, two jogs for the ring and sleeve wires), the pull matrix (contacts, one column
+% per contact, the pull resistors, the labels). A backdrop behind the pedals narrows to the one
+% behind the star, a dotted link joins the star's wires and the contacts; both gaps share the
+% width that is left. Rows: the pull matrix's seven rows at a fixed pitch, from the high rail
+% through the contacts to the low rail. The star's tip end lies on the tip row and its other ends on
+% the sleeve row, so its arms are 4/3 of a row pitch long; the sleeve wire runs below, half a row
+% pitch under the sleeve row. The pedals sit on every second row.
+
+\begin{tikzpicture}[diagram, diagram title font=\scriptsize,
+    diagram name font=\fontsize{7}{8.4}\selectfont, diagram text font=\tiny]
+  % ---------------------------------------------------------------- grid
+  \pgfmathsetlengthmacro\rowPitch{7mm}
+  \pgfmathsetlengthmacro\backdropMargin{2mm}  % around the pedals and the star
+  \pgfmathsetlengthmacro\titleSpace{3mm}
+  % A pedal: the potentiometer's wires run in lanes into the plug's handle.
+  \pgfmathsetlengthmacro\laneGap{2.5mm}
+  \pgfmathsetlengthmacro\leadLength{1mm}      % beyond the potentiometer's track ends
+  \pgfmathsetlengthmacro\wiperLength{2.5mm}
+  \pgfmathsetlengthmacro\jogGap{2mm}
+  \pgfmathsetlengthmacro\handleGap{3mm}       % between the last jog and the handle
+  % The plug, from the handle to the tip.
+  \pgfmathsetlengthmacro\handleWidth{4.5mm}
+  \pgfmathsetlengthmacro\handleHeight{2*\laneGap + 2.4mm}
+  \pgfmathsetlengthmacro\plugDiameter{4.2mm}
+  \pgfmathsetlengthmacro\insulatorDiameter{0.8*\plugDiameter}
+  \pgfmathsetlengthmacro\sleeveEnd{\handleWidth + 10mm}
+  \pgfmathsetlengthmacro\ringStart{\sleeveEnd + 0.6mm}
+  \pgfmathsetlengthmacro\ringEnd{\ringStart + 2.5mm}
+  \pgfmathsetlengthmacro\tipStart{\ringEnd + 0.6mm}
+  \pgfmathsetlengthmacro\plugLength{\tipStart + 4.5mm}
+  % The star: three arms at 120 degrees, the lower two 30 degrees below the horizontal.
+  \pgfmathsetlengthmacro\armLength{4/3*\rowPitch}
+  \pgfmathsetlengthmacro\armReach{cos(30)*\armLength}
+  \pgfmathsetlengthmacro\starWidth{2*\backdropMargin + 2*\armReach + 2*\jogGap}
+  % The pull matrix.
+  \pgfmathsetlengthmacro\columnPitch{10mm}
+  \pgfmathsetlengthmacro\labelWidth{8mm}      % the rail tags and labels right of the matrix
+  \pgfmathsetlengthmacro\pedalWidth{\wiperLength + 2*\jogGap + \handleGap + \plugLength}
+  % The narrowing backdrop and the link share what is left.
+  \pgfmathsetlengthmacro\freeWidth{\linewidth - 2*\backdropMargin - \pedalWidth - \starWidth
+    - 5*\columnPitch - \labelWidth}
+  \pgfmathsetlengthmacro\funnelLength{0.55*\freeWidth}
+  \pgfmathsetlengthmacro\linkLength{0.45*\freeWidth}
+
+  % Columns, left to right.
+  \coordinate (pedals west) at (0, 0);
+  \coordinate (pot) at (\backdropMargin, 0);
+  \coordinate (wiper jog) at ($(pot) + (\wiperLength + \jogGap, 0)$);
+  \coordinate (track jog) at ($(wiper jog) + (\jogGap, 0)$);
+  \coordinate (plug) at ($(track jog) + (\handleGap, 0)$);
+  \coordinate (pedal east) at ($(plug) + (\plugLength, 0)$);
+  \coordinate (pedals east) at ($(pedal east) + (\backdropMargin, 0)$);
+  \coordinate (star west) at ($(pedals east) + (\funnelLength, 0)$);
+  \coordinate (star) at ($(star west) + (\backdropMargin + \armReach, 0)$);
+  \coordinate (ring jog) at ($(star) + (\armReach + \jogGap, 0)$);
+  \coordinate (sleeve jog) at ($(ring jog) + (\jogGap, 0)$);
+  \coordinate (star east) at ($(sleeve jog) + (\backdropMargin, 0)$);
+  \coordinate (contacts) at ($(star east) + (\linkLength, 0)$);
+  \foreach \contact [count=\column] in {tip, ring, sleeve}
+    \coordinate (\contact\space column) at ($(contacts) + (\column*\columnPitch, 0)$);
+  \coordinate (pull) at ($(contacts) + (4*\columnPitch, 0)$);
+  \coordinate (labels) at ($(contacts) + (5*\columnPitch, 0)$);
+
+  % Rows, top to bottom.
+  \foreach \row [count=\index from 0] in {high rail, high switches, tip, ring, sleeve,
+      low switches, low rail}
+    \coordinate (\row) at (0, {-\index*\rowPitch});
+  \foreach \pedal in {0, ..., 3}
+    \coordinate (pedal \pedal) at (0, {-2*\pedal*\rowPitch});
+  \coordinate (sleeve lane) at ($(sleeve) - (0, \rowPitch/2)$);
+  % Both backdrops are centered on the ring row.
+  \pgfmathsetlengthmacro\pedalsHalfHeight{3*\rowPitch + \handleHeight/2 + 2.5mm}
+  \pgfmathsetlengthmacro\starHalfHeight{1.5*\rowPitch + \backdropMargin}
+  \coordinate (pedals top) at ($(ring) + (0, \pedalsHalfHeight)$);
+  \coordinate (pedals bottom) at ($(ring) - (0, \pedalsHalfHeight)$);
+  \coordinate (star top) at ($(ring) + (0, \starHalfHeight)$);
+  \coordinate (star bottom) at ($(ring) - (0, \starHalfHeight)$);
+  \coordinate (title row) at ($(pedals top) + (0, \titleSpace)$);
+
+  \tikzset{
+    plug body/.style={draw=wire, fill=white, line width=0.6pt},
+    contact letter/.style={text=muted, inner sep=0pt, font=\fontsize{4.5}{5}\selectfont},
+    % A stereo plug from the west side of its handle, which names the lanes of its contacts.
+    pics/plug/.style={code={
+      \draw[plug body] (0, -\handleHeight/2) rectangle (\handleWidth, \handleHeight/2);
+      \draw[plug body] (\handleWidth, -\plugDiameter/2) rectangle (\sleeveEnd, \plugDiameter/2);
+      \fill[wire] (\sleeveEnd, -\insulatorDiameter/2) rectangle (\ringStart, \insulatorDiameter/2);
+      \draw[plug body] (\ringStart, -\plugDiameter/2) rectangle (\ringEnd, \plugDiameter/2);
+      \fill[wire] (\ringEnd, -\insulatorDiameter/2) rectangle (\tipStart, \insulatorDiameter/2);
+      \draw[plug body] (\tipStart, -\plugDiameter/2) -- ({(\tipStart + \plugLength)/2}, -\plugDiameter/2)
+        -- (\plugLength, -\plugDiameter/6) -- (\plugLength, \plugDiameter/6)
+        -- ({(\tipStart + \plugLength)/2}, \plugDiameter/2) -- (\tipStart, \plugDiameter/2) -- cycle;
+      \foreach \contact/\lane in {T/1, R/0, S/-1}
+        \node[contact letter] at (\handleWidth/2, \lane*\laneGap) {\contact};
+    }},
+  }
+
+  % ---------------------------------------------------------------- pedals
+  % Each wire jogs into its lane: the wiper's first, the track ends' further right, so that a
+  % wire crossing to another lane crosses the others only once.
+  \foreach \info/\endOne/\wiper/\endThree [count=\pedal from 0] in {wiper on ring/T/R/S,
+      wiper on tip/R/T/S, wiper on sleeve/T/S/R, two-wire/T/S/S} {
+    \foreach \contact/\lane in {T/1, R/0, S/-1}
+      \coordinate (lane \pedal\space\contact) at ($(plug |- pedal \pedal) + (0, \lane*\laneGap)$);
+    \node[resistor vertical] (pot \pedal) at (pot |- pedal \pedal) {};
+    \coordinate (wiper \pedal) at ($(pot \pedal.east) + (\wiperLength, 0)$);
+    \draw[bus] (pot \pedal.north) -- ++(0, \leadLength) to[jog via=track jog] (lane \pedal\space\endOne);
+    \draw[bus] (pot \pedal.south) -- ++(0, -\leadLength) to[jog via=track jog] (lane \pedal\space\endThree);
+    \draw[bus] (wiper \pedal) to[jog via=wiper jog] (lane \pedal\space\wiper);
+    \draw[flow] (wiper \pedal) -- (pot \pedal.east);
+    \ifx\wiper\endThree
+      \node[junction] at (track jog |- lane \pedal\space\wiper) {};
+    \fi
+    \pic at (plug |- pedal \pedal) {plug};
+    \node[info, anchor=south west]
+      at ($(plug |- pedal \pedal) + (\handleWidth + 0.5mm, \plugDiameter/2 + 0.4mm)$) {\info};
+  }
+
+  % ---------------------------------------------------------------- star
+  % Each arm leaves the star point at its angle; its label sits outside the star, square to it.
+  \coordinate (star point) at ($(star |- sleeve) + (0, \armLength/2)$);
+  \foreach \contact/\letter/\angle/\side in {tip/T/90/0, ring/R/-30/60, sleeve/S/210/120} {
+    \coordinate (\contact\space end) at ($(star point) + (\angle:\armLength)$);
+    \coordinate (\contact\space arm) at ($(star point)!0.5!(\contact\space end)$);
+    \draw[bus] (star point) -- (\contact\space end);
+    \node[resistor, rotate=\angle] at (\contact\space arm) {};
+    \pgfmathtruncatemacro\labelAnchor{\side + 180}
+    \node[edge label, anchor=\labelAnchor] at ($(\contact\space arm) + (\side:1.2mm)$)
+      {$r_\mathrm{\letter}$};
+  }
+  \node[junction] at (star point) {};
+  % To the contact rows: the ring wire jogs up, the sleeve wire runs below the ring's.
+  \draw[bus] (tip end) -- (star east |- tip);
+  \draw[bus] (ring end) -- (ring jog |- ring end) |- (star east |- ring);
+  \draw[bus] (sleeve end) |- (sleeve jog |- sleeve lane) |- (star east |- sleeve);
+
+  % ---------------------------------------------------------------- pull matrix
+  % Each contact's column runs from the high rail through its two switches to the low rail.
+  \foreach \contact in {tip, ring, sleeve} {
+    \draw[bus] (\contact\space column |- high rail)
+      -- ($(\contact\space column |- high switches) + (0, \diagramSwitchReach)$);
+    \draw[bus] ($(\contact\space column |- high switches) - (0, \diagramSwitchReach)$)
+      -- ($(\contact\space column |- low switches) + (0, \diagramSwitchReach)$);
+    \draw[bus] ($(\contact\space column |- low switches) - (0, \diagramSwitchReach)$)
+      -- (\contact\space column |- low rail);
+  }
+  % The drives of the pair measurement: tip high, ring low, sleeve floating.
+  \pic at (tip column |- high switches) {switch closed};
+  \pic at (ring column |- high switches) {switch open};
+  \pic at (sleeve column |- high switches) {switch open};
+  \pic[yscale=-1] at (tip column |- low switches) {switch open};
+  \pic[yscale=-1] at (ring column |- low switches) {switch closed};
+  \pic[yscale=-1] at (sleeve column |- low switches) {switch open};
+  \foreach \row in {high switches, low switches}
+    \draw[actuator] (tip column |- \row) -- (labels |- \row) node[edge label, anchor=west] {drive};
+
+  % The rails, each through its pull resistor.
+  \foreach \rail/\hue/\name/\side in {high rail/railHigh/2.5\,V/above, low rail/railLow/GND/below} {
+    \node[rail tag=\hue, anchor=west] (\rail\space tag) at (labels |- \rail) {\name};
+    \draw[bus] (tip column |- \rail) -- (\rail\space tag);
+    \node[resistor, label={[edge label]\side:$R_\mathrm{p}$}] at (pull |- \rail) {};
+    \foreach \contact in {ring, sleeve}
+      \node[junction] at (\contact\space column |- \rail) {};
+  }
+
+  % The contacts, linked to the arms by the plug and read by the ADC.
+  \foreach \contact/\letter in {tip/T, ring/R, sleeve/S} {
+    \draw[link] (star east |- \contact) -- (contacts |- \contact);
+    \draw[bus] (contacts |- \contact) -- (labels |- \contact) node[edge label, anchor=west] {ADC};
+    \node[junction] at (\contact\space column |- \contact) {};
+    \node[terminal, label={[edge label]above:\letter}] at (contacts |- \contact) {};
+  }
+
+  % ---------------------------------------------------------------- background
+  \begin{scope}[on background layer]
+    % The pedals' backdrop narrows to the star's.
+    \fill[otherTint] (pedals west |- pedals top) -- (pedals east |- pedals top)
+      -- (star west |- star top) -- (star east |- star top) -- (star east |- star bottom)
+      -- (star west |- star bottom) -- (pedals east |- pedals bottom)
+      -- (pedals west |- pedals bottom) -- cycle;
+    % The pair measurement: the loop current from the high rail to the low rail through the tip
+    % and ring arms, and the sleeve, which reads the star point.
+    \draw[highlight=railHigh] (high rail tag.west) -- (tip column |- high rail) -- (tip column |- tip)
+      -- (tip end) -- (star point);
+    \draw[highlight=railLow] (star point) -- (ring end) -- (ring jog |- ring end) |- (ring column |- ring)
+      -- (ring column |- low rail) -- (low rail tag.west);
+    \draw[highlight=other] (star point) -- (sleeve end) |- (sleeve jog |- sleeve lane)
+      |- (labels |- sleeve);
+  \end{scope}
+
+  % ---------------------------------------------------------------- titles
+  \coordinate (pedal center) at ($(pot)!0.5!(pedal east)$);
+  \coordinate (star center) at ($(star west)!0.5!(star east)$);
+  \coordinate (matrix center) at ($(contacts)!0.5!(labels) + (\labelWidth/2, 0)$);
+  \foreach \section/\title in {pedal/Pedal Wirings, star/Star Equivalent, matrix/Pull Matrix}
+    \node[group title=ink, anchor=base] at (\section\space center |- title row) {\title};
+\end{tikzpicture}
