@@ -46,13 +46,19 @@
     every node/.append style={text=ink},
     >={Stealth[length=4pt, width=3.2pt]},
   },
+  % Corner radius of every frame, box and backdrop, and of the rail tags.
+  corner radius/.store in=\diagramCornerRadius,
+  corner radius=2pt,
+  tag corner radius/.store in=\diagramTagCornerRadius,
+  tag corner radius=1pt,
   % Place a node at a column's x and a row's y (two coordinates).
   cell/.style 2 args={at={(#1 |- #2)}},
   % Frames: a stage's group and a group inside it.
   group/.style={draw=#1, fill=#1Fill, line width=0.8pt, inner sep=0pt,
+    rounded corners=\diagramCornerRadius,
     /utils/exec={\def\diagramGroupHue{#1}}},
   subgroup/.style={draw=#1, fill=white!55!#1Fill, line width=0.6pt,
-    inner sep=0pt},
+    inner sep=0pt, rounded corners=\diagramCornerRadius},
   % A group that exists more than once, e.g. `group=detect, instances=4` (after `group`): a copy of
   % its frame behind it for each further one, each `stack offset` further up and right, and the
   % count on its top right corner, inset by the figure's \groupMargin. One instance draws the plain
@@ -92,7 +98,7 @@
   % Boxes: a state's lines are broken by hand, `box width` keeps the boxes of a column equal.
   box width/.style={minimum width=#1},
   state/.style={draw=#1, fill=white, line width=0.8pt, align=center,
-    text=muted, inner xsep=1mm, inner ysep=2pt},
+    text=muted, inner xsep=1mm, inner ysep=2pt, rounded corners=\diagramCornerRadius},
   % A state at the figure's \boxWidth and \boxHeight.
   block/.style={state=#1, box width=\boxWidth, minimum height=\boxHeight},
   decision/.style={diamond, aspect=2, draw=#1, fill=white, line width=0.8pt, align=center,
@@ -121,7 +127,10 @@
   terminal/.style={circle, draw=wire, fill=white, line width=0.6pt, inner sep=0pt,
     minimum size=3pt},
   rail tag/.style={fill=#1!10, draw=#1, text=#1, line width=0.5pt,
-    inner xsep=1.5pt, inner ysep=1pt, font=\diagramTextFont\bfseries},
+    inner xsep=1.5pt, inner ysep=1pt, font=\diagramTextFont\bfseries,
+    rounded corners=\diagramTagCornerRadius},
+  % A plain area behind a part of a figure.
+  backdrop/.style={fill=otherTint, rounded corners=\diagramCornerRadius},
   % The path a current or a reading takes, under the wires (on the background layer).
   highlight/.style={draw=#1!25, line width=3pt, line cap=round, line join=round},
   % A connection that only exists once a plug is inserted.

@@ -3,7 +3,7 @@
 \section{Plug Detection and Following}
 \label{sec:following}
 
-A solve cannot tell an empty jack from a plugged cable with nothing behind it. The jacks therefore have a \emph{tip switch}, a fourth contact that touches the tip until a plug lifts it off \cite{neutrik2026nmj6hfd2}. The \emph{plug check} drives the tip low and the tip switch high: without a plug, the two pull resistors divide the rail to \qty{1.25}{\volt}; with a plug, the tip switch reads its rail, \qty{2.5}{\volt}. A reading above three quarters of the span counts as a plug. No current flows through the pedal, so the check works for any wiring and position.
+A solve cannot tell an empty jack from a plugged cable with nothing behind it. The jacks therefore have a \emph{tip switch}, a fourth contact that touches the tip until a plug lifts it off \cite{neutrik2026nmj6hfd2}. The \emph{plug check} drives the tip low and the tip switch high: without a plug, the two pull resistors divide the rail to \qty{1.25}{\volt}; with a plug, the tip switch reads its rail, \qty{2.5}{\volt}. A reading above three quarters of the span counts as a plug. During this detection phase, no currents flow through the pedal, so the check works for any wiring and position.
 
 After a solve, the arms decide what follows. A \emph{potentiometer} has exactly one arm within \qty{25}{\percent} of the total, the wiper. An \emph{end stop} or \emph{near end} has two small arms, because the wiper rests on a track end or, with a resistive wiper lead, near it; the wiper is then taken from the settings or from the last wiper seen on the jack. A \emph{tip-sleeve element} is a switch or a rheostat, an \emph{open} plug has nothing behind it, and \emph{other} matches no known pedal.
 
