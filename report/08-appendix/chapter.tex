@@ -49,18 +49,26 @@
   \centering
   \begin{subfigure}[b]{0.49\linewidth}
     \centering
-    \includegraphics[width=\linewidth]{04-implementation/figures/pcb-layout}
-    \caption{Layout}
+    \includegraphics[width=\linewidth]{08-appendix/figures/pcb-top}
+    \caption{Top Layer}
     \label{fig:pcb-layout}
   \end{subfigure}%
   \hfill%
+  \begin{subfigure}[b]{0.49\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{08-appendix/figures/pcb-bottom}
+    \caption{Bottom Layer}
+    \label{fig:pcb-layout-bottom}
+  \end{subfigure}
+
+  \vspace{1em}
   \begin{subfigure}[b]{0.49\linewidth}
     \centering
     \includegraphics[width=\linewidth]{04-implementation/figures/assembly-complete}
     \caption{Assembled Board}
     \label{fig:assembly-complete}
   \end{subfigure}
-  \titledcaption{PCB}{Two-layer board of \qtyproduct{88.65 x 69.85}{\milli\metre}, manufactured by Aisler. (a)~Layout with top copper in red and bottom copper in blue: the Pico~2~W (A1) along the top edge, the power input (J1, F1, Q1) and the regulators top right, the two AD7718 (U4, U5) with their input filters in the middle, and the jacks J2 to J5 along the bottom edge with their tip (T), ring (R), sleeve (S) and normalling (TN, RN, SN) pins. (b)~Assembled board, side with the shift registers, the TMUX1511 switches (U15 to U22), the LEDs (D4 to D7) and the color-coded test points for the rails and bus signals.}
+  \titledcaption{PCB}{Two-layer board of \qtyproduct{88.65 x 69.85}{\milli\metre}, manufactured by Aisler. Copper is colored by net: ground in blue, \qty{5}{\volt} in purple, \qty{3.3}{\volt} analog in red, the \qty{2.5}{\volt} reference in orange, the external supply in yellow (a darker shade for each rail's \texttt{\_RAW} net) and every signal in gray; ground and supply pours are drawn lighter. (a)~Top layer: the Pico~2~W (A1) along the top edge, the power input (J1, F1, Q1) and the regulators top right, the two AD7718 (U4, U5) with their input filters in the middle, and the jacks J2 to J5 along the bottom edge. (b)~Bottom layer, mirrored as seen from below: the TMUX1511 switches (U15 to U22) above each jack, the LEDs (D4 to D7) along the bottom edge and the labeled test points. (c)~Assembled board, side with the shift registers, the TMUX1511 switches, the LEDs and the color-coded test points for the rails and bus signals.}
   \label{fig:pcb}
 \end{figure}
 

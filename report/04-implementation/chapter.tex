@@ -3,7 +3,7 @@
 \chapter{Implementation}
 \label{ch:implementation}
 
-The adapter realizes the measurement principle in the blocks of \cref{fig:block-diagram}. Per jack, a shift register and two analog switches connect each of the four contacts – tip, ring, sleeve and tip switch – to a shared pull-up or pull-down resistor. Two 24-bit ADCs read the contacts, two jacks each, and a Raspberry Pi Pico~2~W \cite{rpi2026pico2w} runs the firmware, which sends MIDI over USB, colors one light-emitting diode (LED) per jack and serves a web interface over WiFi. The solver and the per-jack state machine form a library without hardware dependency, which was developed and tested on a host computer before it ran on the board.
+The adapter realizes the measurement principle in the blocks of \cref{fig:block-diagram}. Per jack, a shift register and two analog switches connect each of the four contacts -- tip, ring, sleeve and tip switch -- to a shared pull-up or pull-down resistor. Two 24-bit ADCs read the contacts, two jacks each, and a Raspberry Pi Pico~2~W \cite{rpi2026pico2w} runs the firmware, which sends MIDI over USB, drives one indicator LED per jack and serves a web interface over WiFi. The solver and the per-jack state machine form a library without hardware dependency, which was developed and tested on a host computer before it ran on the board.
 
 \begin{figure}[tb]
   \centering
