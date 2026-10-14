@@ -37,7 +37,7 @@
   \schematicsheet{3}{Schematic: Analog Front End}{analog-frontend}{Jacks J2 to J5, one channel sheet per jack, and the two AD7718 (U4, U5) with their crystals. Each ADC reads two jacks. AIN6 is grounded and AIN10 is tied to the \qty{2.5}{\volt} rail for the self-test.}
   \schematicsheet{4}{Schematic: Jack Channel}{channel-j2}{Channel of jack J2: the 74HC595 (U6) selects the switches of U15 (pull-up, R50 to \qty{2.5}{\volt}) and U19 (pull-down, R54 to ground). R15 to R18 with C23 to C26 (\qty{10}{\nano\farad}) form the input filters. JACK1 to JACK4 are tip, ring, sleeve and tip switch. The channel sheets of J3 to J5 are identical apart from the designators and are not reproduced.}
   \schematicsheet{8}{Schematic: Power}{power}{Barrel jack J1 (center negative), polyfuse F1, TVS diode D1 and P-channel MOSFET Q1 against reverse polarity with the gate clamp D2. ADP7142 LDOs \cite{adi2025adp7142} generate \qty{5}{\volt} (U2: LEDs, Pico through D3), \qty{3.3}{\volt} (U1: ADCs, switches, shift registers) and \qty{2.5}{\volt} (U3, from \qty{3.3}{\volt}: pull-up rail and ADC reference), each behind a solder jumper and a test point.}
-  \schematicsheet{9}{Schematic: LEDs}{leds}{Four WS2812B LEDs (D4 to D7) on \qty{5}{\volt}, whose data line U14 (74AHCT1G125) shifts from \qty{3.3}{\volt} to \qty{5}{\volt} through R43.}
+  \schematicsheet{9}{Schematic: LEDs}{leds}{Four WS2812B LEDs (D4 to D7) on \qty{5}{\volt}. U14 (74AHCT1G125) shifts the data line from \qty{3.3}{\volt} to \qty{5}{\volt}.}
 \clearpage
 \pagewidth=\portraitwidth \pageheight=\portraitheight
 \setlength\textwidth\portraittextwidth \setlength\textheight\portraittextheight \makeatletter\global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight\makeatother

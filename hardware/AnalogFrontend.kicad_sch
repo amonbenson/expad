@@ -4,6 +4,12 @@
 	(generator_version "10.0")
 	(uuid "126bc26d-675b-48b7-9159-3ecdf96b7a74")
 	(paper "A3")
+	(title_block
+		(title "Analog Front End")
+		(date "2026-09-27")
+		(rev "1.0")
+		(company "Amon Benson, TU Berlin")
+	)
 	(lib_symbols
 		(symbol "AD7718:AD7718"
 			(exclude_from_sim no)

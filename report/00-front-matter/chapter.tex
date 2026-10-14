@@ -4,8 +4,10 @@
 
 \input{00-front-matter/title-page}
 \clearpage
-\input{00-front-matter/declaration}
-\clearpage
+% The signed and scanned declaration replaces the template in declaration.tex.
+% \input{00-front-matter/declaration}
+% \clearpage
+\includepdf[pages=-]{00-front-matter/figures/declaration-signed.pdf}
 \input{00-front-matter/ai-notice}
 \clearpage
 \input{00-front-matter/abstract}

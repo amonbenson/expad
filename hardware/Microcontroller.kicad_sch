@@ -4,6 +4,12 @@
 	(generator_version "10.0")
 	(uuid "efb7c4fe-1dd6-49a0-913b-45f9ef751558")
 	(paper "A4")
+	(title_block
+		(title "Microcontroller")
+		(date "2026-09-27")
+		(rev "1.0")
+		(company "Amon Benson, TU Berlin")
+	)
 	(lib_symbols
 		(symbol "Connector:TestPoint"
 			(pin_numbers

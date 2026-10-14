@@ -4,6 +4,12 @@
 	(generator_version "10.0")
 	(uuid "bb6752d3-0750-44a7-bbfc-c81d438dbfac")
 	(paper "A4")
+	(title_block
+		(title "Jack Channel")
+		(date "2026-09-27")
+		(rev "1.0")
+		(company "Amon Benson, TU Berlin")
+	)
 	(lib_symbols
 		(symbol "74xx:74HC595"
 			(exclude_from_sim no)
